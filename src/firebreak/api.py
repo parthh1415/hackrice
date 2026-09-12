@@ -415,7 +415,16 @@ def _stabilise(params):
         "asset_index": found.asset,
         "magnitude": found.magnitude,
         "pct": found.pct,
-        "fix": fix.as_dict(data["funds"], data["tickers"]),
+        # Dollars alongside the fractions. Since the bisection went relative the
+        # answer can land at 0.0034% of a position, and "cut 0.0034% of NVDA,
+        # costing 0.0002% of gross assets" is two numbers nobody can hold. The
+        # same instruction in dollars — $81K out of a $2.36B book — is one.
+        "fix": dict(
+            fix.as_dict(data["funds"], data["tickers"]),
+            position_usd=float(scenario["holdings"][fix.fund, fix.asset]),
+            sell_usd=float(scenario["holdings"][fix.fund, fix.asset] * fix.reduction),
+            gross_usd=float(scenario["holdings"].sum()),
+        ),
         "bought": bought,
         "engine": {
             "name": name,

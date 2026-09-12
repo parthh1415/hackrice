@@ -33,6 +33,29 @@ const state = {
 
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 const pct2 = (x) => `${(x * 100).toFixed(2)}%`;
+
+// Two significant figures, not a fixed decimal count. The fix line used
+// toFixed(0) for the reduction and pct2 for the cost, which read fine while
+// the stabiliser was pinned to its 5% grid. Once the bisection went relative
+// the answer dropped to 0.073% and the same line rendered "cut NVDA exposure
+// 0% · costs 0.00% of gross assets" — beat 4's entire payoff, as two zeros. A
+// formatter that only works at one order of magnitude is a formatter waiting
+// for the number to move.
+const pctSig = (x) => {
+  const v = x * 100;
+  if (!isFinite(v) || v === 0) return "0%";
+  const dp = Math.min(6, Math.max(0, 1 - Math.floor(Math.log10(Math.abs(v)))));
+  return `${v.toFixed(dp)}%`;
+};
+
+const usd = (x) => {
+  const a = Math.abs(x);
+  if (a >= 1e12) return `$${(x / 1e12).toFixed(1)}T`;
+  if (a >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `$${(x / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `$${(x / 1e3).toFixed(0)}K`;
+  return `$${x.toFixed(0)}`;
+};
 const mult = (x) => `${x.toFixed(2)}×`;
 
 function el(tag, attrs = {}, text) {
@@ -357,12 +380,16 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
       "font-size": 12, "font-weight": 500,
       fill: ever ? "var(--ink-0)" : "var(--ink-2)",
     }, name));
+    // The frame SAYS who is insolvent. The null leverage sitting next to it is
+    // only how +inf survives JSON — read the statement, not the side effect, or
+    // the label quietly disappears the day that number serialises as a number.
     const lev = frame.leverage[j];
+    const broke = frame.insolvent ? Boolean(frame.insolvent[j]) : lev === null;
     svg.appendChild(el("text", {
       x: labelX, y: p.y + 15, "font-family": "var(--mono)", "font-size": 11,
       fill: dead ? "var(--alert)" : ever ? "var(--alert)" : "var(--ink-2)",
       style: "font-variant-numeric:tabular-nums",
-    }, lev === null ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
+    }, broke ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
   });
 
   svg.appendChild(el("text", {
@@ -796,8 +823,9 @@ async function defend() {
     const f = body.fix;
     $("fixLine").hidden = false;
     $("fixLine").innerHTML =
-      `<b>${f.fund}</b>: cut <b>${f.asset}</b> exposure ${(f.reduction * 100).toFixed(0)}% ` +
-      `<em>· costs ${pct2(f.cost)} of gross assets</em>`;
+      `<b>${f.fund}</b>: sell <b>${usd(f.sell_usd)}</b> of <b>${f.asset}</b> ` +
+      `<em>· ${pctSig(f.reduction)} of a ${usd(f.position_usd)} position ` +
+      `· costs ${pctSig(f.cost)} of gross assets</em>`;
     showBought(body.bought);
 
     split.before = normalise({ ...body, ...body.before });

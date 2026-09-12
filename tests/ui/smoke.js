@@ -107,8 +107,17 @@ const svg = (id) => d.getElementById(id);
   check("split scene visible", !d.getElementById("sceneSplit").hasAttribute("hidden"));
   check("before side drawn", svg("netBefore").querySelectorAll("circle").length >= 10);
   check("after side drawn", svg("netAfter").querySelectorAll("circle").length >= 10);
-  check("fix instruction shown", /cut/i.test(d.getElementById("fixLine").textContent),
-        d.getElementById("fixLine").textContent.trim().slice(0, 80));
+  // Was /cut/i — which passed happily while the line read "cut NVDA exposure
+  // 0% · costs 0.00% of gross assets". Grepping for a verb tells you the
+  // sentence was built; it tells you nothing about whether the numbers in it
+  // survived the formatter. Assert the numbers.
+  const fixText = d.getElementById("fixLine").textContent;
+  check("fix instruction shown", /sell/i.test(fixText), fixText.trim().slice(0, 90));
+  check("it names a dollar amount, not just a fraction", /\$[\d.]+[KMBT]?/.test(fixText),
+        (fixText.match(/\$[\d.]+[KMBT]?/g) || []).join(" "));
+  check("no number in it has been rounded away to zero",
+        !/(^|[\s·])0%/.test(fixText) && !/\$0(\s|$)/.test(fixText),
+        fixText.trim().slice(0, 90));
   check("identical-shock stamp", /%/.test(d.getElementById("shockStamp").textContent),
         d.getElementById("shockStamp").textContent);
   check("both feet populated",
