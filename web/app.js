@@ -413,7 +413,12 @@ function paintTimeline(current) {
     seg.title = t === 0 ? "shock applied" : `round ${t}`;
     seg.addEventListener("click", () => {
       claimStage();
-      clearTimers();
+      // stopAnimations, not clearTimers: the split owns a SECOND queue, and
+      // scrubbing away from a running split left that queue advancing the
+      // round stamp inside a hidden scene. Go back with Stabilise or Replay
+      // and the comparison is sitting on its ending, four rounds past where
+      // you left it, with nothing having animated to get there.
+      stopAnimations();
       // the strip belongs to the cascade. clicking it while boundary or split
       // is up used to redraw a hidden #network — the label changed, nothing
       // moved, and the split kept its own contradictory round counter.
