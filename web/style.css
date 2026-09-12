@@ -57,6 +57,12 @@ body{
 }
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
+/* SVG transform-origin defaults to 0 0, not the element centre, so any
+   scale() on a shape slides it away from whatever it was marking — and
+   fill:forwards leaves it there for good. fill-box + centre fixes it once
+   for every animated mark. */
+svg .pulse{transform-box:fill-box;transform-origin:center}
+
 /* panels — card bg, hairline border, rounded. that's the whole chrome. */
 .mast,.rail,.stage,.timeline,.band{
   background:var(--bg-1);border:1px solid var(--rule);border-radius:var(--r);
@@ -149,27 +155,31 @@ button:focus-visible{outline:1px solid var(--ink-0);outline-offset:2px}
 .stage svg{width:100%;height:100%;display:block}
 .scene[hidden]{display:none}
 
-.split{display:grid;grid-template-columns:1fr 1px 1fr;width:100%;height:100%}
+/* The split used to stack .fix-line and .split-stamp as absolute overlays on
+   top of the halves. They landed exactly on .split-cap and .split-foot, so
+   "Before"/"After" and BOTH outcome readouts were painted and then covered —
+   the entire payoff of beat 4, invisible. Rows now, no overlays. */
+.split-scene{display:grid;grid-template-rows:auto 1fr auto;min-height:0}
+.split{display:grid;grid-template-columns:1fr 1px 1fr;min-height:0}
 .split .divider{background:var(--rule)}
-.split-half{display:flex;flex-direction:column;min-width:0}
+.split-half{display:flex;flex-direction:column;min-width:0;min-height:0}
 .split-cap{font:400 11px/1 var(--mono);padding:12px 16px;color:var(--ink-2);border-bottom:1px solid var(--rule)}
 .split-cap b{color:var(--ink-0);font-weight:500}
 .split-half svg{flex:1;min-height:0}
 .split-foot{font:400 11px/1.4 var(--mono);color:var(--ink-2);padding:10px 16px;border-top:1px solid var(--rule);text-align:center}
 
 .fix-line{
-  position:absolute;left:0;right:0;top:0;z-index:2;background:var(--bg-2);
-  border-bottom:1px solid var(--rule);padding:12px 16px;
+  background:var(--bg-2);border-bottom:1px solid var(--rule);padding:12px 16px;
   font:400 13.5px/1.35 var(--mono);color:var(--ink-1);
 }
+.fix-line[hidden]{display:none}
 .fix-line b{color:var(--ink-0);font-weight:500}
 .fix-line em{font-style:normal;color:var(--ink-2)}
 
 /* the shock is the same on both sides; say so where nobody can miss it */
 .split-stamp{
-  position:absolute;left:0;right:0;bottom:0;z-index:2;
   display:flex;justify-content:space-between;gap:16px;
-  padding:8px 16px;background:var(--bg-2);border-top:1px solid var(--rule);
+  padding:9px 16px;background:var(--bg-2);border-top:1px solid var(--rule);
   font:400 11px/1 var(--mono);color:var(--ink-2);
 }
 .split-stamp .num{color:var(--ink-0)}
@@ -180,12 +190,13 @@ button:focus-visible{outline:1px solid var(--ink-0);outline-offset:2px}
 .tl-label{font:400 11px/1 var(--mono);color:var(--ink-2);flex:none;min-width:18ch}
 .tl-track{display:flex;gap:4px;flex:1}
 .tl-seg{
-  flex:1;height:6px;background:var(--bg-2);cursor:pointer;border:none;padding:0;
-  border-radius:3px;transition:none;
+  flex:1;height:20px;background:transparent;cursor:pointer;border:none;padding:7px 0;
+  border-radius:0;transition:none;
 }
-.tl-seg:hover{background:#2F2F2F}
-.tl-seg[data-state="done"]{background:var(--alert-45)}
-.tl-seg[data-state="current"]{background:var(--alert)}
+.tl-seg::after{content:"";display:block;height:6px;border-radius:3px;background:var(--bg-2)}
+.tl-seg:hover::after{background:#2F2F2F}
+.tl-seg[data-state="done"]::after{background:var(--alert-45)}
+.tl-seg[data-state="current"]::after{background:var(--alert)}
 .tl-seg:focus-visible{outline:1px solid var(--ink-0);outline-offset:2px}
 
 /* ───────────────────────────── metrics band ───────────────────────── */

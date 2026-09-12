@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Firebreak</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230D0D0D'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23FF383B'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600&display=swap">
@@ -72,19 +73,21 @@
            aria-label="Phase diagram. Portfolio overlap on the horizontal axis, gross leverage on the vertical, shaded by amplification, with the real system marked."></svg>
     </div>
 
-    <div class="scene split" id="sceneSplit" hidden>
-      <div class="split-half">
-        <div class="split-cap">Before</div>
-        <svg id="netBefore" role="img" aria-label="Cascade outcome before intervention."></svg>
-        <div class="split-foot num" id="footBefore">—</div>
-      </div>
-      <div class="divider"></div>
-      <div class="split-half">
-        <div class="split-cap"><b>After firebreak</b></div>
-        <svg id="netAfter" role="img" aria-label="Cascade outcome after the intervention, under the identical shock."></svg>
-        <div class="split-foot num" id="footAfter">—</div>
-      </div>
+    <div class="scene split-scene" id="sceneSplit" hidden>
       <div class="fix-line" id="fixLine" hidden></div>
+      <div class="split">
+        <div class="split-half">
+          <div class="split-cap">Before</div>
+          <svg id="netBefore" role="img" aria-label="Cascade outcome before intervention."></svg>
+          <div class="split-foot num" id="footBefore">—</div>
+        </div>
+        <div class="divider"></div>
+        <div class="split-half">
+          <div class="split-cap"><b>After firebreak</b></div>
+          <svg id="netAfter" role="img" aria-label="Cascade outcome after the intervention, under the identical shock."></svg>
+          <div class="split-foot num" id="footAfter">—</div>
+        </div>
+      </div>
       <div class="split-stamp"><span id="splitRound">—</span><span class="num" id="shockStamp">—</span></div>
     </div>
   </main>

@@ -53,6 +53,10 @@ async function api(path) {
   const ms = Math.round(performance.now() - started);
   if (!res.ok) throw new Error(`${path} → ${res.status}`);
   const body = await res.json();
+  // a recorded answer must never pass for a live one
+  if (body && body.cached) {
+    setEngine("cached", body.fallback_reason ? "cached · engine failed" : "cached run");
+  }
   return { body, ms };
 }
 
@@ -266,6 +270,7 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
       const ring = el("rect", {
         x: p.x - s / 2 - 6, y: p.y - s / 2 - 6, width: s + 12, height: s + 12,
         fill: "none", stroke: "var(--alert)", "stroke-width": 2,
+        class: "pulse",   // fill-box + centre origin, or scale() throws it off the node
       });
       svg.appendChild(ring);
       ring.animate(
@@ -368,7 +373,14 @@ function paintTimeline(current) {
     seg.className = "tl-seg";
     seg.dataset.state = t === current ? "current" : t < current ? "done" : "idle";
     seg.title = t === 0 ? "shock applied" : `round ${t}`;
-    seg.addEventListener("click", () => { clearTimers(); showRound(t); });
+    seg.addEventListener("click", () => {
+      clearTimers();
+      // the strip belongs to the cascade. clicking it while boundary or split
+      // is up used to redraw a hidden #network — the label changed, nothing
+      // moved, and the split kept its own contradictory round counter.
+      if (state.beat !== "network") showScene("network");
+      showRound(t);
+    });
     track.appendChild(seg);
   });
 }
@@ -654,14 +666,23 @@ function drawBoundary(svg, b) {
     style: "font-variant-numeric:tabular-nums",
   }, t));
 
-  label(Math.min(mx + 14, R - 90), my - 6, "YOU ARE HERE", { fill: "var(--ink-0)", anchor: "start", ls: "1.2" });
-  label(Math.min(mx + 14, R - 90), my + 10,
-    `L ${b.here.leverage.toFixed(1)} · overlap ${b.here.overlap.toFixed(2)}`, { anchor: "start" });
+  // flip the callout to the left of the marker when it would overrun, and put
+  // it on a plate — #616161 over pale amplification cells is unreadable
+  const sub = `L ${b.here.leverage.toFixed(1)} · overlap ${b.here.overlap.toFixed(2)}`;
+  const plateW = Math.max(96, sub.length * 6.6) + 14;
+  const flip = mx + 14 + plateW > R;
+  const px = flip ? mx - 14 - plateW : mx + 14;
+  svg.appendChild(el("rect", {
+    x: px - 6, y: my - 20, width: plateW, height: 34,
+    fill: "var(--bg-0)", opacity: 0.82,
+  }));
+  label(px, my - 6, "YOU ARE HERE", { fill: "var(--ink-0)", anchor: "start", ls: "1.2" });
+  label(px, my + 9, sub, { anchor: "start", fill: "var(--ink-1)" });
 
   label(L - 10, B + 3, lo.toFixed(1), { anchor: "end" });
   label(L - 10, T + 8, hi.toFixed(1), { anchor: "end" });
-  label(L, B + 18, omin.toFixed(2));
-  label(R, B + 18, omax.toFixed(2));
+  label(L + 2, B + 20, omin.toFixed(2), { anchor: "start" });
+  label(R, B + 20, omax.toFixed(2), { anchor: "end" });
   label((L + R) / 2, B + 38, "PORTFOLIO OVERLAP →", { ls: "1.4" });
   const yl = el("text", {
     "font-family": "var(--mono)", "font-size": 11, fill: "var(--ink-2)",
