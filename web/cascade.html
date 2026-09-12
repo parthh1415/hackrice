@@ -47,7 +47,7 @@
         </div>
       </div>
       <div class="card-body tight">
-        <svg class="viz" id="net" viewBox="0 0 1000 470" role="img"
+        <svg class="viz" id="net" viewBox="0 0 1000 400" role="img"
              aria-label="Contagion network. Assets left, institutional books right."></svg>
       </div>
       <div class="stats" id="stats"></div>
@@ -59,7 +59,7 @@
         <table><tbody id="log"></tbody></table>
       </div>
       <div class="card-footer">
-        <a class="btn btn-primary" href="defend.html">Find the smallest fix</a>
+        <a class="btn btn-primary" href="defend.html">Find the cheapest single-position fix</a>
       </div>
     </div>
   </div>
@@ -83,7 +83,10 @@ if (r) (async () => {
     `&gamma=${r.params.gamma}&band=${r.params.band}`);
 
   const T = body.tickers, F = body.funds, frames = body.trajectory;
-  const W = 1000, H = 470, LX = 250, RX = 750;
+  /* 470 put the round-by-round log below the fold at 1440x900 — and this is
+     the one page where the picture and the log have to be read together. 400
+     leaves 34px a row, which still clears an 11px label over a 10px figure. */
+  const W = 1000, H = 400, LX = 250, RX = 750;
   const svg = document.getElementById("net");
   const ns = "http://www.w3.org/2000/svg";
   const mk = (t, a) => { const e = document.createElementNS(ns, t);

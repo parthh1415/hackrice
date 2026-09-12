@@ -30,8 +30,15 @@
   <div class="wrap page stack gap-8">
     <div class="stack gap-3">
       <span class="eyebrow">Step 4 — Defend</span>
-      <h1>The smallest change that survives it</h1>
-      <p class="lede">The shock stays exactly the same. Only the portfolio changes.</p>
+      <!-- "the smallest change" claims global optimality over every possible
+           edit. The engine searches one position at a time and says so in its
+           own fix_reason when it fails, so the headline should not claim more
+           than the refusal does. The lede also duplicated the card sub below
+           it ("Locked shock, unchanged from the analysis"), which is where
+           that belongs. -->
+      <h1>The cheapest single-position change that clears the limit</h1>
+      <p class="lede">One holding, trimmed to cash. A multi-position cut could be cheaper;
+        this build does not search for one.</p>
     </div>
     <div id="root"></div>
   </div>
@@ -74,9 +81,15 @@ if (r) {
             <div class="s">${s.before_breaks ? "breaches the limit" : "within the limit"}</div></div>
           <div class="stat"><div class="k">Loss after</div>
             <div class="v ${s.after_breaks ? "bad" : "ok"}">${pct(s.after_loss)}</div>
-            <div class="s">${s.after_breaks ? "still breaches the limit" : "within the limit"}</div></div>
+            <!-- 9.00% against a 10% limit is not a coincidence: the solver
+                 targets limit x (1 - FIX_MARGIN). Saying so stops it reading
+                 as a suspiciously round result. -->
+            <div class="s">${s.after_breaks ? "still breaches the limit"
+              : `solved to ${pct(1 - (f.margin || 0.1), 0)} of the limit`}</div></div>
           <div class="stat"><div class="k">Your limit</div><div class="v">${pct(s.limit, 0)}</div><div class="s">unchanged</div></div>
-          <div class="stat"><div class="k">Cost of the fix</div><div class="v">${pct(f.dollars / r.portfolio.total_value, 2)}</div><div class="s">of the whole book</div></div>
+          <!-- "cost" is wrong: nothing is lost. The money moves to cash and the
+               book is worth the same afterwards, which the total row proves. -->
+          <div class="stat"><div class="k">Share of book moved</div><div class="v">${pct(f.dollars / r.portfolio.total_value, 2)}</div><div class="s">out of the shocked name, into cash</div></div>
         </div>
         <div class="card-footer">
           <a class="btn btn-primary" href="verify.html">Check it actually helped</a>
@@ -123,11 +136,13 @@ if (r) {
       </div>
 
       <div class="card">
-        <div class="card-header"><span class="card-title">One thing worth understanding</span></div>
+        <div class="card-header"><span class="card-title">Why this works</span></div>
         <div class="card-body">
-          <p class="lede">${f.note} The institutions deleverage exactly the same way whether or
-            not you trim ${f.symbol} — a retail position does not move the market. What changes is
-            how much of that price path reaches your book.</p>
+          <!-- said "does not move the market" twice in three sentences: once
+               in the engine's own note and once again here. -->
+          <p class="lede">Your position does not move the market. The five books deleverage
+            identically whether or not you trim ${f.symbol}; the cut only changes how much of
+            that price path lands on you.</p>
         </div>
       </div>
     </div>`;
