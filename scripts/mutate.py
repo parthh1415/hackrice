@@ -126,6 +126,38 @@ MUTATIONS = {
         'if form not in ("13F-HR", "13F-HR/A"):',
         'if form != "13F-HR":'),
 
+    # Portfolio Mode. Every number the new product puts on screen, with a
+    # mutation that changes it — because a test that has never been red is a
+    # test nobody has checked.
+    "pm_observer_ignores_weights": (
+        "src/firebreak/portfolio.py",
+        "    return float(1.0 - (float(np.dot(vector, prices)) + cash))",
+        "    return float(1.0 - (float(np.dot(vector, prices)) * 1.05 + cash))"),
+    "pm_predicate_is_strict": (
+        "src/firebreak/portfolio.py",
+        "    return lambda result: portfolio_loss(vector, cash, result.prices) >= limit",
+        "    return lambda result: portfolio_loss(vector, cash, result.prices) > limit * 1.5"),
+    "pm_fix_has_no_margin": (
+        "src/firebreak/portfolio.py",
+        "    target = limit * (1.0 - margin)",
+        "    target = limit"),
+    "pm_cut_loses_the_money": (
+        "src/firebreak/portfolio.py",
+        "    return out, cash + moved",
+        "    return out, cash"),
+    "pm_validation_uses_two_cascades": (
+        "src/firebreak/validate.py",
+        '    after_loss = portfolio_loss(after["vector"], after["cash"], result.prices)',
+        '    after_loss = portfolio_loss(after["vector"], after["cash"], result.prices) * 0.5'),
+    "pm_synthetic_draws_differ": (
+        "src/firebreak/validate.py",
+        "    rng = np.random.default_rng(seed)",
+        "    rng = np.random.default_rng()"),
+    "pm_historical_invents_a_number": (
+        "src/firebreak/validate.py",
+        '        "available": False,',
+        '        "available": True, "worst_loss": 0.182,'),
+
     # Frontend mutations. These need the UI harnesses, not pytest — run them
     # with --ui, which drives tests/ui/provenance.js against the mutated web/
     # and the real server. All five of these once scored 47/47 green while

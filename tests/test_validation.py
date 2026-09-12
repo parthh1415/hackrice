@@ -64,6 +64,29 @@ def test_the_replay_breaks_before_and_survives_after(solved):
     assert out["after_loss"] < out["before_loss"]
 
 
+def test_both_replay_losses_are_the_real_losses_not_merely_ordered(solved):
+    """Pins the VALUES, because ordering is not enough.
+
+    A mutation that halved the after-loss left the whole suite green: every
+    assertion here only required after < before, and halving preserves that.
+    So the screen could have shown any number at all, as long as it was
+    smaller — on the comparison whose entire purpose is to be believed.
+
+    Recomputed independently from the same price path.
+    """
+    out = validate.replay_identical(
+        solved["before"], solved["after"], solved["found"].shock, LIMIT, **solved["kw"])
+
+    from firebreak.engine import run_cascade
+    from firebreak.portfolio import portfolio_loss
+    prices = run_cascade(shock=solved["found"].shock, **solved["kw"]).prices
+
+    assert out["before_loss"] == pytest.approx(
+        portfolio_loss(solved["before"]["vector"], solved["before"]["cash"], prices))
+    assert out["after_loss"] == pytest.approx(
+        portfolio_loss(solved["after"]["vector"], solved["after"]["cash"], prices))
+
+
 def test_the_replay_uses_one_cascade_for_both_sides(solved):
     """"Only the portfolio changed" is the entire claim of this comparison.
 
