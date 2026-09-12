@@ -1,9 +1,31 @@
 # Firebreak
 
-**Reverse stress testing for overlapping portfolios.** Not "what if NVDA drops 20%", but
-"what is the smallest drop that breaks this system, and what is the cheapest change that
-prevents it". Built on the actual Q2 2026 13F filings of Citadel, Millennium, Point72,
-Two Sigma and Renaissance.
+**Reverse stress testing for your portfolio.** Not "what if NVDA drops 20%", but "what is
+the smallest drop that pushes *my* portfolio past the loss I refuse to tolerate — and what
+is the smallest change that buys me distance from it".
+
+Most stress tests make you guess the scenario first, and the scenario is the part nobody
+checks. Firebreak solves backwards: you name the failure, it finds the shock.
+
+The loss is not just the shock. Crowded institutions hold the same names you do; when one
+is forced to deleverage, its selling moves the price of everything else it holds, and that
+reaches you. Firebreak models that feedback on the actual Q2 2026 13F filings of Citadel,
+Millennium, Point72, Two Sigma and Renaissance, then shows you the cascade round by round.
+
+Then it recommends the smallest position change that helps — and **tests whether the
+recommendation actually helped**, by replaying the identical shock, recomputing the new
+break point, and scoring both portfolios across hundreds of simulated stress scenarios.
+
+```
+Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
+```
+
+Two modes, one engine:
+
+| | |
+|---|---|
+| **Portfolio Mode** (default) | Your holdings. Fails when *you* cross your loss limit. |
+| **Risk Desk Mode** | Many leveraged books. Fails when *N funds* breach. The prime-brokerage question. |
 
 HackRice 16 — Finance track, plus the Capital One and MathWorks challenges.
 Full write-up in [`docs/devpost.md`](docs/devpost.md).
@@ -25,6 +47,57 @@ server command.
 Tested on Python 3.13; nothing here uses syntax newer than 3.8. numpy is the only
 runtime dependency — the server is stdlib (`http.server`), because nothing should need
 a pip install at 3am.
+
+## The product loop
+
+Everything below runs with no network and no account. `Try demo portfolio` is the path a
+judge takes; CSV is the path a user takes.
+
+```
+$ curl -s localhost:8765/api/portfolio/full?limit=0.10
+```
+
+On the demo portfolio ($12,300 across five names), at a 10% loss limit:
+
+| | |
+|---|---|
+| Break point | **NVDA −24.69%** |
+| Direct loss | 7.23% |
+| After cascade | **10.00%** |
+| Amplification | 1.38× |
+| Fix | reduce NVDA by **$478** (13.3% of the position, to cash) |
+| Same shock, after | 10.00% FAIL → **9.00% PASS** |
+| New break point | −24.69% → **−27.76%** (+3.07pp) |
+| Worst of 400 simulated | 11.94% → **10.73%** |
+
+The gap between 7.23% and 10.00% is the entire argument: the shock is the trigger, the
+crowding is the damage.
+
+### Why your fix does not change the cascade
+
+Your portfolio is an **observer**. The institutions deleverage identically whether or not
+you trim NVDA — a retail account does not move markets, and pretending otherwise would be
+the most flattering lie this app could tell. What your change alters is how much of that
+price path lands on you.
+
+*Your position doesn't move the market. It decides how much of the market's move lands on
+you.*
+
+### What the validation does and does not claim
+
+Three tests ship and one does not.
+
+- **Same shock** — one cascade, both portfolios scored against it. Only the weights differ,
+  and that is enforced by running the cascade once rather than promised in a caption.
+- **New break point** — the same reverse search, re-run. Recomputed, never inferred from
+  the size of the cut.
+- **Simulated stress** — 400 sampled shocks, both portfolios on *identical* draws, seeded so
+  it reproduces. "Stayed under your limit in 94% of our scenarios" is a fact about our
+  scenarios. "94% chance you are safe" is a fact about the world, and we do not have one.
+- **Historical replay** — **not available**, and says so. We ship one frozen quarter of
+  holdings and no price history. Building it on invented returns would put a confident
+  number with nothing beneath it on the screen that exists to show evidence. There is a
+  test asserting the feature is absent.
 
 ## Run it with no network
 
