@@ -283,7 +283,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .seg button:hover:not([aria-pressed="true"]){color:var(--text)}
 .empty{padding:34px 12px;text-align:center;color:var(--text-dim)}
 .empty h2{margin-bottom:6px}
-svg.viz{width:100%;display:block;background:var(--panel)}
+/* The diagram scales with the panel's width, so on a short screen — a 1280x800
+   projector, say — it took the height the aspect ratio demanded and pushed the
+   round-by-round log off the bottom. This is the one page where the picture
+   and the log have to be read together, so the picture yields: it letterboxes
+   inside the viewBox rather than growing past what the window can show. */
+svg.viz{width:100%;max-height:min(470px,48vh);display:block;background:var(--panel)}
 
 /* value flash on update — OT's .flash-white, tuned to the accent */
 .flash{animation:flash 450ms ease-out}
