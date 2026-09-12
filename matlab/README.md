@@ -30,13 +30,27 @@ if a judge asks "why MATLAB?":
 `cascade.m` mirrors `src/firebreak/engine.py` so the optimiser has an
 objective to evaluate. `stabilise.m` is the solve.
 
-It is not decoration. The Python fallback walks the reduction up a 5% grid
-(`_STEPS = 20` in `stabilise.py`), so the smallest cut it can ever propose is
-5% of a position. `patternsearch` treats the reduction as continuous and
-routinely lands two or three orders of magnitude below that — on the checked-in
-spec it finds a fix costing **1.4e-06** of gross assets against the Python
-scan's **4.4e-04**. Same failure condition, same engine, same answer to
-"which position"; MATLAB just gets to say *how little* far more precisely.
+`patternsearch` treats the reduction as continuous, which for most of this
+project's life was the entire argument for the MATLAB path: the Python fallback
+walked the reduction up a 5% grid and could not propose a cut smaller than 5% of
+a position. On the checked-in spec MATLAB found a fix costing **1.4e-06** of
+gross assets against the Python scan's **4.4e-04** — about 300x finer.
+
+That argument has mostly expired, and it is more useful to say so than to keep
+quoting the old number. The Python scan now brackets on the grid and then
+bisects on depth against a *relative* tolerance, and on the same checked-in spec
+it returns **1.99e-06** — within about 1.4x of the MATLAB answer, from 300x. The
+two paths agree on which position to cut and now very nearly on how deep.
+
+So the honest case for `stabilise.m` is no longer precision. It is that the same
+problem, posed to a real optimiser as a constrained mixed-integer program with a
+continuous third variable, lands in the same place as our own search — which is
+the kind of agreement that is worth more than either number alone.
+
+> The **1.4e-06** figure predates the bisection change and has not been re-run
+> since; this machine has no MATLAB licence. If you have one, re-run it and
+> replace this note with the number you get. Do not assume the two still differ
+> by 1.4x just because that is what the arithmetic above implies.
 
 ## 3. Run it
 
