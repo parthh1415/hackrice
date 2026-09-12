@@ -15,7 +15,15 @@ import numpy as np
 
 from .engine import run_cascade
 
-_STEPS = 20  # 5% granularity — finer than this and the search gets slow for no gain
+# Coarse pass picks the POSITION; a bisection then finds the depth. The grid
+# alone used to be the whole answer, and at 5% steps every scenario we ever
+# recorded came back at exactly 0.050 — the floor. So "cut GOOGL by 5%" really
+# meant "by at most 5%, we didn't look closer": the same fake precision the
+# shock search was tightened to 5e-5 to avoid, sitting in the beat the product
+# is named after. The old comment here said finer steps were "slow for no
+# gain". The gain is the answer.
+_STEPS = 20
+_DEPTH_TOLERANCE = 0.002   # 0.2% of a position; ~9 extra cascade runs
 
 
 @dataclass
@@ -72,12 +80,28 @@ def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
                 if best is not None and cost >= best.cost:
                     break  # already more expensive than what we have
 
-                candidate = Fix(fund, asset, reduction, cost)
-                result = run_cascade(
-                    holdings=candidate.apply(holdings), shock=shock, **cascade_kwargs
-                )
-                if not condition(result):
+                works = not condition(run_cascade(
+                    holdings=Fix(fund, asset, reduction, cost).apply(holdings),
+                    shock=shock, **cascade_kwargs))
+                if not works:
+                    continue
+
+                # This depth works and the one below it didn't, so the true
+                # minimum is inside that step. Bisect for it rather than
+                # reporting the grid point and calling it the answer.
+                lo, hi = reduction - 1.0 / _STEPS, reduction
+                while hi - lo > _DEPTH_TOLERANCE:
+                    mid = (lo + hi) / 2.0
+                    if condition(run_cascade(
+                        holdings=Fix(fund, asset, mid, 0.0).apply(holdings),
+                        shock=shock, **cascade_kwargs)):
+                        lo = mid
+                    else:
+                        hi = mid
+
+                candidate = Fix(fund, asset, hi, position * hi / total)
+                if best is None or candidate.cost < best.cost:
                     best = candidate
-                    break
+                break
 
     return best
