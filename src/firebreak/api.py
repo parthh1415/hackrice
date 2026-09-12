@@ -392,8 +392,12 @@ def _stabilise(params):
             "exit_flag": solved.get("exit_flag", 0),
             "solve_ms": solved.get("solve_ms", 0),
         },
-        "before": before.as_dict(),
-        "after": after.as_dict(),
+        # each half has to carry the book it's drawing. without this the
+        # frontend falls back to the unpatched top-level matrix and renders
+        # byte-identical edges on both sides — so the cut, which is the one
+        # thing beat 4 is about, was invisible.
+        "before": {**before.as_dict(), "holdings": scenario["holdings"].tolist()},
+        "after": {**after.as_dict(), "holdings": patched["holdings"].tolist()},
         **data,
     }
 
@@ -517,7 +521,9 @@ def _boundary(params):
         "reference_shock": _REF_SHOCK,
         "reference_kind": "single-name",
         "here": {
-            "leverage": float(params.get("leverage", 5.0)),
+            # guarded, not raw: this came off the query string, so a URL could
+            # put the "you are here" dot outside the plot it's drawn on
+            "leverage": float(np.clip(knobs["leverage"], levs[0], levs[-1])),
             "overlap": round(mean_overlap(base), 4),
         },
     }

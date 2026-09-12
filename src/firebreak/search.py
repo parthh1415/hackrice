@@ -40,7 +40,7 @@ def amplification_above(factor):
     return lambda result: result.amplification > factor
 
 
-def find_weakest_shock(condition, holdings, tolerance=0.0005, **cascade_kwargs):
+def find_weakest_shock(condition, holdings, tolerance=0.00005, **cascade_kwargs):
     """Smallest single-asset drop that trips `condition`, or None.
 
     Nothing here is a proven threshold, breach count included. The earlier
