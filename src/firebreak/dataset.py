@@ -44,6 +44,37 @@ def assemble(books, universe, adv_by_ticker, quarter):
     }
 
 
+def manager_ciks(config):
+    """manager name -> the list of CIKs whose books make up that manager.
+
+    One firm can run several registrants. Two Sigma Investments (1179392) and
+    Two Sigma Advisers (1478735) both file a 13F-HR for the same quarter under
+    separate CIKs, so reading one of them and calling it Two Sigma leaves a
+    whole book out of the system — the row is too small and its weights are
+    whatever the half we happened to pick was holding.
+
+    Config writes either a bare CIK or a list of them. Positions across a
+    manager's CIKs are summed into one row, which is only safe if no CIK is
+    claimed twice, so that's checked here rather than discovered as a fund
+    that somehow doubled in size.
+    """
+    groups, owner = {}, {}
+    for name, entry in config["managers"].items():
+        ciks = [entry] if isinstance(entry, (int, str)) else list(entry)
+        ciks = [int(cik) for cik in ciks]
+        if not ciks:
+            raise ValueError(f"{name} has no CIK — nothing to fetch")
+        for cik in ciks:
+            if cik in owner:
+                raise ValueError(
+                    f"CIK {cik} is listed under both {owner[cik]} and {name}; "
+                    "it would be counted twice"
+                )
+            owner[cik] = name
+        groups[name] = ciks
+    return groups
+
+
 def load_dataset(refresh=False):
     if CACHE.exists() and not refresh:
         return json.loads(CACHE.read_text())
@@ -51,19 +82,23 @@ def load_dataset(refresh=False):
     config = json.loads(UNIVERSE.read_text())
     books, periods, missing = {}, {}, []
 
-    for name, cik in config["managers"].items():
-        _, period, filings = latest_filings(cik)
-        if not filings:
-            missing.append(name)
-            continue
-        # a RESTATEMENT comes back alone; originals plus NEW HOLDINGS
-        # supplements come back together and get summed
+    for name, ciks in manager_ciks(config).items():
+        # every CIK listed for a manager is an assertion that it files. one
+        # going quiet is the undercount we're fixing, so it's an error, not
+        # a book that silently shrinks.
         merged = {}
-        for filing in filings:
-            for cusip, value in fetch_positions(cik, filing["accession"]).items():
-                merged[cusip] = merged.get(cusip, 0.0) + value
+        for cik in ciks:
+            _, period, filings = latest_filings(cik)
+            if not filings:
+                missing.append(f"{name} (CIK {cik})")
+                continue
+            # a RESTATEMENT comes back alone; originals plus NEW HOLDINGS
+            # supplements come back together and get summed
+            for filing in filings:
+                for cusip, value in fetch_positions(cik, filing["accession"]).items():
+                    merged[cusip] = merged.get(cusip, 0.0) + value
+            periods[f"{name} (CIK {cik})"] = period
         books[name] = merged
-        periods[name] = period
 
     if missing:
         raise RuntimeError(

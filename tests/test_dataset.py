@@ -1,6 +1,9 @@
-import numpy as np
+import json
 
-from firebreak.dataset import assemble
+import numpy as np
+import pytest
+
+from firebreak.dataset import UNIVERSE, assemble, manager_ciks
 
 
 def test_assemble_builds_a_matrix_in_universe_order():
@@ -40,3 +43,37 @@ def test_adv_is_converted_to_dollars_to_match_the_holdings():
 
     assert data["adv"] == [28_000_000_000.0]
     assert data["adv_units"] == "USD"
+
+
+def test_a_manager_can_file_under_more_than_one_cik():
+    # Two Sigma Investments (1179392) and Two Sigma Advisers (1478735) are
+    # separate registrants filing separate 13Fs for the same quarter. Read
+    # only the first and the second book is simply missing from the system.
+    config = {"managers": {"Two Sigma": [1179392, 1478735], "Citadel": 1423053}}
+
+    assert manager_ciks(config) == {
+        "Two Sigma": [1179392, 1478735],
+        "Citadel": [1423053],
+    }
+
+
+def test_the_same_cik_under_two_managers_is_refused():
+    # it would be fetched twice and summed into two different rows, which
+    # inflates gross exposure and invents overlap that isn't there
+    config = {"managers": {"Two Sigma": [1179392, 1478735], "Also": 1478735}}
+
+    with pytest.raises(ValueError, match="1478735"):
+        manager_ciks(config)
+
+
+def test_a_manager_with_no_cik_at_all_is_refused():
+    with pytest.raises(ValueError, match="Ghost"):
+        manager_ciks({"managers": {"Ghost": []}})
+
+
+def test_the_shipped_universe_has_no_cik_under_two_managers():
+    config = json.loads(UNIVERSE.read_text())
+
+    ciks = [cik for group in manager_ciks(config).values() for cik in group]
+
+    assert len(ciks) == len(set(ciks))
