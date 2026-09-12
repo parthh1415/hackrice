@@ -158,6 +158,11 @@ MUTATIONS = {
         '        "available": False,',
         '        "available": True, "worst_loss": 0.182,'),
 
+    "pm_fix_first_feasible": (
+        "src/firebreak/portfolio.py",
+        "        if best is None or moved < best[0]:",
+        "        if best is None:"),
+
     "pm_unknown_symbol_dropped": (
         "src/firebreak/portfolio.py",
         "    if unknown:\n        raise UnknownSymbol(unknown, tickers)",
