@@ -1,10 +1,16 @@
 # Firebreak — 3:30 shooting script
 
-**This is what you read aloud.** `video-script.md` is the long reference: every number in it
-is checked against a live run and it carries the shot-by-shot notes, but it is 1,143 words —
-**7:37 of speech against a 3:42 cap.** This is 321.
+**This is what you read aloud.** `video-script.md` is the long reference, and it is now largely
+STALE — it was written against a single-page app and 12 of its 21 shots point at UI that no
+longer exists. `docs/video-shooting-guide.md` says which. This file has been corrected against
+the running app; the long script has not, beyond a banner.
 
-Numbers verified live. If you change anything, re-check them before recording.
+Numbers verified live against the running app. If you change anything, re-check them before
+recording.
+
+**Keyboard:** `1`–`6` jump between pages, `←` `→` step the cascade, `space` plays it, `?` lists
+them. Pressing a number is cleaner on camera than hunting for a nav link, and `?` for two
+seconds makes the thing read as a tool rather than a web page.
 
 ---
 
@@ -15,34 +21,40 @@ Numbers verified live. If you change anything, re-check them before recording.
 > "Every stress test asks the same question. What if the market drops twenty percent? The
 > scenario is an assumption — and the assumption is the part nobody checks."
 
-**Shot 2** · Click **Try demo portfolio**. Holdings table fills.
+**Shot 2** · Click **Use demo portfolio**. Holdings table fills — and the last column shows
+how much of each name the five modelled books hold, in days of its own volume.
 
-> "Firebreak asks the inverse. Here's a portfolio. Fifteen thousand dollars, five names."
+> "Firebreak asks the inverse. Here's a portfolio. Twelve thousand three hundred dollars,
+> five names."
 
 ---
 
 ## ACT 2 — THE BREAK (0:22 – 1:20)
 
-**Shot 3** · Click **Continue**, then **10%**.
+**Shot 3** · Click **10%** in the limit row. (There is no Continue step — the limit buttons
+sit on the same page, under the holdings.)
 
 > "How much loss would you refuse to tolerate? Ten percent. That's the whole configuration —
 > no leverage, no gamma, no jargon."
 
-**Shot 4** · Click **Find my Firebreak**. Let the search land.
+**Shot 4** · Click **Run reverse stress test**. Let the search land.
 
 > "NVIDIA, down twenty-four point seven percent. That's the smallest single-name move that
 > pushes this portfolio past a ten percent loss. Nobody guessed it. It was solved for."
 
-**Shot 5** · Point at the four readouts.
+**Shot 5** · Point at the four tiles, then at the table below them.
 
 > "And here's the thing. NVIDIA falling only costs this portfolio seven point two directly.
 > The loss is ten. Where did the other three points come from?"
+
+*(the table answers it on screen: Microsoft, Amazon and Alphabet were never shocked, and each
+falls several percent anyway)*
 
 ---
 
 ## ACT 3 — WHY (1:20 – 2:05)
 
-**Shot 6** · Click **Watch why**. Let the cascade play.
+**Shot 6** · Click **See why the loss grows**, then press **space** to play the cascade.
 
 > "From everyone else. Crowded institutions hold the same names. NVIDIA falls, they breach
 > their leverage limits, they're forced to sell — and they sell into a market where their
@@ -56,13 +68,13 @@ Numbers verified live. If you change anything, re-check them before recording.
 
 ## ACT 4 — THE FIX AND THE PROOF (2:05 – 3:20)
 
-**Shot 7** · Click **Find a fix**.
+**Shot 7** · Click **Find the cheapest single-position fix**.
 
 > "Now the useful part. Reduce NVIDIA by four hundred and seventy-eight dollars. That's the
 > smallest change we found that survives this exact shock — and it moves to cash, so the
 > portfolio is worth the same."
 
-**Shot 8** · Click **Validate recommendation**.
+**Shot 8** · Click **Check it actually helped**.
 
 > "But a recommendation isn't the end. How do you know it helped?"
 
@@ -70,21 +82,21 @@ Numbers verified live. If you change anything, re-check them before recording.
 > re-run the whole search on the new portfolio — the break point moves from twenty-four seven
 > to twenty-seven eight. Three points further away."
 
-**Shot 9** · Click through to **Simulated stress**, then **Historical**.
+**Shot 9** · Scroll to section 3, then section 4. (They are stacked on one page, not tabs.)
 
 > "Four hundred simulated scenarios, both portfolios on identical draws. Worst case improves.
-> And the historical tab says *not available* — we don't ship price history, so we won't show
+> And the historical section says *not available* — we don't ship price history, so we won't show
 > you a number we made up."
 
 ---
 
 ## ACT 5 — CLOSE (3:20 – 3:30)
 
-**Shot 10** · Click **Risk Desk**.
+**Shot 10** · Press **6** for the Model page, and point at *What computed the institutional patch*.
 
-> "Same engine, institutional question: what's the smallest move that forces three leveraged
-> funds to deleverage at once? That's the prime brokerage version. Find the failure before it
-> finds you."
+> "Same engine, institutional question: which single position, cut by how much, stops the
+> funds themselves from breaching? That's the prime brokerage version of the same search.
+> Find the failure before it finds you."
 
 ---
 

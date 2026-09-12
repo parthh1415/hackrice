@@ -35,7 +35,7 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ```sh
 git clone <this repo> && cd firebreak
 python3 -m pip install numpy pytest      # the only dependencies
-python3 -m pytest tests/ -q              # 375 passing
+python3 -m pytest tests/ -q              # 385 passing
 PYTHONPATH=src python3 -m firebreak.server
 ```
 
@@ -110,18 +110,22 @@ internet unless you explicitly ask it to.
 FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server
 ```
 
-Every **institutional** response — `/api/break`, `/api/stabilise`, `/api/boundary` — then
-comes off disk, labelled `cached: true`, including for slider positions that were never
-recorded: it serves the nearest recording and says which settings it is actually of.
-`?demo=1` on any single request does the same thing for that request. And in live mode,
-those endpoints fall back to the recording on their own if one throws, with the reason in
-`fallback_reason`.
+An **institutional** response — `/api/break`, `/api/stabilise`, `/api/boundary` — comes off
+disk, labelled `cached: true`, **only when a recording is of exactly those knob values**.
+Anything else computes, in 11–20ms, and says `cached: false`. `?demo=1` on a single request
+does the same for that request. In live mode those endpoints also fall back to a recording
+if one throws, with the reason in `fallback_reason`.
 
-The Portfolio Mode routes — `/api/portfolio/*` and `/api/cascade` — are deliberately **not**
-in that machinery, and answer `cached: false` even under the flag. A recording is keyed on
-slider positions, which is sound when the sliders are the whole question; a portfolio is
-not a slider position, so keying a portfolio answer on knobs alone would serve one
-person's result to another. They compute live every time.
+It used to serve the *nearest* recording for knobs it had never seen, and say which settings
+it was actually of. That is gone, because "nearest" is not a synonym for "the same question":
+the leverage axis is recorded at 1.5 and then not again until 4.0, so a request at 2.5 was
+answered with the 1.5 recording — 51.5% against a live 16.8%, and on `/api/stabilise` an
+instruction to sell $1,327,529 where the engine says $51,406.
+
+The Portfolio Mode routes — `/api/portfolio/*` and `/api/cascade` — are not in that machinery
+at all, and answer `cached: false` even under the flag. A recording is keyed on knob values,
+which is sound when the knobs are the whole question; a portfolio is not a knob value, so
+keying a portfolio answer on knobs alone would serve one person's result to another.
 
 That costs nothing offline, because there is nothing for them to reach for: the holdings
 come from `data/cache/dataset.json`, which is committed and frozen, and everything
@@ -143,7 +147,7 @@ you if the dataset moves out from under them.
 ## Tests
 
 ```sh
-python3 -m pytest tests/ -q      # 375, no network required
+python3 -m pytest tests/ -q      # 385, no network required
 ```
 
 The frontend has its own jsdom harness. It needs one extra install, because

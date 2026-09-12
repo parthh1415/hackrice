@@ -244,9 +244,11 @@ moves the hero harder than either of them: at leverage 5.0 with ≥3 breaching, 
 leverage-specific — at 3.0 the same pair is −4.59% and −57.12% — which we only noticed because the
 assumptions panel was quoting them at every leverage as though they were the band's behaviour in
 general.) A five-fold swing in the headline number, controlled by a constant
-nobody could see and nobody was declaring. It is a slider now — third knob on the rail, `band`,
-default 1.05, range 1.0–1.5 — it comes back in the `params` block on every response, it has its own
-row in the assumptions panel, and it sits in the what-we-do-not-claim list next to leverage and γ.
+nobody could see and nobody was declaring. It is a declared knob now — `band`, default 1.05, range
+1.0–1.5 — it comes back in the `params` block on every response, it has its own row on the Model
+page reading `Breach band · 1.05× target, so a book sells above 5.25×`, and it sits in the
+what-we-do-not-claim list next to leverage and γ. (It sat on a slider in the institutional build;
+the six-page rewrite ships one declared configuration and prints it rather than offering it.)
 
 **The hero was printing precision the search could not resolve.** The bisection tolerance was 5e-4
 while the hero renders two decimals, so the last digit was decoration. It was not imprecise, it was
@@ -318,7 +320,7 @@ current. Form 13F FAQ 58 covers amendment semantics; we follow it now.
 > neither. An amendment we cannot classify now raises instead of being guessed at, because the two
 > ways of guessing wrong differ by a factor of two.
 
-**The search asserted that zero shock was safe.** With the leverage slider pushed past the max-leverage
+**The search asserted that zero shock was safe.** With leverage set past the max-leverage
 limit, the system is already in breach before anything is shocked. The search took safety-at-zero as a
 precondition rather than testing it, bisected down, and confidently reported a critical shock of
 −0.0003%. A fabricated hero number is worse than no hero number. It tests zero first now.
@@ -409,25 +411,30 @@ frontend, no framework and no build step. SEC EDGAR 13F-HR filings for holdings.
 
 ## What this does not claim
 
-There is an **Assumptions** button in the app, and the panel behind it says all of this on screen:
-eight rows, each tagged `measured`, `declared` or `limit`, filled from the live payload so the
-leverage, band, γ and ADV it shows are the ones the numbers beside it were computed with. We say
-them out loud as well.
+There is a **Model** page in the app — it is one of the six, in the nav — and it says all of this
+on screen: eight rows, each tagged `measured`, `declared` or `not modelled`, filled from the live
+payload so the leverage, band, γ and ADV it shows are the ones the numbers beside it were computed
+with. We say them out loud as well.
 
 We do not predict market moves. Firebreak computes a stability property of a declared configuration.
 
-Leverage is not disclosed in 13F. `λ` is our parameter. It is visible and adjustable in the UI.
+Leverage is not disclosed in 13F. `λ` is our parameter. The Model page prints the value every
+number on screen was computed with — `Gross leverage · 5.0×` — and the API takes it as a knob. It
+is not adjustable from the six pages; this build ships one declared configuration and shows you
+what it is.
 
 Neither is the breach band. `band` — how far over target leverage a fund runs before it is forced to
 sell — is our parameter too, it defaults to 1.05, and it swings the headline number harder than
-leverage or γ. It has its own slider and its own row in the assumptions panel, because the most
-influential knob in a model should not be the least visible one.
+leverage or γ. It gets its own row on the Model page, printed as `Breach band · 1.05× target, so a
+book sells above 5.25×`, because the most influential knob in a model should not be the least
+visible one.
 
 13F is long-only US equity, filed quarterly with a 45-day lag. It excludes shorts and derivatives.
 Options rows are filtered out, rows are aggregated by CUSIP across internal managers, and our universe
 is ten names. The books are real; they are not complete.
 
-Price impact is not observable. `γ` is a slider with a stated functional form and ADV figures that are
+Price impact is not observable. `γ` is a declared parameter with a stated functional form — the
+Model page prints `Price impact · γ = 0.2` and the form beside it — and ADV figures that are
 order-of-magnitude public volumes. The finding is that the stability boundary exists and moves
 predictably with leverage, not any single point estimate on it. Where that boundary sits in leverage
 depends on the band as much as on anything we measured, so "you are here, right on the edge" is a

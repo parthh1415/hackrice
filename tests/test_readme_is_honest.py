@@ -79,8 +79,20 @@ def test_the_readme_is_right_about_which_routes_are_cached():
     assert "Every `/api/` response then comes off disk" not in text, (
         "that sentence is false for /api/portfolio/* and /api/cascade"
     )
-    assert "not\nin that machinery" in text or "**not**" in text, (
-        "the README has to say somewhere that the portfolio routes are not cached"
+    # The nearest-recording behaviour was deleted for answering a question at
+    # leverage 2.5 with a recording made at 1.5. The README must not still
+    # advertise it.
+    assert "serves the nearest recording" not in text, (
+        "the README still describes nearest-match serving, which was removed: "
+        "it produced a 25.8x error on /api/stabilise's sell instruction"
+    )
+    # Substance rather than markup: the paragraph that names the portfolio
+    # routes has to be the one that says they are not cached. Matching on bold
+    # asterisks made this fail on an edit that only improved the wording.
+    paragraphs = [p for p in text.split("\n\n") if "/api/portfolio/" in p]
+    assert any("cached: false" in p or "not in that machinery" in p.replace("\n", " ")
+               for p in paragraphs), (
+        "no paragraph mentioning the portfolio routes says they are not cached"
     )
 
 
