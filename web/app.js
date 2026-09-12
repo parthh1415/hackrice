@@ -1216,7 +1216,14 @@ function fillAssumptions(data, run) {
     ["declared", "Price impact", `A model, not a measurement. <code>\u0394p/p = \u2212\u03b3 \u00b7 (dollars sold) / ADV</code>, ` +
       `linear in participation, \u03b3 = <b>${(p.gamma == null ? 0.2 : p.gamma).toFixed(2)}</b>. ` +
       `At \u03b3=0 there is no contagion and amplification is exactly 1.00 \u2014 that is the control.`],
-    ["declared", "ADV", `Order-of-magnitude daily dollar volume. ${adv}`],
+    // The multi-class clause is here because a reviewer read GOOGL's figure as
+    // Class A and concluded our liquidity was understated 1.9x. It is the
+    // combined figure — the column sums four Alphabet lines, so the ADV has
+    // to cover all four — but nothing on screen said so, which is exactly
+    // what makes a fair question land as a caught error.
+    ["declared", "ADV", `Order-of-magnitude daily dollar volume. ${adv} ` +
+      `GOOGL's column sums Class A, Class C and two depositary-share lines, and its ` +
+      `figure is Alphabet's combined volume across them.`],
     ["limit", "What 13F omits", `Long-only US equity, quarterly, filed 45 days late. Options and ` +
       `bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us.`],
     ["declared", "Scale", `$${(gross / 1e9).toFixed(1)}B across these names at ${lev.toFixed(1)}\u00d7 implies ` +

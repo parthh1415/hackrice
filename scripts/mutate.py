@@ -84,6 +84,23 @@ MUTATIONS = {
         'gross_usd=float(scenario["holdings"].sum())',
         'gross_usd=float(scenario["holdings"].sum() * 1.02)'),
 
+    # Ingest mutations. The layer every number on screen is derived from, so a
+    # bug here is wrong in a way no engine test can see. A review agent found
+    # all three of these holes; each left 198 tests green while moving the
+    # demo-path answer.
+    "cusip_googl_class_a_dropped": (
+        "data/universe.json",
+        '"02079K10": "GOOGL",',
+        '"02079K10": "GOOG_C",'),
+    "cusip_prefix_truncated": (
+        "data/universe.json",
+        '"02079K30": "GOOGL",',
+        '"02079K3": "GOOGL",'),
+    "adv_units_thousands": (
+        "src/firebreak/dataset.py",
+        "_MILLION = 1_000_000.0",
+        "_MILLION = 1_000.0"),
+
     # Frontend mutations. These need the UI harnesses, not pytest — run them
     # with --ui, which drives tests/ui/provenance.js against the mutated web/
     # and the real server. All five of these once scored 47/47 green while

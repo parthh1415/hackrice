@@ -125,8 +125,9 @@ def choose_filings(records):
     has to be unioned with the original. Apply the wrong one and you get
     either a 5%-sized portfolio or a double count, silently either way.
 
-    Records need: accession, period, amendment_type (None if not an
-    amendment), filing_date.
+    Records need: accession, period, filing_date, `is_amendment` (from the
+    form string, which is authoritative), and amendment_type (None if the
+    cover page did not say).
     """
     if not records:
         return []
@@ -134,20 +135,55 @@ def choose_filings(records):
     latest_period = max(r["period"] for r in records)
     current = [r for r in records if r["period"] == latest_period]
 
-    restatements = [
-        r for r in current if (r["amendment_type"] or "").upper() == "RESTATEMENT"
-    ]
+    # An amendment we cannot classify is not an original. This used to decide
+    # by amendment_type alone, so a 13F-HR/A whose cover page omits
+    # <amendmentType> read as `None`, which meant "original", and got SUMMED
+    # with the filing it was amending. Deleting that one element from
+    # Citadel's real restatement doubles its book — $14.6B to $29.2B, gross
+    # $40.9B to $55.5B — and moves the demo from 4 funds breaching to all
+    # five, amplification 1.87 to 2.37. No error, no warning, and the filing
+    # still says <isAmendment>true</isAmendment> two lines above the element
+    # we deleted. The form string says "/A" too; we were throwing it away.
+    #
+    # So: the form decides whether something is an amendment, and an
+    # amendment whose type we do not recognise raises. Guessing is what put a
+    # doubled book on screen with a straight face.
+    for r in current:
+        if not r.get("is_amendment"):
+            continue
+        kind = (r["amendment_type"] or "").strip().upper()
+        if kind not in _AMENDMENT_KINDS:
+            raise ValueError(
+                f"{r['accession']}: 13F-HR/A with amendment type "
+                f"{r['amendment_type']!r}, which is not one of "
+                f"{sorted(_AMENDMENT_KINDS)}. Refusing to guess whether it "
+                "replaces the original or supplements it — those differ by a "
+                "factor of two in the resulting book."
+            )
+
+    def kind_of(r):
+        return (r["amendment_type"] or "").strip().upper() if r.get("is_amendment") else ""
+
+    restatements = [r for r in current if kind_of(r) == "RESTATEMENT"]
     if restatements:
-        return [max(restatements, key=lambda r: (r["filing_date"], r["accession"]))]
+        newest = max(restatements, key=lambda r: (r["filing_date"], r["accession"]))
+        # A supplement filed AFTER the restatement supplements the RESTATED
+        # report, so it still counts. The old code returned here and dropped
+        # it. Not present in the real data — logic-level fix only.
+        later_supplements = [
+            r for r in current
+            if kind_of(r) == "NEW HOLDINGS"
+            and (r["filing_date"], r["accession"]) > (newest["filing_date"], newest["accession"])
+        ]
+        return [newest] + later_supplements
 
     # originals plus any additive amendments
-    return [
-        r
-        for r in current
-        if r["amendment_type"] is None
-        or (r["amendment_type"] or "").upper() == "NEW HOLDINGS"
-    ]
+    return [r for r in current if not r.get("is_amendment") or kind_of(r) == "NEW HOLDINGS"]
 
+
+# The types SEC Form 13F FAQ 58 defines. Anything else is a filing we do not
+# know how to apply, and applying it wrongly is a silent factor-of-two.
+_AMENDMENT_KINDS = frozenset({"RESTATEMENT", "NEW HOLDINGS"})
 
 _PERIOD = re.compile(r"<(?:\w+:)?periodOfReport>\s*([^<\s]+)", re.I)
 _AMEND_TYPE = re.compile(r"<(?:\w+:)?amendmentType>\s*([^<]+)", re.I)
@@ -188,6 +224,10 @@ def latest_filings(cik, look_back=8):
                 "period": _sortable(period),
                 "raw_period": period,
                 "amendment_type": kind,
+                # The form string is the authoritative answer to "is this an
+                # amendment". The cover page's <amendmentType> is a detail
+                # ABOUT an amendment and can be missing; the "/A" cannot.
+                "is_amendment": form.endswith("/A"),
                 "filing_date": recent["filingDate"][i],
             }
         )
