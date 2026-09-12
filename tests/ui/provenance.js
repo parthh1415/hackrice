@@ -331,6 +331,26 @@ async function requireServer() {
         text("fixLine").startsWith(`${fx.fund}: sell `) && text("fixLine").includes(` of ${fx.asset} `),
         text("fixLine"));
 
+  /* The numbers must also agree with EACH OTHER, not just with the payload.
+     This harness compares the DOM against the payload and stops there, so a
+     server sending sell_usd = position * 0.5 passed all 58 checks on a line
+     reading "sell $1.2B of NVDA · 0.073% of a $2.4B position" — every field
+     faithfully rendered, the sentence arithmetically absurd. Faithfully
+     reproducing a wrong number is still showing a wrong number. */
+  const gross = s.holdings.reduce((t, row) => t + row.reduce((a, b) => a + b, 0), 0);
+  const position = s.holdings[fx.fund_index][fx.asset_index];
+  const agrees = (a, b, rel) => Math.abs(a - b) <= Math.abs(b) * rel + 1e-9;
+  check("position_usd is the holding it names",
+        agrees(fx.position_usd, position, 1e-9), `${fx.position_usd} vs ${position}`);
+  check("gross_usd is the sum of the book",
+        agrees(fx.gross_usd, gross, 1e-9), `${fx.gross_usd} vs ${gross}`);
+  check("sell_usd is that position times that reduction",
+        agrees(fx.sell_usd, position * fx.reduction, 1e-9),
+        `${fx.sell_usd} vs ${position * fx.reduction}`);
+  check("cost and the dollar figures price the same trade",
+        agrees(fx.cost, fx.sell_usd / gross, 1e-9),
+        `cost ${fx.cost} vs sell/gross ${fx.sell_usd / gross}`);
+
   console.log("\nPRECISION — stated decimals, and no borrowed rounding");
   const bd = band();   // still the demo cascade's; the split has its own footers
   check("amplification is 2dp everywhere", /^\d+\.\d{2}×$/.test(bd[2]) &&
