@@ -20,7 +20,13 @@ async function api(path, payload) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload) }
     : { cache: "no-store" });
-  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  /* "/api/portfolio/full?limit=0.1 → 500" is a stack trace wearing a sentence.
+     The user cannot act on a route; they can act on "the engine is not
+     answering". The route is still in the console for whoever is debugging. */
+  if (!res.ok) {
+    console.error("firebreak:", path, res.status);
+    throw new Error(`the engine returned HTTP ${res.status}. Check the server on port 8765.`);
+  }
   return res.json();
 }
 
@@ -109,7 +115,9 @@ function paintNav(current) {
       const dot = document.getElementById("navEngine");
       const txt = document.getElementById("navEngineText");
       if (dot) { dot.textContent = "●"; dot.className = "up"; }
-      if (txt) txt.textContent = h && h.cached ? "REPLAY" : "ENGINE LIVE";
+      /* "REPLAY" is also the cascade page's transport button, one click away,
+         where it means something entirely different. */
+      if (txt) txt.textContent = h && h.cached ? "CACHED" : "ENGINE LIVE";
     })
     .catch(() => {
       const dot = document.getElementById("navEngine");
@@ -267,11 +275,12 @@ function toggleKeyHelp() {
     d.innerHTML = `<div class="card"><div class="card-header">Keyboard</div>
       <div class="card-body tight"><table><tbody>
         ${FB_PAGES.map(([k, , page]) =>
-          `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${page}</td></tr>`).join("")}
-        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td class="t">step the cascade, on that page</td></tr>
-        <tr><td><kbd>space</kbd></td><td class="t">play or pause the cascade</td></tr>
-        <tr><td><kbd>?</kbd></td><td class="t">this list</td></tr>
-        <tr><td><kbd>esc</kbd></td><td class="t">close</td></tr>
+          `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${
+            page === "assumptions" ? "Model" : page[0].toUpperCase() + page.slice(1)}</td></tr>`).join("")}
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td class="t">Step the cascade (Cascade page)</td></tr>
+        <tr><td><kbd>space</kbd></td><td class="t">Play or pause the cascade</td></tr>
+        <tr><td><kbd>?</kbd></td><td class="t">This list</td></tr>
+        <tr><td><kbd>esc</kbd></td><td class="t">Close</td></tr>
       </tbody></table></div></div>`;
     document.body.appendChild(d);
   }
