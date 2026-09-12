@@ -47,6 +47,8 @@ const num = (x, dp = 2, dash = "—") =>
    worse answer than a link that is visibly not ready. */
 function paintNav(current) {
   const s = FB.state;
+  /* the bar reports the same state the nav does, so they cannot disagree */
+  if (document.querySelector(".statusbar")) paintStatusBar(current);
   /* A page missing from this map reads as `undefined`, and `!undefined` locks
      it. `assumptions` was missing, so the Model link was dead on every page
      including its own — the page was reachable only by typing its URL. Nothing
@@ -158,4 +160,86 @@ function requireResult(current) {
     return null;
   }
   return s.result;
+}
+
+/* ── keyboard, and the bar that tells you it exists ──────────────────────
+   Straight out of the OpenTerminal reference in the redesign plan: a terminal
+   is keyboard-first, and the shortcuts live on screen rather than in a manual
+   nobody opens. This also gives every page a floor, which is what stops the
+   viewport ending in half a screen of black.
+
+   Pages are numbered in workflow order, and a number that is not earned yet
+   does nothing rather than landing you on an empty screen — the same rule the
+   nav already follows. */
+const FB_PAGES = [
+  ["1", "index.html", "portfolio"],
+  ["2", "analysis.html", "analysis"],
+  ["3", "cascade.html", "cascade"],
+  ["4", "defend.html", "defend"],
+  ["5", "verify.html", "verify"],
+  ["6", "assumptions.html", "assumptions"],
+];
+
+/* Remembered so a repaint after the data lands keeps this page's own keys. */
+let _statusExtra = null;
+
+function paintStatusBar(current, extra) {
+  if (extra !== undefined) _statusExtra = extra;
+  else extra = _statusExtra;
+  const s = FB.state;
+  /* Repaint rather than bail. The first paint happens before the demo book has
+     been fetched, so bailing left "no book loaded" sitting under a table full
+     of holdings. */
+  const bar = document.querySelector(".statusbar") || document.createElement("div");
+  bar.className = "statusbar";
+  const keys = [["1–6", "page"], ["?", "keys"]].concat(extra || []);
+  bar.innerHTML = keys
+    .map(([k, label]) => `<span class="k"><kbd>${k}</kbd>${label}</span>`)
+    .join('<span class="sep">│</span>') +
+    `<span class="right">
+       <span class="k">${s.portfolio ? (s.portfolio.holdings.length + " holdings") : "no book loaded"}</span>
+       <span class="sep">│</span>
+       <span class="k">SEC 13F-HR · ${(s.result && s.result.params) ? "λ " + s.result.params.leverage.toFixed(1) : "Q2 2026"}</span>
+     </span>`;
+  if (!bar.isConnected) document.body.appendChild(bar);
+}
+
+function bindKeys(current, extraHandlers) {
+  document.addEventListener("keydown", (ev) => {
+    /* never steal a key from someone typing, and never from a chord the
+       browser owns */
+    const t = ev.target;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+    const page = FB_PAGES.find(([k]) => k === ev.key);
+    if (page) {
+      const link = document.querySelector(`.nav-links a[data-page="${page[2]}"]`);
+      if (link && !link.hasAttribute("data-locked")) location.href = page[1];
+      return;
+    }
+    if (ev.key === "?") { ev.preventDefault(); toggleKeyHelp(); return; }
+    if (ev.key === "Escape") { const d = document.getElementById("keyHelp"); if (d) d.hidden = true; return; }
+    if (extraHandlers && extraHandlers[ev.key]) { ev.preventDefault(); extraHandlers[ev.key](); }
+  });
+}
+
+function toggleKeyHelp() {
+  let d = document.getElementById("keyHelp");
+  if (!d) {
+    d = document.createElement("div");
+    d.id = "keyHelp";
+    d.className = "keyhelp";
+    d.innerHTML = `<div class="card"><div class="card-header">Keyboard</div>
+      <div class="card-body tight"><table><tbody>
+        ${FB_PAGES.map(([k, , page]) =>
+          `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${page}</td></tr>`).join("")}
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td class="t">step the cascade, on that page</td></tr>
+        <tr><td><kbd>space</kbd></td><td class="t">play or pause the cascade</td></tr>
+        <tr><td><kbd>?</kbd></td><td class="t">this list</td></tr>
+        <tr><td><kbd>esc</kbd></td><td class="t">close</td></tr>
+      </tbody></table></div></div>`;
+    document.body.appendChild(d);
+  }
+  d.hidden = !d.hidden;
 }

@@ -183,6 +183,47 @@ function visibleText(d) {
           full.cascade_loss > full.direct_loss,
           `${full.cascade_loss} vs ${full.direct_loss}`);
 
+    /* Loss attribution. Contributions are weight x fall, so they must sum to
+       the portfolio loss — and the total is printed, which is what makes the
+       claim checkable on screen rather than asserted in a caption. */
+    {
+      const w = {}; full.portfolio.holdings.forEach((h) => { w[h.symbol] = h.weight; });
+      const cells = [...a.d.querySelectorAll("#attrRows tr")].map((tr) =>
+        [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+      check("the attribution table renders a row per modelled holding",
+            cells.length >= Object.keys(w).length, `${cells.length} rows`);
+
+      const total = cells.find((c) => /^Total$/i.test(c[0]));
+      check("it carries a total", !!total, cells.map((c) => c[0]).join(","));
+      if (total) {
+        eq("and the total equals the cascade loss the engine returned",
+           total[5].replace(/[^\d.]/g, ""), (full.cascade_loss * 100).toFixed(2));
+      }
+
+      /* the thesis, as an assertion: a name nobody shocked still falls. */
+      const unshocked = cells.filter((c) => c[2] === "—" && !/^(Total|CASH)$/i.test(c[0]));
+      check("at least one unshocked holding still loses money to contagion",
+            unshocked.length > 0 && unshocked.every((c) => /\d/.test(c[4])),
+            unshocked.map((c) => `${c[0]}:${c[4]}`).join(" "));
+
+      /* and the shocked name is the one the search found, marked as such */
+      const shockedRow = cells.find((c) => /shocked/i.test(c[0]));
+      check("the shocked name is flagged and is the one the search found",
+            !!shockedRow && shockedRow[0].startsWith(full.asset),
+            shockedRow ? shockedRow[0] : "none flagged");
+
+      /* Contagion is the fall MINUS the shock, so on the shocked name it has to
+         be a small remainder. Printing the whole fall there would credit the
+         cascade with damage the shock itself did — and would still look like a
+         plausible number, which is why the check has to compare the two. */
+      if (shockedRow) {
+        const n = (t) => Number(String(t).replace(/[^\d.]/g, "")) || 0;
+        check("contagion on the shocked name is the remainder, not its whole fall",
+              n(shockedRow[4]) < n(shockedRow[3]) - 1,
+              `contagion ${shockedRow[4]} against a total fall of ${shockedRow[3]}`);
+      }
+    }
+
     store = a.dump();
   }
 

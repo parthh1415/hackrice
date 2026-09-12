@@ -67,6 +67,8 @@
 <script src="shared.js"></script>
 <script>
 paintNav("cascade");
+paintStatusBar("cascade", [["← →", "step"], ["space", "play"]]);
+bindKeys("cascade");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("cascade");
 if (r) (async () => {
@@ -212,6 +214,15 @@ if (r) (async () => {
   };
   draw(0);
   if (frames.length <= 1) playBtn.textContent = "Replay";
+
+  /* The transport, on the keys a terminal puts it on. bindKeys already ran
+     for the page shortcuts; this adds the ones that only mean something here,
+     and the status bar advertises them so nobody has to guess. */
+  bindKeys("cascade", {
+    ArrowLeft: () => step(at - 1),
+    ArrowRight: () => step(at + 1),
+    " ": () => playBtn.click(),
+  });
 })();
 </script>
 </body>

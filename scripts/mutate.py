@@ -306,6 +306,14 @@ MUTATIONS = {
         "web/cascade.html",
         "    if (frames.length <= 1) { playBtn.textContent = \"Replay\"; return; }",
         "    if (false) { playBtn.textContent = \"Replay\"; return; }"),
+    "attribution_uses_direct_not_cascade": (
+        "web/analysis.html",
+        "      const costs = weight * total;",
+        "      const costs = weight * direct;"),
+    "contagion_column_is_the_whole_fall": (
+        "web/analysis.html",
+        "      const contagion = total - direct;",
+        "      const contagion = total;"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };',
@@ -348,7 +356,9 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "loss_tile_is_the_final_loss", "value_column_matched_loosely",
                 "ragged_row_accepted", "value_and_qty_price_not_reconciled",
                 "negative_holding_accepted", "stepping_does_not_stop_the_timer",
-                "one_frame_cascade_pretends_to_play"}
+                "one_frame_cascade_pretends_to_play",
+                "attribution_uses_direct_not_cascade",
+                "contagion_column_is_the_whole_fall"}
 
 
 def build(name):

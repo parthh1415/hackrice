@@ -39,6 +39,8 @@
 <script src="shared.js"></script>
 <script>
 paintNav("defend");
+paintStatusBar("defend");
+bindKeys("defend");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("defend");
 if (r) {

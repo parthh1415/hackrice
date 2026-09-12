@@ -876,6 +876,12 @@ def _solve_portfolio(params, body):
         # needs the denominator to say "3 of 5" rather than hardcoding how many
         # managers the dataset happens to hold today.
         "funds": list(data["funds"]),
+        # End-of-cascade prices, aligned to `tickers`. The analysis page needs
+        # them to attribute the loss name by name — which is the question a
+        # portfolio holder actually has, and the one number on that screen the
+        # UI previously had to fetch a second endpoint to answer.
+        "prices": result.prices.tolist(),
+        "direct_prices": (1.0 + found.shock).tolist(),
         "system": result.as_dict()["metrics"],
     })
     return out, found, (vector, cash), scenario, data

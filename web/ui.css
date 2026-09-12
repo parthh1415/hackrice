@@ -71,8 +71,31 @@ body{
 .status b{color:var(--text);font-weight:400}
 
 /* ── page ───────────────────────────────────────────────────────────────── */
+/* The body is a column: nav, content, status bar. Without this the content
+   ended wherever it ended and the rest of the viewport was black — half an
+   empty screen on every page, which reads as an unfinished web page rather
+   than a terminal that occupies its window. */
+body{min-height:100vh;display:flex;flex-direction:column}
+main{flex:1 0 auto}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
 .page{padding:14px 0 40px}
+
+/* ── status bar (OpenTerminal: the shortcuts live on screen) ────────────── */
+.statusbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:18px;
+  padding:0 10px;height:26px;background:var(--panel-2);
+  border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);
+  position:sticky;bottom:0;z-index:30;
+}
+.statusbar .k{color:var(--text-dim)}
+/* the key cap itself. Bordered rather than filled, so a row of them reads as
+   a legend and not as a row of buttons you are meant to click. */
+.statusbar kbd{
+  font:inherit;color:var(--accent);border:1px solid var(--border);
+  border-radius:2px;padding:0 4px;margin-right:5px;background:var(--bg);
+}
+.statusbar .sep{color:var(--border)}
+.statusbar .right{margin-left:auto;display:flex;gap:14px;align-items:center}
 .stack{display:flex;flex-direction:column}
 .gap-2{gap:2px}.gap-3{gap:6px}.gap-4{gap:10px}.gap-6{gap:14px}.gap-8{gap:18px}
 .row{display:flex;align-items:center}
@@ -201,4 +224,15 @@ svg.viz{width:100%;display:block;background:var(--panel)}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+
+/* ── keyboard help ──────────────────────────────────────────────────────── */
+.keyhelp{
+  position:fixed;inset:0;z-index:50;display:flex;align-items:center;
+  justify-content:center;background:rgba(0,0,0,.72);
+}
+.keyhelp .card{width:420px}
+.keyhelp kbd{
+  font:inherit;color:var(--accent);border:1px solid var(--border);
+  border-radius:2px;padding:0 4px;background:var(--bg);
 }

@@ -40,6 +40,8 @@
 <script src="shared.js"></script>
 <script>
 paintNav("verify");
+paintStatusBar("verify");
+bindKeys("verify");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("verify");
 if (r && r.validation) {

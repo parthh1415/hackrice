@@ -47,6 +47,8 @@
 <script src="shared.js"></script>
 <script>
 paintNav("assumptions");
+paintStatusBar("assumptions");
+bindKeys("assumptions");
 (async () => {
   let d = {};
   try { d = await api("/api/dataset"); } catch {}
