@@ -55,12 +55,15 @@ async function until(cond, ms = 8000, step = 20) {
    previous page left behind, then run shared.js and the page's own inline
    script in document order. Returns the window plus whatever navigation the
    page asked for, so a redirect is observable instead of silent. */
-async function load(file, store) {
+async function load(file, store, query = "") {
+  /* the file comes off disk, the query string goes into the document's URL —
+     pages read location.search, and jsdom will not find "analysis.html?x" on
+     the filesystem. */
   const html = fs.readFileSync(path.join(WEB, file), "utf8")
     .replace(/<link[^>]*fonts\.googleapis[^>]*>/g, "");
   const dom = new JSDOM(html, {
     runScripts: "outside-only", pretendToBeVisual: true,
-    url: ORIGIN + "/" + file,
+    url: ORIGIN + "/" + file + query,
   });
   const { window } = dom;
 
@@ -103,6 +106,17 @@ async function load(file, store) {
 }
 
 const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textContent.trim() : null; };
+
+/* body.textContent includes the source of every <script> in the document. A
+   check that greps it for a string the page is SUPPOSED to render matches the
+   line of JS that would render it, and passes before the page has done
+   anything — which is exactly how "a clamped limit says so" went green against
+   a document that showed no such thing. Read what a person can see. */
+function visibleText(d) {
+  const body = d.body.cloneNode(true);
+  body.querySelectorAll("script,style,template").forEach((n) => n.remove());
+  return body.textContent;
+}
 
 (async () => {
   console.log("PAGES");
@@ -250,9 +264,9 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
   {
     const v = await load("verify.html", store);
     check("verify.html runs clean", v.errors.length === 0, v.errors.join("; "));
-    const ok = await until(() => v.d.body.textContent.includes("%"));
+    const ok = await until(() => visibleText(v.d).includes("%"));
     check("the evidence renders", ok, v.navigated.join(",") || "");
-    const body = v.d.body.textContent;
+    const body = visibleText(v.d);
     const val = full.validation;
 
     has("the replayed shock is the same shock", body, `${full.pct.toFixed(2)}%`);
@@ -276,7 +290,7 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
   {
     const a = await load("assumptions.html", store);
     check("assumptions.html runs clean", a.errors.length === 0, a.errors.join("; "));
-    check("the model page has content", a.d.body.textContent.trim().length > 200);
+    check("the model page has content", visibleText(a.d).trim().length > 200);
 
     /* The solver strip. docs/devpost.md claims the engine name, evaluation
        count and exit flag are on screen; this is the check that keeps that
@@ -302,6 +316,22 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
     }
   }
 
+  /* ---- a limit the engine had to pull into range ---- */
+  {
+    /* The nav reads the limit from state and the page reads the one the engine
+       used. If those are allowed to diverge, a clamped limit puts 95% and 90%
+       on the same screen with nothing to reconcile them. */
+    const c = await load("analysis.html", {}, "?demo&limit=0.95");
+    const ok = await until(() => /asked for a/.test(visibleText(c.d)));
+    check("a clamped limit says so instead of silently using another number", ok,
+          visibleText(c.d).trim().slice(0, 160));
+    has("and names both the limit asked for and the one used",
+        visibleText(c.d), "95% limit");
+    const navLimit = txt(c.d, "navLimit") || "";
+    check("the nav shows the limit the engine used, not the one that was refused",
+          navLimit.includes("90"), navLimit);
+  }
+
   /* ---- the nav must not offer a page the state cannot answer ---- */
   {
     /* Arriving here with no analysis must produce the explicit "nothing to
@@ -310,8 +340,8 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
     const cold = await load("cascade.html", {});
     await sleep(300);
     check("a cold visit to cascade.html says there is no analysis yet",
-          /No analysis yet/i.test(cold.d.body.textContent),
-          cold.d.body.textContent.trim().slice(0, 120));
+          /No analysis yet/i.test(visibleText(cold.d)),
+          visibleText(cold.d).trim().slice(0, 120));
     check("and draws no network, which would read as an all-clear",
           cold.d.querySelectorAll("#net circle").length === 0,
           cold.d.querySelectorAll("#net circle").length + " nodes drawn");

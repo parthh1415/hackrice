@@ -768,12 +768,26 @@ def _rows_from(body):
 
 
 def _limit_of(params):
+    """The loss limit, and a `clamped` entry if we did not use what was given.
+
+    Every other knob records itself when it is pulled back into range; this one
+    did it silently, so a 95% limit came back as 90% under a payload asserting
+    that nothing had been adjusted. The nav reads the number the user typed and
+    the page reads the number we used, which put 95% and 90% on the same screen
+    with nothing to reconcile them.
+    """
     lo, hi, default = _LIMIT_RANGE
+    raw = params.get("limit", default)
     try:
-        value = float(params.get("limit", default))
+        value = float(raw)
     except (TypeError, ValueError):
-        value = default
-    return min(max(value, lo), hi)
+        return default, {"name": "limit", "given": raw, "used": default,
+                         "reason": "unreadable"}
+    used = min(max(value, lo), hi)
+    if used != value:
+        return used, {"name": "limit", "given": value, "used": used,
+                      "reason": f"outside {lo}\u2013{hi}"}
+    return used, None
 
 
 def _solve_portfolio(params, body):
@@ -789,7 +803,9 @@ def _solve_portfolio(params, body):
     )
 
     data, scenario, knobs = _portfolio_scenario(params)
-    limit = _limit_of(params)
+    limit, limit_clamp = _limit_of(params)
+    if limit_clamp:
+        knobs = dict(knobs, clamped=list(knobs.get("clamped", [])) + [limit_clamp])
 
     try:
         rows, source = _rows_from(body)

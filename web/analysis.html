@@ -78,8 +78,22 @@ paintNav("analysis");
     document.getElementById("sub").textContent = e.message;
     return;
   }
-  FB.set({ result: body });
+  /* Adopt the limit the engine actually used. The nav reads FB state and this
+     page reads params.limit; if the engine pulled the limit into range those
+     are two different numbers side by side on the same screen. */
+  FB.set({ result: body, limit: (body.params && body.params.limit) || s.limit });
   paintNav("analysis");
+
+  const clamp = ((body.params && body.params.clamped) || [])
+    .find((c) => c.name === "limit");
+  if (clamp) {
+    const note = document.createElement("p");
+    note.className = "lede";
+    note.style.color = "var(--warn)";
+    note.textContent = `You asked for a ${pct(clamp.given, 0)} limit. This build searches ` +
+      `between 1% and 90%, so it used ${pct(clamp.used, 0)}.`;
+    document.getElementById("sub").after(note);
+  }
 
   if (body.refused) {
     const missing = (body.unmodelled || []).join(", ");

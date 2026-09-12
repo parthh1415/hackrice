@@ -209,6 +209,14 @@ MUTATIONS = {
         "src/firebreak/portfolio.py",
         "        total = self.total_value\n        if total <= 0:\n            return {}",
         "        total = self.total_value\n        if False:\n            return {}"),
+    # NB: the first version of this commented out a line that had a
+    # continuation on the next one, so the mutant did not parse and every
+    # mutation "caught" it with 12 collection errors. A mutation that breaks
+    # the build proves nothing about the suite.
+    "pm_limit_clamped_silently": (
+        "src/firebreak/api.py",
+        "    used = min(max(value, lo), hi)\n    if used != value:",
+        "    used = min(max(value, lo), hi)\n    if False:"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',

@@ -225,3 +225,34 @@ def test_step_four_replays_the_portfolio_s_own_shock():
         "the cascade shown must be the one the result card described"
     )
     assert replay["rounds"] == full["rounds"]
+
+
+@pytest.mark.parametrize("given,used", [(0.95, 0.90), (0.0, 0.01), (-1.0, 0.01)])
+def test_a_clamped_limit_is_reported_as_clamped(given, used):
+    """`clamped: []` next to a limit that was changed is a false statement.
+
+    Every other knob that gets pulled back into range records itself in
+    `clamped`, which is what the UI reads to tell you it did not use the number
+    you gave it. `limit` was clamped silently, so asking for a 95% limit came
+    back as a 90% limit with the payload asserting that nothing had been
+    adjusted — and the nav, which reads the number the user typed, went on
+    showing 95% beside a page reading 90%.
+
+    Not reachable from the product UI, which offers 5/10/15/25%. Reachable from
+    a URL, and wrong in either.
+    """
+    out = api.handle(f"/api/portfolio/full?limit={given}", {})
+    assert out["params"]["limit"] == pytest.approx(used)
+    names = [c["name"] for c in out["params"].get("clamped", [])]
+    assert "limit" in names, (
+        f"limit {given} was used as {used} and clamped says {out['params'].get('clamped')}"
+    )
+    entry = next(c for c in out["params"]["clamped"] if c["name"] == "limit")
+    assert entry["given"] == pytest.approx(given)
+    assert entry["used"] == pytest.approx(used)
+
+
+def test_a_limit_inside_the_range_is_not_reported_as_clamped():
+    out = api.handle("/api/portfolio/full?limit=0.15", {})
+    assert out["params"]["limit"] == pytest.approx(0.15)
+    assert not [c for c in out["params"].get("clamped", []) if c["name"] == "limit"]

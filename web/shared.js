@@ -88,13 +88,20 @@ function paintNav(current) {
    only way to screenshot a downstream page from a cold browser, which is how
    the last three rendering bugs were found. */
 async function seedDemoIfAsked() {
-  if (!new URLSearchParams(location.search).has("demo")) return false;
+  const q = new URLSearchParams(location.search);
+  if (!q.has("demo")) return false;
   const s = FB.state;
   if (s.result && s.result.found) return false;
+  /* ?limit= travels with ?demo, so a link carries the whole scenario. Passed
+     through unvalidated on purpose: the engine decides what is in range and
+     reports back when it had to pull a number in, and a second opinion here
+     would only be a second place for the two to disagree. */
+  const asked = Number(q.get("limit"));
+  const limit = Number.isFinite(asked) && q.has("limit") ? asked : (s.limit || 0.10);
   try {
     const demo = await api("/api/portfolio/demo");
-    FB.set({ portfolio: demo.portfolio, rows: null, limit: s.limit || 0.10 });
-    const full = await api(`/api/portfolio/full?limit=${s.limit || 0.10}`, {});
+    FB.set({ portfolio: demo.portfolio, rows: null, limit });
+    const full = await api(`/api/portfolio/full?limit=${limit}`, {});
     FB.set({ result: full });
     return true;
   } catch { return false; }
