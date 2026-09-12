@@ -306,7 +306,7 @@ MUTATIONS = {
         "${h.weight.toFixed(1)}%"),
     "negative_zero_returns": (
         "web/cascade.html",
-        'val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "0.00%";',
+        'val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "";',
         'val.textContent = `−${(drop * 100).toFixed(2)}%`;'),
     "state_narrated_as_transition": (
         "web/cascade.html",
@@ -355,8 +355,8 @@ MUTATIONS = {
         "      const share = usd / Math.max(1, ...(f.sold || []).flat());"),
     "next_skips_a_round": (
         "web/cascade.html",
-        'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };',
-        'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 2); draw(at); };'),
+        'document.getElementById("nextBtn").onclick = () => step(at + 1);',
+        'document.getElementById("nextBtn").onclick = () => step(at + 2);'),
     "loss_tile_is_the_final_loss": (
         "web/cascade.html",
         '      ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],',
@@ -397,7 +397,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "negative_holding_accepted", "stepping_does_not_stop_the_timer",
                 "one_frame_cascade_pretends_to_play",
                 "attribution_uses_direct_not_cascade",
-                "contagion_column_is_the_whole_fall", "flow_is_static_positions"}
+                "contagion_column_is_the_whole_fall", "flow_is_static_positions",
+                "flow_scaled_per_frame"}
 
 
 def build(name):
@@ -421,10 +422,18 @@ def build(name):
 
     target = scratch / path
     text = target.read_text()
-    # Without this, a mutation whose anchor has drifted applies nothing and
-    # reports a green suite — a mutation harness with the exact bug it exists
-    # to find. It has fired for real.
-    assert old in text, f"anchor not found for {name} in {path}; it has drifted"
+    # A mutation whose anchor has drifted applies nothing and reports a green
+    # suite — a mutation harness with the exact bug it exists to find. It has
+    # fired for real, more than once.
+    #
+    # It used to raise here, which is loud but total: one stale anchor aborted
+    # the run and took the other seventy mutations' results with it, so a
+    # refactor that moved one line left the whole suite unmeasured until
+    # somebody noticed the traceback. Drift is now a reported FAILURE for that
+    # mutation and the run continues.
+    if old not in text:
+        shutil.rmtree(scratch, ignore_errors=True)
+        return None
     target.write_text(text.replace(old, new, 1))
     return scratch
 
@@ -452,8 +461,14 @@ def main():
 
     base = demo_payload(ROOT) if impact else None
     green = []
+    drifted = []
     for name in names:
         scratch = build(name)
+        if scratch is None:
+            drifted.append(name)
+            path = MUTATIONS[name][0]
+            print(f"DRIFTED {name:<20} anchor no longer in {path}")
+            continue
         if name in UI_MUTATIONS:
             # Drives the real page harness against the mutated web/ and
             # the live server, so every payload is genuine and any failure is
@@ -482,9 +497,14 @@ def main():
                 print(f"           demo path {'UNCHANGED — edit may be inert' if after == base else 'MOVED — a real gap'}")
         shutil.rmtree(scratch, ignore_errors=True)
 
+    if drifted:
+        print(f"\n{len(drifted)} mutation(s) could not be applied — the code moved under "
+              f"them: {', '.join(drifted)}")
+        print("These measured NOTHING. Re-anchor them before trusting this run.")
     if green:
         print(f"\n{len(green)} mutation(s) left the suite green: {', '.join(green)}")
         print("Each is either a hole in the suite or an inert edit. Re-run with --impact to tell them apart.")
+    if drifted or green:
         return 1
     print(f"\nall {len(names)} mutations caught")
     return 0

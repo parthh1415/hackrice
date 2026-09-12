@@ -132,3 +132,67 @@ def test_the_pitch_quotes_the_fix_size_the_engine_returns():
     devpost = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "devpost.md").read_text()
     assert millions in devpost, f"devpost does not quote {millions}; the fix is ${sell:,.2f}"
     assert "$3.7M" not in devpost, "the contradictory figure is back"
+
+
+def test_every_mutation_anchor_still_exists_in_the_code_it_targets():
+    """A drifted anchor means that mutation measured nothing.
+
+    scripts/mutate.py only proves a test can fail if the edit it makes is
+    actually applied. An anchor that no longer matches applies nothing, and the
+    suite comes back green for a mutant identical to the original — the exact
+    bug the harness exists to find, in the harness.
+
+    It used to raise on drift, which is loud but total: one stale anchor
+    aborted the run and took the other seventy mutations' results with it. Two
+    drifted in a single evening's refactoring of one file, and neither was
+    noticed until a traceback replaced the summary. This catches them in the
+    normal suite, which runs in twelve seconds, instead of at the end of a
+    twenty-minute mutation run.
+    """
+    import importlib.util
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("_mutate", root / "scripts" / "mutate.py")
+    mutate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mutate)
+
+    assert len(mutate.MUTATIONS) > 50, "the mutation set has shrunk unexpectedly"
+
+    drifted = []
+    for name, (path, anchor, _replacement) in mutate.MUTATIONS.items():
+        if anchor not in (root / path).read_text():
+            drifted.append(f"{name} ({path})")
+    assert not drifted, (
+        "these mutations no longer match the code they target, so they measure "
+        "nothing: " + ", ".join(drifted)
+    )
+
+
+def test_every_ui_mutation_is_a_mutation():
+    """UI_MUTATIONS routes a name to the page harness instead of pytest.
+
+    A name in that set with no entry in MUTATIONS is never run at all, and a
+    frontend mutation left OUT of the set is run under pytest — which does not
+    load a page, so it reports CAUGHT or GREEN on evidence that has nothing to
+    do with the change.
+    """
+    import importlib.util
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("_mutate", root / "scripts" / "mutate.py")
+    mutate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mutate)
+
+    orphans = sorted(mutate.UI_MUTATIONS - set(mutate.MUTATIONS))
+    assert not orphans, f"named in UI_MUTATIONS but not defined: {orphans}"
+
+    misrouted = sorted(
+        name for name, (path, _, _) in mutate.MUTATIONS.items()
+        if path.startswith("web/") and name not in mutate.UI_MUTATIONS
+    )
+    assert not misrouted, (
+        "these mutate a file in web/ but are run under pytest, which never "
+        f"loads a page: {misrouted}"
+    )

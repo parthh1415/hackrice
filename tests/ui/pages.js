@@ -312,6 +312,12 @@ function visibleText(d) {
          fixed grey, so every frame came out identical — fifty lines redrawn
          each tick to look exactly the same, while `sold` sat in the payload
          carrying the actual cascade. The flow layer has to move with it. */
+      const step = (t) => {
+        c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));  // home
+        c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));  // stop
+        for (let k = 0; k < t; k++)
+          c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
+      };
       const flow = () => [...c.d.querySelectorAll("#net line")]
         .filter((l) => (l.getAttribute("stroke") || "").includes("359"));
       const soldAt = (t) => (cas.trajectory[t].sold || []).flat().filter((v) => v > 0).length;
@@ -340,6 +346,21 @@ function visibleText(d) {
       check("the forced selling peaks in the first round and decays after it",
             widest[1] > 0 && widest.slice(1).every((v, i, a) => i === 0 || v < a[i - 1]),
             widest.map((v) => (v / 1e9).toFixed(2) + "B").join(" -> "));
+
+      /* And the DRAWING has to decay with it. Scaling each frame to its own
+         busiest edge makes the last round's trickle as thick as the first
+         round's flood — the picture then says the cascade never weakens, which
+         is the opposite of what it exists to show. Counting edges cannot see
+         that; the widths have to be compared across rounds. */
+      const widestStroke = [];
+      for (let t = 0; t < cas.trajectory.length; t++) {
+        step(t);
+        await sleep(20);
+        widestStroke.push(Math.max(0, ...flow().map((l) => Number(l.getAttribute("stroke-width")))));
+      }
+      check("and the drawing decays with it, rather than rescaling each frame",
+            widestStroke[1] > widestStroke[widestStroke.length - 1] * 1.5,
+            widestStroke.map((v) => v.toFixed(2)).join(" -> "));
 
       /* the last frame has to be the answer the rest of the app reports, or the
          animation is telling a different story from every other page. */
