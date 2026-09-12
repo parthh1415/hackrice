@@ -429,8 +429,39 @@ const svg = (id) => d.getElementById(id);
   click("assumeClose");
   check("close puts it away", panel.hidden);
 
+  console.log("\nCOUNT-UP — the hero under a stale frame clock");
+  // requestAnimationFrame hands the callback the FRAME's start time, which can
+  // pre-date the performance.now() the animation captured a moment earlier.
+  // Then (now - started) is negative, and a clamp that only caught the top end
+  // let the hero render -85.66% while the diagram beside it read -5.27%. Hand
+  // it a timestamp from five seconds ago and watch.
+  const realRaf = window.requestAnimationFrame;
+  window.requestAnimationFrame = (cb) => realRaf(() => cb(window.performance.now() - 5000));
+  const samples = [];
+  click("attackBtn");
+  for (let i = 0; i < 80; i++) { samples.push(text("heroVal")); await sleep(25); }
+  window.requestAnimationFrame = realRaf;
+  const negative = samples.find((v) => v.trim().startsWith("-"));
+  check("the hero never counts through a negative percentage",
+        !negative, negative ? `saw ${negative}` : `${samples.length} samples, none negative`);
+
+  // The skew leaves the count parked at 0.00% — k only reaches 1 once five
+  // seconds of real time have passed — so re-run it on an honest clock before
+  // asking where it landed. Asserting the landing while still skewed would
+  // fail the fixed build too, which is a test that proves nothing.
+  click("attackBtn");
+  await sleep(4000);
+  check("and on an honest clock it still lands on the real answer",
+        /^\d+\.\d{2}%$/.test(text("heroVal")), text("heroVal"));
+
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
-})();
+})().catch((e) => {
+  // Reaching here means the harness itself broke — a helper used before its
+  // `const`, a missing element. Without this the process just runs out of work
+  // and exits 0, reporting a clean run that stopped a third of the way in.
+  console.log(`\nHARNESS ABORTED: ${e && e.stack ? e.stack : e}`);
+  process.exit(1);
+});
 
 const band4 = (d) => [...d.querySelectorAll("#band .v")].map((e) => e.textContent).join(" ");

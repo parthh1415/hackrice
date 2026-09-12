@@ -357,16 +357,12 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
       "font-size": 12, "font-weight": 500,
       fill: ever ? "var(--ink-0)" : "var(--ink-2)",
     }, name));
-    // The frame SAYS who is insolvent. The null leverage sitting next to it is
-    // only how +inf survives JSON — read the statement, not the side effect, or
-    // the label quietly disappears the day that number serialises as a number.
     const lev = frame.leverage[j];
-    const broke = frame.insolvent ? Boolean(frame.insolvent[j]) : lev === null;
     svg.appendChild(el("text", {
       x: labelX, y: p.y + 15, "font-family": "var(--mono)", "font-size": 11,
       fill: dead ? "var(--alert)" : ever ? "var(--alert)" : "var(--ink-2)",
       style: "font-variant-numeric:tabular-nums",
-    }, broke ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
+    }, lev === null ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
   });
 
   svg.appendChild(el("text", {
@@ -549,7 +545,13 @@ function countTo(target) {
   const dur = 520;
   function tick(now) {
     if (mine !== countGen) return;
-    const k = Math.min(1, (now - started) / dur);
+    // clamp BOTH ends. requestAnimationFrame hands you the frame's start
+    // timestamp, which can pre-date the performance.now() captured moments
+    // earlier when the callback actually runs — so (now - started) goes
+    // negative and target*k renders a large negative percentage. Caught on a
+    // screenshot showing the hero at -85.66% while the diagram beside it read
+    // -5.27%. One-sided clamps are how that happens.
+    const k = Math.max(0, Math.min(1, (now - started) / dur));
     node.textContent = `${(target * k).toFixed(2)}%`;
     if (k < 1) requestAnimationFrame(tick);
     else countTarget = null;
@@ -1123,10 +1125,11 @@ async function boot() {
   }
   // Geist reflows the masthead when it lands, which changes the stage height
   // and invalidates the layout. The obvious fix — await document.fonts.ready
-  // before drawing — is a trap: if the font CDN is slow or blocked, NOTHING
-  // draws. I shipped that version and it rendered an empty stage. So draw
-  // immediately and let watchStage() correct it when the font arrives. Never
-  // block first paint on a third-party request.
+  // before drawing — is a trap: if the font is slow, NOTHING draws. I shipped
+  // that version once and it rendered an empty stage. So draw immediately and
+  // let watchStage() correct it. (The fonts are self-hosted now, so this is
+  // fast and offline-safe, but the rule stands: never block first paint on a
+  // resource you don't control the timing of.)
   watchStage();
   // Provenance for the assumptions panel. Deliberately NOT awaited: awaiting
   // it pushed a whole round trip in front of first paint and every downstream
