@@ -462,6 +462,14 @@ function setEngine(mode, text) {
   $("badgeText").textContent = text;
 }
 
+/* api() puts a cached answer on the badge, and then each caller used to
+   stamp "engine live" over it two lines later — so a replayed run was
+   indistinguishable from a solved one, which is the precise thing the
+   cached badge exists to prevent. A cached answer keeps its own wording. */
+function engineBadge(body, liveText = "engine live") {
+  if (!body.cached) setEngine("live", liveText);
+}
+
 function setSolver(name, stats) {
   $("solverName").textContent = name;
   $("solverStats").innerHTML = stats;
@@ -503,7 +511,7 @@ async function attack() {
     if (!body.found) {
       clearRun();
       showScene("network");
-      setEngine("live", "no break found");
+      engineBadge(body, "no break found");
       $("heroVal").setAttribute("data-idle", "");
       $("heroVal").textContent = "—";
       $("heroSub").textContent = "nothing breaks this system at these settings — raise leverage or impact";
@@ -521,7 +529,7 @@ async function attack() {
     $("heroSub").textContent =
       `${body.asset} · ${body.breached.length} of ${body.funds.length} funds forced to sell` +
       (body.converged ? "" : " · did not converge");
-    setEngine("live", "engine live");
+    engineBadge(body);
     setSolver("grid scan + bisection",
       `<span>names</span> ${body.tickers.length} <span>· step</span> 1.0% <span>·</span> ${ms}ms`);
     $("defendBtn").disabled = false;
@@ -547,7 +555,7 @@ async function boundary() {
     showScene("boundary");
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     drawBoundary($("boundary"), body);
-    setEngine("live", "engine live");
+    engineBadge(body);
     setSolver("parameter sweep",
       `<span>cells</span> ${body.rows * body.cols} <span>·</span> ${ms}ms`);
   } catch (err) {
@@ -567,7 +575,7 @@ async function defend() {
     const { body, ms } = await api(`/api/stabilise?${params()}`);
     stop();
     showScene("split");
-    setEngine("live", "engine live");
+    engineBadge(body);
 
     if (!body.found) {
       // The banner used to be the only thing this branch wrote, so it landed
