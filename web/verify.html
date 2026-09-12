@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verify · Firebreak</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
+    <div class="nav-links">
+      <a href="index.html"    data-page="portfolio">Portfolio</a>
+      <a href="analysis.html" data-page="analysis">Analysis</a>
+      <a href="cascade.html"  data-page="cascade">Cascade</a>
+      <a href="defend.html"   data-page="defend">Defend</a>
+      <a href="verify.html"   data-page="verify">Verify</a>
+    </div>
+    <div class="nav-right">
+      <span class="badge" id="navBadge">No portfolio</span>
+      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <div class="wrap page stack gap-8">
+    <div class="stack gap-3">
+      <span class="eyebrow">Step 5 — Verify</span>
+      <h1>Did it actually help?</h1>
+      <p class="lede">A recommendation is not evidence. Here is the same shock replayed, the
+        break point recomputed, and both portfolios scored across 400 simulated stresses.</p>
+    </div>
+    <div id="root"></div>
+  </div>
+</main>
+<script src="shared.js"></script>
+<script>
+paintNav("verify");
+const r = requireResult("verify");
+if (r && r.validation) {
+  const v = r.validation, s = v.identical_shock, n = v.new_breaking_point, syn = v.synthetic;
+  const sv = (x) => (x === null || x === undefined ? "—" : pct(x, 0));
+  document.getElementById("root").innerHTML = `
+  <div class="stack gap-6">
+    <div class="card">
+      <div class="stats" style="border-top:0">
+        <div class="stat"><div class="k">Break point</div>
+          <div class="v">−${n.before_pct.toFixed(2)}% → <span style="color:var(--positive)">−${n.after_pct.toFixed(2)}%</span></div>
+          <div class="s">+${n.moved_pp.toFixed(2)} points further away</div></div>
+        <div class="stat"><div class="k">Loss at the same shock</div>
+          <div class="v">${pct(s.before_loss)} → <span style="color:var(--positive)">${pct(s.after_loss)}</span></div>
+          <div class="s">${s.before_breaks ? "breached" : "within"} → ${s.after_breaks ? "breached" : "within limit"}</div></div>
+        <div class="stat"><div class="k">Worst of ${syn.scenarios}</div>
+          <div class="v">${pct(syn.before.worst_loss)} → <span style="color:var(--positive)">${pct(syn.after.worst_loss)}</span></div>
+          <div class="s">simulated stresses</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bordered">
+        <span class="card-title">1 — The same shock, replayed</span>
+        <span class="card-desc">${s.note}</span>
+      </div>
+      <div class="card-body tight"><table>
+        <thead><tr><th></th><th class="r">Current book</th><th class="r">Defended book</th></tr></thead>
+        <tbody>
+          <tr><td>Shock</td><td class="r num">${r.asset} −${s.shock_pct.toFixed(2)}%</td><td class="r num">${r.asset} −${s.shock_pct.toFixed(2)}%</td></tr>
+          <tr><td>Portfolio loss</td><td class="r num">${pct(s.before_loss)}</td><td class="r num">${pct(s.after_loss)}</td></tr>
+          <tr><td>Outcome</td>
+            <td class="r"><span class="badge badge-bad"><i></i>Breach</span></td>
+            <td class="r"><span class="badge badge-ok"><i></i>Within limit</span></td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bordered">
+        <span class="card-title">2 — The new break point</span>
+        <span class="card-desc">Recomputed by re-running the same search against the defended
+          book — not derived from the size of the cut.</span>
+      </div>
+      <div class="card-body tight"><table><tbody>
+        <tr><td>Break point, current book</td><td class="r num">−${n.before_pct.toFixed(2)}%</td></tr>
+        <tr><td>Break point, defended book</td><td class="r num">−${n.after_pct.toFixed(2)}%</td></tr>
+        <tr><td>Moved outward by</td><td class="r num">${n.moved_pp.toFixed(2)} points</td></tr>
+        <tr><td>Additional shock now required</td><td class="r num">${((n.moved_ratio - 1) * 100).toFixed(0)}%</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bordered">
+        <span class="card-title">3 — ${syn.scenarios} simulated stresses</span>
+        <span class="card-desc">Both books scored on identical draws. Seed ${syn.seed}, so this
+          reproduces exactly.</span>
+      </div>
+      <div class="card-body tight"><table>
+        <thead><tr><th></th><th class="r">Current</th><th class="r">Defended</th></tr></thead>
+        <tbody>
+          <tr><td>Stayed under the limit</td><td class="r num">${sv(syn.before.survival)}</td><td class="r num">${sv(syn.after.survival)}</td></tr>
+          <tr><td>Median loss</td><td class="r num">${pct(syn.before.median_loss)}</td><td class="r num">${pct(syn.after.median_loss)}</td></tr>
+          <tr><td>95th percentile</td><td class="r num">${pct(syn.before.p95_loss)}</td><td class="r num">${pct(syn.after.p95_loss)}</td></tr>
+          <tr><td>Worst modelled</td><td class="r num">${pct(syn.before.worst_loss)}</td><td class="r num">${pct(syn.after.worst_loss)}</td></tr>
+        </tbody></table></div>
+      <div class="card-footer"><span class="small muted">These are our scenarios, not a
+        probability about the world.</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bordered">
+        <span class="card-title">4 — Historical replay</span>
+        <span class="card-desc">Not available in this build.</span>
+      </div>
+      <div class="card-body">
+        <p class="lede">${v.historical.reason}</p>
+        <p class="lede" style="margin-top:12px">It would answer: ${v.historical.what_it_would_answer}
+          We would rather show you nothing than a number computed from returns we invented.</p>
+      </div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>

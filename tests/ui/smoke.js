@@ -90,7 +90,17 @@ const until = async (what, ok, ms = 20000) => {
 
 const drawn = (id) => () => svg(id) && svg(id).querySelectorAll("circle").length >= 10;
 
-/* A run is on screen when the hero has SETTLED on a number.
+/* Boot is when the NETWORK is drawn and the portfolio is loaded.
+
+   The terminal redesign deliberately does not auto-attack: it renders the
+   network at zero shock and the telemetry reads NOT RUN, because showing the
+   results of a search nobody asked for would contradict that label. So the
+   old predicate — wait for the hero to settle on a percentage — waited
+   forever for a number the idle state is not supposed to have.
+
+   (Kept below: heroReady still describes a SETTLED value rather than a
+   merely well-formed one, which is the lesson from the two versions before
+   it. It is now used after an explicit run, not at boot.)
 
    Two wrong versions before this one, and both are the same error — picking
    an observable that becomes true before the thing you care about is done.
@@ -105,7 +115,7 @@ const drawn = (id) => () => svg(id) && svg(id).querySelectorAll("circle").length
 let _lastHero = null;
 const heroReady = () => {
   const v = d.getElementById("heroVal").textContent;
-  const settled = /^\d+\.\d{2}%$/.test(v) && v === _lastHero;
+  const settled = /^−?\d+\.\d{2}%$/.test(v) && v === _lastHero;
   _lastHero = v;
   return settled;
 };
@@ -134,14 +144,23 @@ async function requireServer() {
   // names a rendering bug — "assets drawn", "edges drawn", "metrics band
   // filled" — when the truth is that the app's boot fetch had not returned.
   // A fixed 6s is a bet on the server being fast.
-  await until("the app's own boot run to finish",
-              () => drawn("network")() && heroReady());
+  await until("the terminal to boot", () => drawn("network")() &&
+              d.querySelectorAll("#holdingsBox .h").length > 0);
+  check("the terminal boots with a portfolio and a network, and no run",
+        d.getElementById("shockState").textContent.trim() === "NOT RUN",
+        d.getElementById("shockState").textContent);
+
+  // Now ask it the question. Everything below tests the answer.
+  const bootGen = window.state ? window.state.request : null;
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await until("the reverse test to land", () => heroReady() &&
+              d.getElementById("shockState").textContent.trim() === "FOUND");
 
   console.log("BEAT 1+2 — attack and cascade");
   const net = svg("network");
   const vb = (net.getAttribute("viewBox") || "").split(" ").map(Number);
   check("no runtime errors", errors.length === 0, errors.join("; "));
-  check("hero number populated", /^\d+\.\d{2}%$/.test(d.getElementById("heroVal").textContent),
+  check("hero number populated", /^−?\d+\.\d{2}%$/.test(d.getElementById("heroVal").textContent),
         d.getElementById("heroVal").textContent);
   check("viewBox matches the stage", vb[2] > 1000 && vb[3] > 500, net.getAttribute("viewBox"));
   check("assets drawn", net.querySelectorAll("circle").length >= 10);

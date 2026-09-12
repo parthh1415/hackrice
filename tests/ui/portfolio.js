@@ -71,46 +71,50 @@ catch (e) { console.log("throw at eval: " + e.message); process.exit(1); }
   await requireServer();
   const payload = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.1")).json();
 
-  console.log("STEP 1 — the app opens on a portfolio");
-  check("the onboarding layer is showing", !d.getElementById("onboard").hidden);
-  check("step 1 is the current step",
-        d.querySelector('#steps span[data-step="1"]').classList.contains("on"));
+  console.log("BOOT — the terminal opens live, with no onboarding");
+  check("there is no onboarding overlay to dismiss",
+        d.getElementById("onboard") === null);
+  check("the demo portfolio is already loaded",
+        d.querySelectorAll("#holdingsBox .h").length === payload.portfolio.holdings.length,
+        `${d.querySelectorAll("#holdingsBox .h").length} rows`);
+  check("the network is already on the stage",
+        d.getElementById("network").querySelectorAll("circle").length >= 10);
+  check("and the telemetry says NOT RUN rather than showing a stale answer",
+        text("shockState") === "NOT RUN", text("shockState"));
   check("brokerage is disabled rather than pretending",
         d.getElementById("connectBtn").disabled === true);
-  check("and the copy says why", /not configured/i.test(text("connectNote")));
+  check("and the copy says why", /not included in this build/i.test(text("connectNote")));
+  eq("the context bar names the portfolio", text("ctxPortfolio"), "DEMO_01");
+  eq("and the loss limit", text("ctxLimit"), "10.00%");
 
-  console.log("\nSTEP 1 — load the demo portfolio");
-  click("useDemo");
-  await until("the holdings table", () => !d.getElementById("holdingsBox").hidden);
-  const rows = [...d.getElementById("holdingsBox").querySelectorAll(".row")].slice(1);
-  eq("every holding is listed", rows.length, payload.portfolio.holdings.length);
-  check("the total is the payload's total",
-        text("holdingsBox").includes("$12.3K"), text("holdingsBox").slice(0, 60));
-  check("Continue is enabled once a portfolio is loaded",
-        d.getElementById("toLimit").disabled === false);
+  console.log("\nATTACK — one click, no wizard");
+  click("attackBtn");
+  await until("the reverse test", () => /−\d+\.\d{2}%/.test(text("heroVal")));
 
-  console.log("\nSTEP 2 — the risk limit");
-  click("toLimit");
-  check("pane 2 is showing", !d.getElementById("pane2").hidden);
-  check("10% is the default", d.querySelector('#limits button[data-limit="0.10"]').classList.contains("on"));
-
-  console.log("\nSTEP 3 — find my firebreak");
-  click("findBtn");
-  await until("the result hero", () => /−\d+\.\d{2}%/.test(text("resultHero")));
-
-  eq("the hero names the payload's asset and shock",
-     text("resultHero"), `${payload.asset} −${payload.pct.toFixed(2)}%`);
-  const grid = text("resultGrid");
-  check("direct loss is the payload's", grid.includes(`${(payload.direct_loss * 100).toFixed(2)}%`),
-        grid.replace(/\s+/g, " ").slice(0, 90));
-  check("cascade loss is the payload's", grid.includes(`${(payload.cascade_loss * 100).toFixed(2)}%`));
-  check("amplification is the payload's", grid.includes(`${payload.amplification.toFixed(2)}×`));
+  eq("the telemetry hero is the payload's shock",
+     text("heroVal"), `−${payload.pct.toFixed(2)}%`);
+  eq("and names the asset", text("heroSub"), payload.asset);
+  eq("direct loss", text("teleDirect"), `${(payload.direct_loss * 100).toFixed(2)}%`);
+  eq("cascade loss", text("teleCascade"), `${(payload.cascade_loss * 100).toFixed(2)}%`);
+  eq("amplification", text("teleAmp"), `${payload.amplification.toFixed(2)}×`);
+  eq("breached books", text("teleBreached"), String(payload.breached.length));
   check("the cascade loss exceeds the direct loss — the product's whole claim",
         payload.cascade_loss > payload.direct_loss,
         `${payload.direct_loss} vs ${payload.cascade_loss}`);
+  eq("the shock state reads FOUND", text("shockState"), "FOUND");
+  check("the context bar carries the shock",
+        text("ctxShock").includes(payload.asset), text("ctxShock"));
 
-  console.log("\nSTEP 4 — the cascade, which is the old app");
-  click("watchBtn");
+  console.log("\nEVENT STREAM — derived from the run, not decoration");
+  const log = text("eventBody");
+  check("it logged the break point it found",
+        log.includes(`${payload.asset} −${payload.pct.toFixed(2)}%`), log.slice(-160));
+  check("and the amplification it measured",
+        log.includes(`${payload.amplification.toFixed(2)}×`), log.slice(-160));
+
+  console.log("\nCASCADE — the same engine, replaying the portfolio's own shock");
+  d.querySelector('#tabs button[data-tab="cascade"]').dispatchEvent(
+    new window.Event("click", { bubbles: true }));
   await until("the network to draw",
               () => d.getElementById("network").querySelectorAll("circle").length >= 10);
   check("the institutional network still renders real nodes",
@@ -118,8 +122,8 @@ catch (e) { console.log("throw at eval: " + e.message); process.exit(1); }
   check("and its timeline has a frame per round",
         d.getElementById("track").children.length >= 2);
 
-  console.log("\nSTEP 5 — the fix");
-  click("fixBtn");
+  console.log("\nDEFEND — the minimum intervention");
+  click("defendBtn");
   await until("the fix line", () => !d.getElementById("fixLine").hidden && /Reduce/.test(text("fixLine")));
 
   /* Wait for the SPLIT to finish before believing the fix line.
@@ -140,20 +144,20 @@ catch (e) { console.log("throw at eval: " + e.message); process.exit(1); }
         text("fixLine").includes(fix.symbol), text("fixLine"));
   check("and its dollar amount", text("fixLine").includes("$478"), text("fixLine"));
   check("it says the money went to cash", /moved to cash/i.test(text("fixLine")));
-  check("it is the USER's recommendation, not the institutional one",
-        /Reduce/.test(text("fixLine")) && !/Citadel|gross assets/.test(text("fixLine")),
+  check("it is the PORTFOLIO's recommendation, not the institutional one",
+        /REDUCE/.test(text("fixLine")) && !/Citadel|gross assets/.test(text("fixLine")),
         text("fixLine"));
+  check("the locked shock is stated where it cannot be missed",
+        text("lockedShock").includes(`${payload.asset} −${payload.pct.toFixed(2)}%`),
+        text("lockedShock"));
   check("and that a retail position does not move the market",
         /does not move the market/i.test(text("boughtLine")), text("boughtLine"));
 
-  console.log("\nSTEP 6 — validation");
-  await sleep(1500);
-  const stampBtn = [...d.querySelectorAll(".split-stamp button")][0];
-  check("a validate button appears after the fix", !!stampBtn);
-  if (stampBtn) {
-    clickEl(stampBtn);
-    await until("the validation card", () => !d.getElementById("sceneValidate").hidden);
-  }
+  console.log("\nVERIFY — the evidence");
+  await sleep(1200);
+  d.querySelector('#tabs button[data-tab="verify"]').dispatchEvent(
+    new window.Event("click", { bubbles: true }));
+  await until("the validation card", () => !d.getElementById("sceneValidate").hidden);
 
   const v = payload.validation;
   const top = text("validTop");

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analysis · Firebreak</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230D0D0D'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23FF3B3F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
+    <div class="nav-links">
+      <a href="index.html"    data-page="portfolio">Portfolio</a>
+      <a href="analysis.html" data-page="analysis">Analysis</a>
+      <a href="cascade.html"  data-page="cascade">Cascade</a>
+      <a href="defend.html"   data-page="defend">Defend</a>
+      <a href="verify.html"   data-page="verify">Verify</a>
+    </div>
+    <div class="nav-right">
+      <span class="badge" id="navBadge">No portfolio</span>
+      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <div class="wrap page stack gap-8" id="root">
+    <div class="stack gap-3">
+      <span class="eyebrow">Step 2 — Reverse stress test</span>
+      <h1 id="title">Searching…</h1>
+      <p class="lede" id="sub">Scanning every modelled name for the smallest shock that crosses your limit.</p>
+    </div>
+    <div class="card" id="resultCard" hidden>
+      <div class="card-header bordered">
+        <span class="card-title">Nearest modelled break point</span>
+        <span class="card-desc" id="resultDesc">—</span>
+      </div>
+      <div class="card-body">
+        <div class="figure">
+          <span class="big bad num" id="big">—</span>
+          <span class="small muted" id="bigSub">—</span>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="card-footer">
+        <a class="btn btn-primary" href="cascade.html">See why the loss grows</a>
+        <a class="btn btn-outline" href="index.html">Change the portfolio</a>
+      </div>
+    </div>
+    <div class="card" id="whyCard" hidden>
+      <div class="card-header"><span class="card-title">Why the loss is bigger than the shock</span></div>
+      <div class="card-body"><p class="lede" id="why">—</p></div>
+    </div>
+  </div>
+</main>
+<script src="shared.js"></script>
+<script>
+paintNav("analysis");
+
+(async () => {
+  const s = FB.state;
+  if (!s.portfolio) { location.replace("index.html"); return; }
+  const payload = s.rows ? { holdings: s.rows, source: "csv" } : {};
+  let body;
+  try {
+    body = await api(`/api/portfolio/full?limit=${s.limit || 0.10}`, payload);
+  } catch (e) {
+    document.getElementById("title").textContent = "The engine did not answer";
+    document.getElementById("sub").textContent = e.message;
+    return;
+  }
+  FB.set({ result: body });
+  paintNav("analysis");
+
+  if (body.refused) {
+    const missing = (body.unmodelled || []).join(", ");
+    document.getElementById("title").textContent = "We can't model this portfolio";
+    document.getElementById("sub").innerHTML = missing
+      ? `<b>${missing}</b> ${body.unmodelled.length > 1 ? "are" : "is"} outside the modelled
+         universe, so there is no crowding network to reason about. Rather than drop the holding
+         and quietly renormalise everything else, we stop.<br><br>
+         Modelled names: ${(body.modelled || []).join(", ")}.`
+      : body.reason;
+    return;
+  }
+  if (!body.found) {
+    document.getElementById("title").textContent = "No break point found";
+    document.getElementById("sub").textContent =
+      body.reason + " That is not the same as safe — we searched a range and found nothing in it.";
+    return;
+  }
+
+  document.getElementById("title").textContent = "Here is what breaks it";
+  document.getElementById("sub").textContent =
+    `The smallest single-name move that pushes this portfolio past a ${pct(body.params.limit, 0)} loss.`;
+  document.getElementById("resultCard").hidden = false;
+  document.getElementById("whyCard").hidden = false;
+  document.getElementById("resultDesc").textContent =
+    `Searched every modelled name. Resolution 0.005 percentage points.`;
+  document.getElementById("big").textContent = `${body.asset} −${body.pct.toFixed(2)}%`;
+  document.getElementById("bigSub").textContent =
+    `At this shock your portfolio loses ${pct(body.cascade_loss)}, against a limit of ${pct(body.params.limit, 0)}.`;
+
+  document.getElementById("stats").innerHTML = [
+    ["Direct loss", pct(body.direct_loss), "the shock alone", ""],
+    ["After cascade", pct(body.cascade_loss), "including forced selling", "bad"],
+    ["Amplification", `${body.amplification.toFixed(2)}×`, "the crowding multiplier", ""],
+    ["Cascade rounds", String(body.rounds), `${body.breached.length} books breached`, ""],
+  ].map(([k, v, s2, cls]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s2}</div></div>`
+  ).join("");
+
+  document.getElementById("why").textContent =
+    `A ${body.pct.toFixed(2)}% fall in ${body.asset} costs this portfolio ${pct(body.direct_loss)} directly. ` +
+    `But ${body.breached.length} of the five institutional books we model cross their leverage limit at ` +
+    `that price and are forced to sell — and because they hold the same names you do, their selling ` +
+    `pushes your other positions down too. That is what turns ${pct(body.direct_loss)} into ${pct(body.cascade_loss)}.`;
+})();
+</script>
+</body>
+</html>

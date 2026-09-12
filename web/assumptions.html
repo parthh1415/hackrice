@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assumptions · Firebreak</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
+    <div class="nav-links">
+      <a href="index.html"    data-page="portfolio">Portfolio</a>
+      <a href="analysis.html" data-page="analysis">Analysis</a>
+      <a href="cascade.html"  data-page="cascade">Cascade</a>
+      <a href="defend.html"   data-page="defend">Defend</a>
+      <a href="verify.html"   data-page="verify">Verify</a>
+    </div>
+    <div class="nav-right">
+      <span class="badge" id="navBadge">No portfolio</span>
+      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
+    </div>
+  </div>
+</nav>
+<main>
+  <div class="wrap page stack gap-8">
+    <div class="stack gap-3">
+      <span class="eyebrow">Methodology</span>
+      <h1>What is measured, and what we declared</h1>
+      <p class="lede">Firebreak is a stress-testing model, not a forecast. Every input below is
+        labelled by where it came from.</p>
+    </div>
+    <div class="card">
+      <div class="card-body tight"><table><tbody id="rows"></tbody></table></div>
+    </div>
+  </div>
+</main>
+<script src="shared.js"></script>
+<script>
+paintNav("assumptions");
+(async () => {
+  let d = {};
+  try { d = await api("/api/dataset"); } catch {}
+  const rows = [
+    ["measured", "Holdings", `Real, and the only thing here that is. SEC 13F-HR filings, period
+      ${d.quarter || "2026-06-30"}, ${(d.funds || []).length || 5} managers across
+      ${(d.tickers || []).length || 10} names, $40.9B gross notional. Reproducible from EDGAR.`],
+    ["declared", "Gross leverage", "No fund discloses it. It is a model assumption, applied uniformly."],
+    ["declared", "Breach band", "How far past target a book runs before it is forced to sell. This swings the headline harder than leverage or price impact."],
+    ["declared", "Price impact", "A model, not a measurement. Δp/p = −γ · (dollars sold) / ADV, linear in participation. At γ=0 there is no contagion and amplification is exactly 1.00 — that is the control."],
+    ["declared", "ADV", "Order-of-magnitude daily dollar volume. GOOGL's column sums Class A, Class C and two depositary-share lines, and its figure is Alphabet's combined volume across them."],
+    ["limit", "What 13F omits", "Long-only US equity, quarterly, filed 45 days late. Options and bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us."],
+    ["limit", "Your portfolio is an observer", "It takes the price damage; it does not join the network. A retail account does not move markets, so your fix changes how much of the cascade reaches you — not whether the cascade happens."],
+    ["limit", "Not a prediction", "A break point is the smallest shock our model says crosses your limit under these assumptions. It is not a proven threshold and not a forecast."],
+  ];
+  const colour = { measured: "var(--positive)", declared: "hsl(38 92% 60%)", limit: "var(--muted-foreground)" };
+  document.getElementById("rows").innerHTML = rows.map(([kind, name, body]) => `
+    <tr><td style="width:210px;vertical-align:top">
+        <div class="stack gap-2">
+          <span style="font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:${colour[kind]}">${kind}</span>
+          <b>${name}</b></div></td>
+      <td class="small muted" style="line-height:1.6">${body}</td></tr>`).join("");
+})();
+</script>
+</body>
+</html>
