@@ -17,7 +17,8 @@ const SETTLE_HOLD = 180;
 
 const state = {
   run: null,        // last /api/break payload
-  layout: null,     // computed once per topology, never re-run
+  boundary: null,   // last /api/boundary payload, kept so a reflow can redraw
+  layout: null,     // rebuilt whenever the measured stage moves
   frame: 0,
   timers: [],
   beat: "idle",
@@ -91,26 +92,37 @@ function computeLayout(run, width, height) {
   const assetOrder = assets.map((_, i) => i).sort((a, b) => exposure[b] - exposure[a]);
   const fundOrder = portfolios.map((_, j) => j).sort((a, b) => gross[b] - gross[a]);
 
-  const padY = 40;
+  const padY = 34;
   const slotA = (height - 2 * padY) / assets.length;
   const slotF = (height - 2 * padY) / portfolios.length;
+
+  // Dividing by the max compresses ten similarly-sized megacaps into ten
+  // identical dots — the size channel does nothing. Normalise across the
+  // observed range so the actual spread is what you see.
+  const minExp = Math.min(...exposure), minGross = Math.min(...gross);
+  const spanExp = Math.max(1e-9, maxExp - minExp);
+  const spanGross = Math.max(1e-9, maxGross - minGross);
 
   const assetPos = [], fundPos = [];
   assetOrder.forEach((i, rank) => {
     assetPos[i] = {
       x: width * 0.24,
       y: padY + (rank + 0.5) * slotA,
-      r: 4 + 10 * Math.sqrt(exposure[i] / maxExp),
+      r: 5 + 11 * (exposure[i] - minExp) / spanExp,
     };
   });
   fundOrder.forEach((j, rank) => {
-    const side = 10 + 14 * Math.sqrt(gross[j] / maxGross);
-    fundPos[j] = { x: width * 0.76, y: padY + (rank + 0.5) * slotF, side };
+    fundPos[j] = {
+      x: width * 0.76,
+      y: padY + (rank + 0.5) * slotF,
+      side: 13 + 15 * (gross[j] - minGross) / spanGross,
+    };
   });
 
   const weights = holdings.map((row, j) => row.map((v) => (gross[j] > 0 ? v / gross[j] : 0)));
+  const maxWeight = Math.max(1e-9, ...weights.flat());
 
-  return { assetPos, fundPos, weights, width, height, gross };
+  return { assetPos, fundPos, weights, maxWeight, width, height, gross };
 }
 
 /* ───────────────────────────── the network ───────────────────────────── */
@@ -159,16 +171,25 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
     }));
   });
 
-  // edges, straight — a curve implies a flow direction that isn't there at rest
+  // Edges carry STRUCTURE. Nodes carry STATE. Recolouring every edge of a
+  // breached fund turned 47 of 50 edges red, at which point red stopped
+  // meaning "breached" and started meaning "most things". Edges stay neutral;
+  // only the flow strokes and the nodes are ever red.
+  //
+  // This bipartite graph is near-complete, so edge *presence* says almost
+  // nothing — the information is entirely in the weights. Opacity scales
+  // superlinearly with weight so a 30% position reads and a 2% one recedes
+  // to context. Every edge is still drawn; none is hidden.
   holdings.forEach((row, j) =>
     row.forEach((v, i) => {
       if (v <= 0) return;
-      const live = breachedEver.has(j);
+      const w = L.weights[j][i] / L.maxWeight;
       svg.appendChild(el("line", {
         x1: L.assetPos[i].x, y1: L.assetPos[i].y,
         x2: L.fundPos[j].x, y2: L.fundPos[j].y,
-        stroke: live ? "var(--alert-45)" : "var(--rule-hi)",
-        "stroke-width": (0.5 + 6 * L.weights[j][i]).toFixed(2),
+        stroke: "var(--ink-0)",
+        opacity: (0.04 + 0.30 * Math.pow(w, 1.8)).toFixed(3),
+        "stroke-width": (0.5 + 4.5 * Math.pow(w, 1.3)).toFixed(2),
       }));
     })
   );
@@ -469,7 +490,9 @@ async function boundary() {
   try {
     const { body, ms } = await api(`/api/boundary?${params()}`);
     stop();
+    state.boundary = body;
     showScene("boundary");
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     drawBoundary($("boundary"), body);
     setEngine("live", "engine live");
     setSolver("parameter sweep",
@@ -660,7 +683,13 @@ async function boot() {
     setEngine("cached", "server down");
     return;
   }
-  // never an empty stage — the first frame is a thumbnail
+  // Geist reflows the masthead when it lands, which changes the stage height
+  // and invalidates the layout. The obvious fix — await document.fonts.ready
+  // before drawing — is a trap: if the font CDN is slow or blocked, NOTHING
+  // draws. I shipped that version and it rendered an empty stage. So draw
+  // immediately and let watchStage() correct it when the font arrives. Never
+  // block first paint on a third-party request.
+  watchStage();
   await attack();
 }
 
@@ -677,18 +706,37 @@ $("replayBtn").addEventListener("click", () => {
 });
 $("boundaryBtn").addEventListener("click", boundary);
 $("defendBtn").addEventListener("click", defend);
+/* A window resize listener is not enough. The Geist webfont lands after
+   first paint, reflows the masthead, and the stage changes height — so the
+   layout was computed against a box that no longer exists and the diagram
+   renders short. Observe the stage itself and it follows every reflow,
+   font load included. */
+function watchStage() {
+  if (typeof ResizeObserver === "undefined") return;
+  let settle = null;
+  new ResizeObserver(() => {
+    clearTimeout(settle);
+    settle = setTimeout(redrawCurrentScene, 60);
+  }).observe($("stage"));
+}
+
+function redrawCurrentScene() {
+  if (state.beat === "network" && state.run) {
+    drawNetwork($("network"), state.run, state.frame);
+  } else if (state.beat === "split" && split.before) {
+    const half = measure($("netBefore"));
+    split.layout = computeLayout(split.before, half.width, half.height);
+    splitFrame("before", $("netBefore"), split.before.frames.length - 1);
+    splitFrame("after", $("netAfter"), split.after.frames.length - 1);
+  } else if (state.beat === "boundary" && state.boundary) {
+    drawBoundary($("boundary"), state.boundary);
+  }
+}
+
 let resizeTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (!state.run) return;
-    if (state.beat === "network") drawNetwork($("network"), state.run, state.frame);
-    if (state.beat === "split" && split.before) {
-      split.layout = computeLayout(split.before, ...Object.values(measure($("netBefore"))));
-      splitFrame("before", $("netBefore"), split.before.frames.length - 1);
-      splitFrame("after", $("netAfter"), split.after.frames.length - 1);
-    }
-  }, 120);
+  resizeTimer = setTimeout(redrawCurrentScene, 120);
 });
 
 boot();

@@ -2,3 +2,4 @@ __pycache__/
 data/cache/
 *.xml
 .env
+tests/ui/node_modules/
