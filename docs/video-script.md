@@ -193,15 +193,16 @@ the band where the shading flips from white to red.
 > the right-hand columns and asks why they're cooler, that's why: blending toward the mean dilutes
 > the shocked name. Don't claim a crowding threshold on camera.*
 >
-> *And don't oversell "right on the edge". Where the leverage boundary sits is set by the breach
-> band we chose: at the same −5% reference, band 1.02 would put it near λ 2.4 and band 1.10 near
-> λ 6.7. The map's shape is the finding; the marker sitting near the line at band 1.05 is partly a
-> consequence of picking 1.05. If a judge presses, concede it immediately — "that's a parameter we
-> declared, and here's how much it moves" is a much better answer than defending the coincidence.*
+> *And don't oversell "right on the edge". Where the leverage boundary sits is set by the breach band
+> we chose. The sweep honours `band`, so you can show this: at the same −5% reference, band 1.02 puts
+> the boundary at λ≈2.4, band 1.05 at λ≈4.5, band 1.10 at λ≈7.1, and at band 1.30 nothing in the grid
+> cascades at all. The map's shape is the finding; the marker sitting near the line at band 1.05 is
+> partly a consequence of picking 1.05. If a judge presses, concede it immediately — "that's a
+> parameter we declared, and here's how much it moves" is a much better answer than defending the
+> coincidence.*
 >
-> *Known limitation worth not walking into: `/api/boundary` currently reads `band` and echoes it back
-> in `params` but **does not apply it** to the sweep, so the grid looks identical at every band. Do
-> not demonstrate band-vs-boundary live until that is fixed.*
+> *If you want to demonstrate it live, `&band=` on the URL re-sweeps the grid. Rehearse it: it means
+> typing in the address bar on camera, and the band has no slider.*
 
 
 ### Beat 4 — DEFEND (1:57 – 2:42)

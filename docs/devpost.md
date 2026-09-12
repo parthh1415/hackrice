@@ -56,9 +56,10 @@ It puts a marker on the configuration you are currently looking at: leverage 5.0
 just past the leverage boundary, where amplification jumps from 1.00 to 1.86 between λ≈4.5 and
 λ≈5.0. The question it answers is whether you got unlucky or whether you are standing somewhere
 structurally bad. Worth saying plainly: *where* that boundary sits is a function of the breach band
-we declared. At the same −5% reference, a band of 1.02 would put it near λ 2.4 and a band of 1.10
-near λ 6.7. The shape of the map is the finding; the location of the marker on it is a consequence of
-parameters we chose and show.
+we declared, and the sweep honours it: at the same −5% reference, a band of 1.02 puts the boundary at
+λ≈2.4 and a band of 1.10 at λ≈7.1, and at 1.30 nothing in the grid cascades at all. The shape of the
+map is the finding; the location of the marker on it is a consequence of parameters we chose and
+show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position for the smallest reduction
 that survives the *same* shock. The answer at these settings: **Millennium cuts its GOOGL position by

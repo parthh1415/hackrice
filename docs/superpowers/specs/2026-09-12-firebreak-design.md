@@ -436,13 +436,13 @@ Tests 2 and 6 protect the headline claim. Test 7 protects the demo.
 | Scope overrun | Scene 4 cut first, then heatmap, then stabilisation. Scenes 1 + cascade animation are the irreducible core. |
 | Non-monotone damage breaks bisection | Grid-bracket then bisect (§3.9). Test 6. |
 
-**Open bug, 2026-09-12.** `_boundary` in `api.py` reads `band` off the guarded knobs and echoes it
-back in both `band` and `params`, but the cascade call inside the sweep still hardcodes
-`max_leverage = lev * 1.05`. The phase diagram is therefore byte-identical at band 1.02, 1.05 and
-1.10 while the payload claims the band was applied — the exact "confident answer to a different
-question" the clamping code exists to prevent. Wired through, the as-filed critical leverage would
-move from λ≈2.4 (band 1.02) to λ≈4.1 (1.05) to λ≈6.7 (1.10), and nothing cascades at 1.30. Do not
-demonstrate band-vs-boundary until it is fixed.
+**Fixed 2026-09-12** (was: `_boundary` read `band`, echoed it back in `band` and `params`, then
+hardcoded `max_leverage = lev * 1.05` inside the sweep, so the phase diagram was byte-identical at
+every band while the payload claimed otherwise — the exact "confident answer to a different question"
+the clamping code exists to prevent). The sweep applies the band now, and the as-filed critical
+leverage moves with it: **λ≈2.37 at band 1.02, λ≈4.53 at 1.05, λ≈7.13 at 1.10, and nothing in the
+grid cascades at 1.30.** Which is the point of §9's bullet — where the boundary sits is a
+consequence of a parameter we declared, not a measurement.
 
 ---
 
