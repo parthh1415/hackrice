@@ -4,9 +4,12 @@ Prices are normalised to 1.0 at t0, so the holdings matrix you pass in can be
 straight dollar values off a 13F and the units work out.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 
 _TINY = 1e-12
+_FLOOR = 1e-6  # prices can sag but never go negative
 
 
 class Book:
@@ -77,3 +80,108 @@ class Book:
         )
         self.debt -= raise_
         return sold.sum(axis=0)
+
+
+@dataclass
+class CascadeResult:
+    """What came out of one run. `trajectory` is what the UI animates."""
+
+    rounds: int
+    breached: list
+    prices: np.ndarray
+    shock_loss: float
+    final_loss: float
+    amplification: float
+    trajectory: list
+
+    def as_dict(self):
+        return {
+            "rounds": self.rounds,
+            "breached": self.breached,
+            "prices": self.prices.tolist(),
+            "metrics": {
+                "shock_loss": self.shock_loss,
+                "final_loss": self.final_loss,
+                "amplification": self.amplification,
+            },
+            "trajectory": self.trajectory,
+        }
+
+
+def run_cascade(
+    holdings,
+    leverage,
+    max_leverage,
+    target_leverage,
+    gamma,
+    adv,
+    shock,
+    max_rounds=12,
+):
+    """Shock the prices, then let forced selling chase itself until it settles.
+
+    Every round: work out who's over their limit, make them sell, push the
+    prices of whatever they sold, go again. Usually dies out in two or three
+    rounds. If it doesn't, that's the interesting case.
+    """
+    book = Book(holdings, leverage)
+    equity_start = book.equity().sum()
+
+    book.shock(shock)
+    # baseline for amplification: the damage before anyone is forced to act.
+    # has to be equity-denominated, same as final_loss, or the ratio just
+    # reports the leverage ratio back at you.
+    equity_after_shock = book.equity().sum()
+
+    adv = np.asarray(adv, dtype=float)
+    breached = set()
+    trajectory = [_snapshot(book, 0, [])]
+    rounds = 0
+
+    for step in range(1, max_rounds + 1):
+        hit = _over_limit(book, max_leverage)
+        if not hit:
+            break
+        rounds = step
+        breached.update(hit)
+
+        sold = book.deleverage(max_leverage, target_leverage)
+        book.prices = book.prices * np.maximum(1.0 - gamma * sold / adv, _FLOOR)
+        trajectory.append(_snapshot(book, step, hit))
+
+    equity_end = book.equity().sum()
+    shock_loss = (equity_start - equity_after_shock) / equity_start
+    final_loss = (equity_start - equity_end) / equity_start
+    amplification = final_loss / shock_loss if abs(shock_loss) > _TINY else 1.0
+
+    return CascadeResult(
+        rounds=rounds,
+        breached=sorted(breached),
+        prices=book.prices.copy(),
+        shock_loss=float(shock_loss),
+        final_loss=float(final_loss),
+        amplification=float(amplification),
+        trajectory=trajectory,
+    )
+
+
+def _over_limit(book, max_leverage):
+    equity = book.equity()
+    assets = book.assets()
+    solvent = equity > _TINY
+    lev = np.divide(assets, equity, out=np.full_like(assets, np.inf), where=solvent)
+    return [
+        j
+        for j in range(len(assets))
+        if solvent[j] and lev[j] > np.asarray(max_leverage, dtype=float)[j] + _TINY
+    ]
+
+
+def _snapshot(book, step, hit):
+    return {
+        "t": step,
+        "prices": book.prices.tolist(),
+        "leverage": book.leverage(),
+        "equity": book.equity().tolist(),
+        "breached": list(hit),
+    }
