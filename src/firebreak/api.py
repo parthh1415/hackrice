@@ -281,6 +281,21 @@ def record_golden(specs=None, out=None):
         payload["cached"] = True
         payload["cached_for"] = _knobs(route, params)
         payload["cached_exact"] = True
+        # A wall-clock duration measured on whatever machine last ran this
+        # script is not a fact about the request being served, and baking it
+        # in cost us the one check that would catch real drift: every
+        # re-record rewrote all ten stabilise files for `solve_ms: 11 -> 12`
+        # and nothing else, so a golden-vs-live diff was never clean enough
+        # to read. The UI already falls back to the elapsed time of the
+        # actual request (`e.solve_ms || ms`), which is the honest number.
+        # Null, not absent: a recording has to keep the same key shape as a
+        # live response, and test_demo_cache caught the first version of this
+        # deleting the key outright. null says "this run measured nothing",
+        # which is true, and the UI's `e.solve_ms || ms` then shows how long
+        # the replay actually took.
+        engine = payload.get("engine")
+        if isinstance(engine, dict) and "solve_ms" in engine:
+            engine["solve_ms"] = None
         path = out / (name + ".json")
         path.write_text(json.dumps(payload))
         written.append(path)
@@ -568,7 +583,13 @@ def _boundary(params):
         # them with the clamping record next to it and one without. A caller
         # reading the bare copy could not tell a value it asked for from a
         # value we quietly pulled back into range. `params` is the contract.
-        "params": knobs,
+        #
+        # And `breaches` is dropped from it here, because this endpoint never
+        # reads one. _guarded emits it for every caller, so the sweep was
+        # publishing "breaches": 2 — a default nothing applied — inside the
+        # block the interface contract calls authoritative. A phantom knob in
+        # the authoritative block is worse than no knob at all.
+        "params": {k: v for k, v in knobs.items() if k != "breaches"},
         "reference_shock": _REF_SHOCK,
         "reference_kind": "single-name",
         "here": {
