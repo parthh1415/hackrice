@@ -402,20 +402,41 @@ function paintTimeline(current) {
 
 /* ───────────────────────────── metrics band ───────────────────────────── */
 
+const BAND_LABELS = ["Shock loss", "After cascade", "Amplification", "Breaches", "Rounds"];
+
+const bandHTML = (cells) => cells
+  .map(([l, v, s]) =>
+    `<div class="cell"${s ? ` data-state="${s}"` : ""}><span class="v num">${v}</span><span class="l">${l}</span></div>`)
+  .join("");
+
 function paintBand(run, t) {
   const m = run.metrics;
   const breachedSoFar = new Set(run.frames.slice(0, t + 1).flatMap((f) => f.breached)).size;
-  const cells = [
-    ["Shock loss", pct1(m.shock_loss), ""],
-    ["After cascade", pct1(m.final_loss), "hot"],
-    ["Amplification", mult(m.amplification), "hot"],
-    ["Breaches", `${breachedSoFar}`, breachedSoFar ? "hot" : ""],
-    ["Rounds", `${t} / ${run.frames.length - 1}`, ""],
-  ];
-  $("band").innerHTML = cells
-    .map(([l, v, s]) =>
-      `<div class="cell"${s ? ` data-state="${s}"` : ""}><span class="v num">${v}</span><span class="l">${l}</span></div>`)
-    .join("");
+  $("band").innerHTML = bandHTML([
+    [BAND_LABELS[0], pct1(m.shock_loss), ""],
+    [BAND_LABELS[1], pct1(m.final_loss), "hot"],
+    [BAND_LABELS[2], mult(m.amplification), "hot"],
+    [BAND_LABELS[3], `${breachedSoFar}`, breachedSoFar ? "hot" : ""],
+    [BAND_LABELS[4], `${t} / ${run.frames.length - 1}`, ""],
+  ]);
+}
+
+/* Everything downstream of a run, back to blank. Without this the no-break
+   answer left the PREVIOUS cascade sitting on the stage: the hero read
+   "nothing breaks this system at these settings" while the band under it
+   read 9.1% loss, 1.87× amplification and 4 breaches, Stabilise was still
+   enabled, and Replay would cheerfully re-animate the run we had just
+   disowned. Two contradictory answers on screen at once. */
+function clearRun() {
+  stopAnimations();
+  state.run = null;
+  state.layout = null;
+  state.frame = 0;
+  $("network").textContent = "";
+  $("track").textContent = "";
+  $("roundLabel").textContent = "no run";
+  $("band").innerHTML = bandHTML(BAND_LABELS.map((l) => [l, "—", ""]));
+  $("defendBtn").disabled = true;
 }
 
 /* ────────────────────────────── hero number ───────────────────────────── */
@@ -480,6 +501,8 @@ async function attack() {
     const { body, ms } = await api(`/api/break?${params()}`);
     stop();
     if (!body.found) {
+      clearRun();
+      showScene("network");
       setEngine("live", "no break found");
       $("heroVal").setAttribute("data-idle", "");
       $("heroVal").textContent = "—";
