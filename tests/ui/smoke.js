@@ -90,12 +90,25 @@ const until = async (what, ok, ms = 20000) => {
 
 const drawn = (id) => () => svg(id) && svg(id).querySelectorAll("circle").length >= 10;
 
-/* A run is on screen when the HERO has a number, not when the network has
-   circles. The first version of the boot predicate waited on circles and
-   returned too early: the network renders, then the count-up runs, so the
-   very next check read the hero mid-animation and saw "—". Picking the wrong
-   observable is how a predicate becomes just a faster sleep. */
-const heroReady = () => /^\d+\.\d{2}%$/.test(d.getElementById("heroVal").textContent);
+/* A run is on screen when the hero has SETTLED on a number.
+
+   Two wrong versions before this one, and both are the same error — picking
+   an observable that becomes true before the thing you care about is done.
+   Waiting on circles returned before the count-up started, so the next check
+   read "—". Waiting on the hero merely MATCHING \d+\.\d{2}% returned in the
+   middle of the count, at "0.17%" on its way to 5.27% — a number that passes
+   a format check and is not the answer. Everything downstream then raced and
+   eighteen checks failed.
+
+   So: the format must match AND the value must stop moving. A count-up that
+   has landed reports the same string twice in a row; one in flight does not. */
+let _lastHero = null;
+const heroReady = () => {
+  const v = d.getElementById("heroVal").textContent;
+  const settled = /^\d+\.\d{2}%$/.test(v) && v === _lastHero;
+  _lastHero = v;
+  return settled;
+};
 
 /* The README has warned about this for weeks: "with no server on 8765 every
    fetch fails and the output is noise, so check the server is up before
