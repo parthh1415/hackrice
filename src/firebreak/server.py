@@ -5,6 +5,7 @@ Run it with:  python3 -m firebreak.server
 """
 
 import json
+import os
 import pathlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -29,7 +30,11 @@ class Handler(SimpleHTTPRequestHandler):
         except api.NotFound:
             return self.send_error(404, "no such endpoint")
         except Exception as exc:  # surface it in the browser, not just the log
-            payload = {"error": str(exc)}
+            # api.handle already tries the recorded golden path before it lets
+            # anything escape, so getting here means we have no cached answer
+            # either. still a 200 — the frontend can render an error, it can't
+            # render a stack trace.
+            payload = {"error": str(exc), "cached": False}
 
         body = json.dumps(payload).encode()
         self.send_response(200)
@@ -56,6 +61,8 @@ class Handler(SimpleHTTPRequestHandler):
 def serve():
     with ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
         print(f"firebreak dev server -> http://localhost:{PORT}")
+        if os.environ.get("FIREBREAK_DEMO", "").strip().lower() in ("1", "true", "yes", "on"):
+            print("FIREBREAK_DEMO is on — every /api/ response comes off disk")
         httpd.serve_forever()
 
 
