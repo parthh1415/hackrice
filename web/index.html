@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firebreak</title>
+<style>
+  :root{--ground:#0A1013;--surface:#121A1D;--ink:#E2EAEB;--muted:#7E9297;
+        --rule:#223034;--accent:#55B4C2;--breach:#E4705C;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+       font:15px/1.6 "IBM Plex Sans",-apple-system,system-ui,sans-serif}
+  header{padding:2.5rem 2rem 1.25rem;border-bottom:2px solid var(--ink)}
+  h1{font:700 3.2rem/0.95 "IBM Plex Sans Condensed","Arial Narrow",sans-serif;
+     text-transform:uppercase;letter-spacing:-.02em;margin:0 0 .5rem}
+  .sub{color:var(--muted);max-width:52ch;margin:0}
+  main{padding:2rem;max-width:60rem}
+  .status{display:flex;gap:.5rem;align-items:center;margin-top:1rem;
+          font:500 .7rem/1 "IBM Plex Mono",monospace;letter-spacing:.12em;
+          text-transform:uppercase;color:var(--muted)}
+  .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--breach)}
+  .dot.up{background:var(--accent)}
+  .scaffold{border:1px dashed var(--rule);padding:1.5rem;margin-top:1.5rem;
+            color:var(--muted);font:.85rem/1.6 "IBM Plex Mono",monospace}
+</style></head>
+<body>
+<header>
+  <h1>Firebreak</h1>
+  <p class="sub">Reverse stress testing for crowded, leveraged portfolios.
+     Finds the smallest shock that breaks the system — then the cheapest way to stop it.</p>
+  <div class="status"><span class="dot" id="dot"></span><span id="state">connecting…</span></div>
+</header>
+<main>
+  <div class="scaffold" id="scaffold">scenes land here as they're built</div>
+</main>
+<script>
+async function ping(){
+  try{
+    const r = await fetch('/api/health',{cache:'no-store'});
+    const j = await r.json();
+    document.getElementById('dot').className='dot up';
+    document.getElementById('state').textContent='engine connected';
+  }catch(e){
+    document.getElementById('state').textContent='server down';
+  }
+}
+ping(); setInterval(ping, 4000);
+</script>
+</body></html>
