@@ -1,7 +1,26 @@
 # Firebreak
 
-**Reverse stress testing for overlapping portfolios.** Not "what if NVDA drops 20%", but "what is the
-smallest drop that breaks this system, and what is the cheapest change that prevents it".
+**Reverse stress testing for your portfolio.** Not "what if NVDA drops 20%", but "what is the smallest
+drop that pushes *my* portfolio past the loss I refuse to tolerate — and what is the smallest change
+that buys me distance from it".
+
+You connect or upload a portfolio and name the loss you will not accept. Firebreak searches for the
+smallest single-name shock that crosses it, models how crowded institutional selling amplifies the
+damage on the way to you, shows the cascade round by round, recommends the smallest position change
+that helps — and then **tests whether that recommendation actually helped**, by replaying the
+identical shock, recomputing the new break point, and scoring both portfolios across 400 simulated
+stress scenarios.
+
+```
+Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
+```
+
+On the demo portfolio at a 10% limit: **NVDA −24.69%** breaks it, a **7.23%** direct loss becomes
+**10.00%** after the cascade, and reducing NVDA by **$478** moves the break point out to **−27.76%**.
+
+The same engine, asked the institutional question instead, is Risk Desk Mode: *what is the smallest
+market move that forces three leveraged funds to deleverage at once?* That is the prime-brokerage
+version and it is still here, one button away, unchanged.
 
 HackRice 16 — Finance track. Also submitted to the Capital One and MathWorks challenges.
 
@@ -143,6 +162,46 @@ consecutive claims about our own typography, all confident, all wrong, all in th
 being wrong. The cascade animation
 reads `trajectory[t]` frame by frame; it never interpolates between precomputed endpoints, because the
 animation is supposed to *be* the mechanism rather than illustrate it.
+
+## The pivot, and what it did not cost
+
+Firebreak began as an institutional tool: five leveraged funds, a failure condition of "N of them
+breach", a control rail of four sliders. Technically strong, and it started in the middle of a story —
+it assumed you already cared about a preloaded network of hedge funds.
+
+Turning it into a product for someone with an actual portfolio required **no change to the engine at
+all**, and that is the part worth knowing.
+
+`find_weakest_shock` already took an arbitrary `condition(CascadeResult) -> bool`. A finished cascade
+already carried the price vector it ended on. So "this person crossed the loss they told us they would
+not tolerate" slots in beside "three funds breached" as just another predicate:
+
+```python
+def portfolio_loss_above(weights, cash, limit):
+    return lambda r: 1.0 - (weights @ r.prices + cash) >= limit
+```
+
+That is the whole pivot at the numerical level. `engine.py`, `search.py` and `stabilise.py` are
+untouched, every one of their tests still passes, and the institutional mode is not a legacy path —
+it is step four of the new product, running the same code it always did.
+
+**Your portfolio is an observer, and we say so.** It takes the price damage; it does not join the
+network. The institutions deleverage identically whether or not you trim NVDA, because a retail
+account does not move markets. So the cascade is computed once and every candidate cut is scored
+against the same price path — not an optimisation, a modelling statement. On screen: *your position
+doesn't move the market, it decides how much of the market's move lands on you.*
+
+**The first fix it recommended was zero dollars.** Correctly. The break point is by construction the
+shock where the loss lands exactly *on* the limit, so an infinitesimal cut already puts you under it,
+and the bisection dutifully found one. True, useless, and exactly the kind of number this project
+keeps catching. A recommendation has to buy real distance, so the margin is a declared parameter: a
+10% limit is defended to 9%.
+
+**Validation is three tests, not four.** Same-shock replay, recomputed break point, and 400 seeded
+synthetic scenarios with both portfolios scored on identical draws. Historical replay is **absent and
+says so** — we ship one frozen quarter of holdings and no price history, and building it on invented
+returns would put a confident number with nothing beneath it on the screen whose whole purpose is
+evidence. There is a test asserting that feature is missing and reports no figure.
 
 ## Challenges we ran into
 
