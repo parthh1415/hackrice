@@ -56,7 +56,7 @@ def test_the_boundary_sweep_actually_applies_the_band_it_reports():
     tight = api.handle("/api/boundary?leverage=5&gamma=0.2&band=1.02", {})
     loose = api.handle("/api/boundary?leverage=5&gamma=0.2&band=1.30", {})
 
-    assert tight["band"] == 1.02 and loose["band"] == 1.30
+    assert tight["params"]["band"] == 1.02 and loose["params"]["band"] == 1.30
     assert tight["grid"] != loose["grid"], "band is echoed but not applied"
 
     # a wider band means more room before breach, so less amplification

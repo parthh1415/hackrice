@@ -985,6 +985,12 @@ function axisIndex(values, v) {
 const cellX = (L, cw, col) => L + (col + 0.5) * cw;
 const cellY = (T, ch, rows, row) => T + (rows - 1 - row + 0.5) * ch;
 
+/* The band the sweep actually ran at. /api/boundary used to send it twice —
+   once bare and once inside `params` — and this caption read the bare copy,
+   the one with no record of whether the value had been clamped on the way in.
+   `params` is what every other endpoint speaks. */
+const bandOf = (b) => (b.params && b.params.band != null ? b.params.band : 1.05);
+
 function drawBoundary(svg, b) {
   const m = measure(svg);
   const W = Math.max(520, m.width), H = Math.max(300, m.height);
@@ -1092,7 +1098,7 @@ function drawBoundary(svg, b) {
 
   label(R - 6, T - 10,
     `amplification · contour at ${ISO.toFixed(1)}× · ${b.reference_kind} ` +
-    `${Math.abs(b.reference_shock * 100).toFixed(0)}% reference · band ${(b.band || 1.05).toFixed(2)}`,
+    `${Math.abs(b.reference_shock * 100).toFixed(0)}% reference · band ${bandOf(b).toFixed(2)}`,
     { anchor: "end", size: 10 });
 }
 

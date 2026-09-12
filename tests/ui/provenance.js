@@ -214,8 +214,9 @@ async function checkRun(label, knobs) {
   check("reference shock label is the payload's",
         caption.includes(`${b.reference_kind} ${Math.abs(b.reference_shock * 100).toFixed(0)}% reference`),
         caption || "missing");
+  const bband = b.params && b.params.band != null ? b.params.band : 1.05;
   check("caption's breach band is the payload's",
-        caption.includes(`band ${(b.band == null ? 1.05 : b.band).toFixed(2)}`), caption);
+        caption.includes(`band ${bband.toFixed(2)}`), caption);
   eq("solver readout cell count", text("solverStats").replace(/\s+/g, " ").trim().split(" ")[1],
      String(b.rows * b.cols));
 

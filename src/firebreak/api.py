@@ -561,8 +561,11 @@ def _boundary(params):
         "cols": _COLS,
         "leverage_axis": [round(float(x), 3) for x in levs],
         "overlap_axis": overlaps,
-        "gamma": gamma,
-        "band": band,
+        # gamma and band used to sit here as well as in `params`, and this was
+        # the only endpoint that did it — two spellings of one number, one of
+        # them with the clamping record next to it and one without. A caller
+        # reading the bare copy could not tell a value it asked for from a
+        # value we quietly pulled back into range. `params` is the contract.
         "params": knobs,
         "reference_shock": _REF_SHOCK,
         "reference_kind": "single-name",
