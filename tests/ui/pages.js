@@ -365,6 +365,55 @@ function visibleText(d) {
     }
   }
 
+  /* ---- the CSV parser ---- */
+  {
+    /* It had no coverage at all. The old version was line.split(",") and an
+       unanchored /market_?value|value/ over findIndex, which takes the
+       LEFTMOST match — so a file with a cost-basis column left of its
+       market-value column priced the whole book off the cost basis, and said
+       "Loaded 4 holdings". */
+    const p = await load("index.html", {});
+    const parse = p.window.parseCsv;
+    check("index.html exposes a parser that can be driven directly", typeof parse === "function");
+
+    const ok = (name, text, expect) => {
+      try {
+        const got = parse(text).rows.map((r) => `${r.symbol}=${r.market_value ?? (r.quantity + "x" + r.price)}`).join(",");
+        eq(name, got, expect);
+      } catch (e) { check(name, false, "refused: " + e.message); }
+    };
+    const refuses = (name, text, needle) => {
+      try { parse(text); check(name, false, "accepted it"); }
+      catch (e) { check(name, e.message.includes(needle), `message was: ${e.message}`); }
+    };
+
+    ok("a real market_value column wins over a cost-basis column to its left",
+       "symbol,book_value,market_value\nNVDA,1,3600\nMSFT,2,3150", "NVDA=3600,MSFT=3150");
+    ok("quoted thousands separators survive",
+       'symbol,market_value\nNVDA,"3,600"\nMSFT,"3,150"', "NVDA=3600,MSFT=3150");
+    ok("a BOM and CRLF do not break the header",
+       "\uFEFFsymbol,market_value\r\nNVDA,3600\r\nMSFT,3150", "NVDA=3600,MSFT=3150");
+    ok("quantity and price with no value column",
+       "symbol,quantity,price\nNVDA,20,180", "NVDA=20x180");
+
+    refuses("an unquoted 3,600 is refused, not read as 3",
+            "symbol,market_value\nNVDA,3,600\nMSFT,3,150", "fields where the header has");
+    refuses("a market value that disagrees with quantity x price is refused",
+            "symbol,quantity,price,market_value\nNVDA,20,180,9999", "two different claims");
+    refuses("a negative market value is refused",
+            "symbol,market_value\nNVDA,-3600\nMSFT,3150\nCASH,1050", "negative market value");
+    refuses("an accounting negative is refused too",
+            "symbol,market_value\nNVDA,(3600)\nMSFT,3150", "negative market value");
+    refuses("a cost-basis column alone is named, not silently used",
+            "symbol,book_value\nNVDA,1200", "book_value");
+    refuses("an unreadable number is refused rather than becoming NaN",
+            "symbol,market_value\nNVDA,n/a", "not a number");
+
+    const blank = parse("symbol,market_value\nNVDA,3600\nMSFT,3150\n,6750");
+    eq("a row with no symbol is skipped", blank.rows.length, 2);
+    eq("and counted, so the note can say so", blank.skipped, 1);
+  }
+
   /* ---- a limit the engine had to pull into range ---- */
   {
     /* The nav reads the limit from state and the page reads the one the engine

@@ -125,34 +125,145 @@ document.getElementById("useDemo").addEventListener("click", async () => {
   }
 });
 
+/* CSV parsing, pulled out of the change handler so it can be driven by a test
+   with a string instead of a File.
+
+   The previous version was `line.split(",")` and a `findIndex` over an
+   unanchored /market_?value|value/. Both were worse than they looked: the
+   regex matched `book_value` and `findIndex` takes the LEFTMOST match, so a
+   file with a cost-basis column to the left of its market-value column was
+   read entirely off the cost basis — a different portfolio, a different break
+   point, a different name to sell, and a note saying "Loaded 4 holdings". */
+
+/* Quote-aware, because `3,600` unquoted is two cells and every column to its
+   right then reads from the wrong index. We cannot fix a file that does that,
+   but we can refuse it instead of silently taking `3` as the value. */
+function splitCsvLine(line) {
+  const out = [];
+  let cur = "", quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cur += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") { out.push(cur.trim()); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+/* A money cell. Accepts $ and thousands separators inside quotes, and
+   accounting negatives, and rejects anything it cannot read rather than
+   handing back the NaN that Number() gives for free. */
+function money(cell, what) {
+  let t = String(cell).trim().replace(/[$\s,]/g, "");
+  let sign = 1;
+  if (/^\(.*\)$/.test(t)) { sign = -1; t = t.slice(1, -1); }
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n)) throw new Error(`${what} reads "${cell}", which is not a number`);
+  return sign * n;
+}
+
+/* Exact names first, and only then a contains-match — never the other way
+   round. `value` alone is accepted as market value; `book_value` is not, and
+   is named in the error rather than quietly used. */
+const VALUE_NAMES = ["market_value", "market value", "marketvalue", "value"];
+const QTY_NAMES = ["quantity", "shares", "qty", "units"];
+const PRICE_NAMES = ["price", "share_price", "price_per_share"];
+
+function parseCsv(text) {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/)
+    .map(l => l.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("that file is empty");
+
+  const head = splitCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+  const at = (names) => head.findIndex(h => names.includes(h));
+  const iSym = at(["symbol", "ticker"]);
+  if (iSym < 0) throw new Error("no `symbol` column in the header row");
+  const iVal = at(VALUE_NAMES), iQty = at(QTY_NAMES), iPx = at(PRICE_NAMES);
+  const lookalike = head.filter(h => /value/.test(h) && !VALUE_NAMES.includes(h));
+
+  if (iVal < 0 && (iQty < 0 || iPx < 0)) {
+    throw new Error(lookalike.length
+      ? `no market value column. \`${lookalike.join("`, `")}\` ${lookalike.length > 1 ? "are" : "is"} ` +
+        "not the market value of a holding, and guessing would price your whole " +
+        "book off the wrong column — add `market_value`, or `quantity` and `price`"
+      : "need `market_value`, or `quantity` and `price`");
+  }
+
+  const rows = [];
+  let skipped = 0;
+  lines.slice(1).forEach((line, i) => {
+    const at_ = `row ${i + 2}`;
+    const c = splitCsvLine(line);
+    if (c.length !== head.length) {
+      throw new Error(`${at_} has ${c.length} fields where the header has ${head.length}. ` +
+        "A number like 3,600 needs quoting, or it reads as two columns and every " +
+        "column after it lands in the wrong place");
+    }
+    const symbol = (c[iSym] || "").trim();
+    if (!symbol) { skipped++; return; }
+    const r = { symbol };
+    const v = iVal >= 0 ? money(c[iVal], `${at_} market value`) : null;
+    const q = iQty >= 0 ? money(c[iQty], `${at_} quantity`) : null;
+    const px = iPx >= 0 ? money(c[iPx], `${at_} price`) : null;
+
+    /* Both given and disagreeing is not a rounding question — it is two
+       different claims about the same holding, and picking one silently is
+       how a stale value column prices the book. */
+    if (v !== null && q !== null && px !== null) {
+      const implied = q * px;
+      if (Math.abs(implied - v) > Math.max(1, 0.01 * Math.abs(v))) {
+        throw new Error(`${at_} (${symbol}): market value ${v} but quantity × price is ` +
+          `${implied}. Those are two different claims about the same holding — ` +
+          "drop one of the columns");
+      }
+    }
+    if (v !== null && v < 0) {
+      throw new Error(`${at_} (${symbol}) has a negative market value. This build models ` +
+        "long-only books; a short is invisible to the 13F data underneath it, so " +
+        "we would rather refuse than weight a position we cannot see");
+    }
+    if (v !== null) r.market_value = v;
+    if (q !== null) r.quantity = q;
+    if (px !== null) r.price = px;
+    if (v === null && (q === null || px === null)) {
+      /* Name the column we are deliberately not reading. Without this the
+         message reads "has no value" on a row where a number is plainly
+         sitting in a book_value cell, and the user has no idea why. */
+      throw new Error(`${at_} (${symbol}) has no value: needs market_value, or quantity and price` +
+        (lookalike.length
+          ? `. \`${lookalike.join("`, `")}\` ${lookalike.length > 1 ? "are" : "is"} not a market ` +
+            "value, so we are not reading it — rename it if that is what it holds"
+          : ""));
+    }
+    rows.push(r);
+  });
+  if (!rows.length) throw new Error("header row only — no holdings in that file");
+  return { rows, skipped };
+}
+
 document.getElementById("csvFile").addEventListener("change", async (ev) => {
   const file = ev.target.files && ev.target.files[0];
   if (!file) return;
   const note = document.getElementById("loadNote");
   try {
-    const lines = (await file.text()).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (!lines.length) throw new Error("that file is empty");
-    const head = lines[0].toLowerCase().split(",").map(h => h.trim());
-    const iSym = head.findIndex(h => /^(symbol|ticker)$/.test(h));
-    if (iSym < 0) throw new Error("no `symbol` column in the header row");
-    const iVal = head.findIndex(h => /market_?value|value/.test(h));
-    const iQty = head.findIndex(h => /quantity|shares|qty/.test(h));
-    const iPx  = head.findIndex(h => /^price$/.test(h));
-    if (iVal < 0 && (iQty < 0 || iPx < 0)) throw new Error("need `market_value`, or `quantity` and `price`");
-    const rows = lines.slice(1).map(line => {
-      const c = line.split(",").map(x => x.trim());
-      const r = { symbol: c[iSym] };
-      if (iVal >= 0 && c[iVal]) r.market_value = Number(c[iVal].replace(/[$,]/g, ""));
-      if (iQty >= 0 && c[iQty]) r.quantity = Number(c[iQty]);
-      if (iPx  >= 0 && c[iPx])  r.price = Number(c[iPx].replace(/[$,]/g, ""));
-      return r;
-    });
-    if (!rows.length) throw new Error("header row only — no holdings in that file");
+    const { rows, skipped } = parseCsv(await file.text());
     const body = await api("/api/portfolio/firebreak?limit=0.10", { holdings: rows, source: "csv" });
     if (body.refused) throw new Error(body.reason);
     FB.set({ rows });
     render(body.portfolio);
-    note.textContent = `Loaded ${rows.length} holdings from ${file.name}.`;
+    /* count what landed in the book, not what was in the file. Duplicate
+       symbols are summed server-side and blank rows are dropped, so
+       rows.length was reporting holdings the user does not have. */
+    const n = body.portfolio.holdings.length;
+    note.textContent = `Loaded ${n} holding${n === 1 ? "" : "s"} from ${file.name}` +
+      (skipped ? ` (${skipped} row${skipped === 1 ? "" : "s"} with no symbol skipped)` : "") +
+      (n !== rows.length - 0 && !skipped ? ` — ${rows.length} rows merged into ${n}` : "") + ".";
   } catch (e) {
     note.textContent = `${file.name}: ${e.message}`;
   }

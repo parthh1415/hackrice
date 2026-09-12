@@ -291,6 +291,22 @@ MUTATIONS = {
         "web/cascade.html",
         '      ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],',
         '      ["Your loss so far", pct(r.cascade_loss), cum >= (r.params.limit) ? "bad" : ""],'),
+    "value_column_matched_loosely": (
+        "web/index.html",
+        '  const at = (names) => head.findIndex(h => names.includes(h));',
+        '  const at = (names) => head.findIndex(h => names.some(n => h.includes(n)));'),
+    "ragged_row_accepted": (
+        "web/index.html",
+        "    if (c.length !== head.length) {",
+        "    if (false) {"),
+    "value_and_qty_price_not_reconciled": (
+        "web/index.html",
+        "      if (Math.abs(implied - v) > Math.max(1, 0.01 * Math.abs(v))) {",
+        "      if (false) {"),
+    "negative_holding_accepted": (
+        "web/index.html",
+        "    if (v !== null && v < 0) {",
+        "    if (false) {"),
     "pct_forgets_the_hundred": (
         "web/shared.js",
         "const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;",
@@ -306,7 +322,9 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "state_narrated_as_transition", "model_link_locked",
                 "stale_result_survives_a_new_book", "unbreakable_renders_nothing",
                 "proceeds_vanish_without_a_cash_row", "next_skips_a_round",
-                "loss_tile_is_the_final_loss"}
+                "loss_tile_is_the_final_loss", "value_column_matched_loosely",
+                "ragged_row_accepted", "value_and_qty_price_not_reconciled",
+                "negative_holding_accepted"}
 
 
 def build(name):
