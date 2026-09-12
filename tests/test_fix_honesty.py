@@ -39,3 +39,29 @@ def test_the_survived_shock_is_still_genuinely_survived():
     before_breaches = len(result["before"]["breached"])
     after_breaches = len(result["after"]["breached"])
     assert after_breaches < before_breaches
+
+
+def test_a_delta_below_the_search_resolution_is_reported_as_unmeasurable():
+    """The delta was +0.03pp when the search resolved 0.05pp, then +0.004pp
+    when it resolved 0.005pp. Both times it reported a movement finer than it
+    could measure — the same fake-precision sin as the hero number, one level
+    up. If the change is inside the error bar, say that.
+    """
+    result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
+
+    bought = result["bought"]
+    assert "resolution_pct" in bought
+    assert "measurable" in bought
+    if abs(bought["delta_pct"]) <= bought["resolution_pct"]:
+        assert bought["measurable"] is False
+        assert "no measurable" in bought["note"].lower()
+
+
+def test_survived_is_stated_as_the_condition_not_as_safety():
+    """`after` still has funds breaching — "survives" means the failure
+    CONDITION isn't met, not that nothing breaks. The payload has to carry
+    enough for a caller to say that precisely."""
+    result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
+
+    assert result["after"]["breached"], "at these settings two funds still breach"
+    assert len(result["after"]["breached"]) < result["params"]["breaches"]

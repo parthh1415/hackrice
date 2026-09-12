@@ -9,6 +9,7 @@ import numpy as np
 
 from .dataset import load_dataset
 from .engine import run_cascade
+from .search import DEFAULT_TOLERANCE as _SEARCH_TOLERANCE
 from .search import at_least_n_breaches, find_weakest_shock
 from .matlab_bridge import engine_label, solve_stabilisation, write_spec
 from .stabilise import Fix
@@ -364,12 +365,25 @@ def _stabilise(params):
     # honest move is to put the number on screen ourselves. It also names the
     # real next feature: minimise over all shocks, not one.
     repeat = find_weakest_shock(condition=condition, **patched)
+    delta = (repeat.pct - found.pct) if repeat else None
+    # The search bisects to a tolerance; a delta finer than that is a claim the
+    # method cannot support. It reported +0.03pp against a 0.05pp resolution,
+    # then +0.004pp against 0.005pp — both inside their own error bar. Same
+    # fake-precision failure as the hero number, one level up.
+    resolution = _SEARCH_TOLERANCE * 100.0
+    measurable = delta is not None and abs(delta) > resolution
     bought = {
         "before_pct": found.pct,
         "after_pct": repeat.pct if repeat else None,
-        "delta_pct": (repeat.pct - found.pct) if repeat else None,
+        "delta_pct": delta,
+        "resolution_pct": resolution,
+        "measurable": measurable,
         "after_asset": data["tickers"][repeat.asset] if repeat else None,
-        "note": "a targeted patch, not structural repair",
+        "note": (
+            "moves the break point by {:+.2f}pp".format(delta) if measurable
+            else "no measurable change in break point — a targeted patch, "
+                 "not structural repair"
+        ),
     }
 
     return {
