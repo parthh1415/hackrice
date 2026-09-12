@@ -244,6 +244,36 @@ MUTATIONS = {
         "src/firebreak/validate.py",
         '        "shock_range_pct": [lo * 100.0, hi * 100.0],',
         '        "shock_range_pct": [1.0, 30.0],'),
+    "pm_demo_serves_a_neighbours_answer": (
+        "src/firebreak/api.py",
+        '        if cached is not None and cached["cached_exact"]:',
+        '        if cached is not None and cached["cached_near"]:'),
+    # The whole parse, reverted to the state the bug was in. Mutating either
+    # guard alone is inert — the finite check and OverflowError in the except
+    # each cover the other — so a mutation of one proves nothing about whether
+    # the other exists. Defence in depth is good; a mutation that cannot see it
+    # is not. (A "pm_overflow_is_not_a_valueerror" entry lived here briefly and
+    # reported GREEN for exactly that reason; a permanently-green mutation is
+    # noise in every future run, so it is gone rather than annotated.)
+    "pm_inf_breaches_escapes_the_guard": (
+        "src/firebreak/api.py",
+        """            value = float(raw)
+            if value != value or value in (float("inf"), float("-inf")):
+                raise ValueError("not a finite number")
+            wanted = int(value)
+            # int() truncates. breaches=2.999999999 became 2 and said nothing,
+            # which is where a slider readout carrying float error lands —
+            # and 2 vs 3 is 4.598% vs 5.273% on screen.
+            if wanted != value:
+                clamped.append({"name": "breaches", "given": value, "used": wanted,
+                                "reason": "whole funds only"})
+        except (TypeError, ValueError, OverflowError):""",
+        """            wanted = int(float(raw))
+        except (TypeError, ValueError):"""),
+    "pm_magnitude_unbounded": (
+        "src/firebreak/api.py",
+        "    used = min(abs(wanted), 1.0)",
+        "    used = abs(wanted)"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',

@@ -38,10 +38,29 @@ def handle(path, body):
 
     if demo:
         cached = load_golden(route, params)
-        # nothing recorded, or the nearest recording is for a different
-        # question — computing is better than a 404 and much better than
-        # answering the question we happen to have on disk.
-        if cached is not None and cached["cached_near"]:
+        # A recording may only stand in for the settings it was recorded at.
+        #
+        # This used to accept anything within _NEAR_ENOUGH, an rms quarter of a
+        # slider, which sounds tight until you notice the leverage axis is
+        # recorded at 1.5 and then not again until 4.0. Every position in that
+        # 2.5-turn hole was "near" something:
+        #
+        #   /api/break?leverage=2.5&breaches=3    demo 51.527%  live 16.832%
+        #   /api/stabilise?leverage=3&breaches=3  demo sell $1,327,529
+        #                                         live sell $51,406
+        #
+        # 25.8x, on the one line in the product that tells somebody to do
+        # something — and not even conservative, because the sign of the error
+        # flips across the hole. There was a cliff in the middle too: 2.75
+        # served the 1.5 recording and 2.76 served the 4.0 one, a 6.8x jump
+        # from a nudge, both labelled cached_near.
+        #
+        # Computing instead costs 11-20ms and always works, because the
+        # dataset is committed and nothing here needs a network. Demo mode
+        # keeps its point — the recorded spots the script actually uses are
+        # still served from disk, deterministically — and stops answering
+        # questions nobody asked.
+        if cached is not None and cached["cached_exact"]:
             return cached
 
     try:
@@ -192,9 +211,10 @@ def _recorded(route):
 # between two recordings, and nowhere near "leverage 40, five breaches".
 # One threshold was doing two different jobs and they want opposite answers.
 #
-#   _NEAR_ENOUGH  — is this recording close enough to be worth showing at all?
-#                   Loose on purpose: demo mode exists so a dead engine still
-#                   draws something, and judges drag sliders to odd places.
+#   _NEAR_ENOUGH  — how far a recording may sit from the request and still be
+#                   offered as a FALLBACK when the engine has thrown. Something
+#                   labelled is better than a stack trace, and the payload says
+#                   where it was recorded. It is NOT the rule for demo mode.
 #   cached_exact  — is this recording actually OF these settings? Strict, and
 #                   computed by comparison, not distance. It used to be the
 #                   same 0.25 threshold, which let leverage 6.0 stand in for
@@ -689,6 +709,15 @@ def _guarded(params, n_funds):
             clamped.append({"name": name, "given": raw, "used": default,
                             "reason": "unreadable"})
             continue
+        if value in (float("inf"), float("-inf")):
+            # min/max would clamp these correctly, but `given: Infinity` is not
+            # valid JSON — json.dumps writes a bare Infinity that strict parsers
+            # reject. Report the string that was sent instead.
+            used = min(max(value, lo), hi)
+            out[name] = used
+            clamped.append({"name": name, "given": str(raw), "used": used,
+                            "reason": f"outside {lo}–{hi}"})
+            continue
         used = min(max(value, lo), hi)
         out[name] = used
         if used != value:
@@ -697,12 +726,30 @@ def _guarded(params, n_funds):
 
     raw = params.get("breaches")
     top = max(1, n_funds)
-    try:
-        wanted = int(float(raw)) if raw is not None else 2
-    except (TypeError, ValueError):
-        wanted = 2
-        clamped.append({"name": "breaches", "given": raw, "used": 2,
-                        "reason": "unreadable"})
+    wanted = 2
+    if raw is not None:
+        try:
+            # int(float("inf")) raises OverflowError, which is NOT a subclass of
+            # ValueError. It escaped this guard entirely and propagated out of
+            # handle(), whose except-clause fell back to load_golden with no
+            # near check — so `breaches=inf` returned 200, found: true, and a
+            # complete answer recorded at band=1.02, a setting nobody asked
+            # for, with clamped: [] beside it. Every other bad value was
+            # clamped and declared; that one alone was confidently wrong.
+            value = float(raw)
+            if value != value or value in (float("inf"), float("-inf")):
+                raise ValueError("not a finite number")
+            wanted = int(value)
+            # int() truncates. breaches=2.999999999 became 2 and said nothing,
+            # which is where a slider readout carrying float error lands —
+            # and 2 vs 3 is 4.598% vs 5.273% on screen.
+            if wanted != value:
+                clamped.append({"name": "breaches", "given": value, "used": wanted,
+                                "reason": "whole funds only"})
+        except (TypeError, ValueError, OverflowError):
+            wanted = 2
+            clamped.append({"name": "breaches", "given": raw, "used": 2,
+                            "reason": "unreadable"})
     used = min(max(wanted, 1), top)
     out["breaches"] = used
     if raw is not None and used != wanted:
@@ -955,7 +1002,25 @@ def _cascade_at(params, body=None):
         asset = data["tickers"].index(params.get("asset", data["tickers"][0]))
     except ValueError:
         raise NotFound("unknown asset")
-    magnitude = -abs(float(params.get("magnitude", 0.0)))
+    # A price cannot fall by more than all of itself. This was
+    # `-abs(float(...))` with no range and no record, so `magnitude=5` produced
+    # prices[0] = -4.0 — a negative stock price — and a cascade run on top of
+    # it, reported as a normal result. Unreadable values became NaN and
+    # propagated the same way.
+    raw = params.get("magnitude", 0.0)
+    try:
+        wanted = float(raw)
+        if wanted != wanted or wanted in (float("inf"), float("-inf")):
+            raise ValueError("not a finite number")
+    except (TypeError, ValueError):
+        wanted, knobs = 0.0, dict(knobs, clamped=list(knobs.get("clamped", [])) + [
+            {"name": "magnitude", "given": str(raw), "used": 0.0, "reason": "unreadable"}])
+    used = min(abs(wanted), 1.0)
+    if used != abs(wanted):
+        knobs = dict(knobs, clamped=list(knobs.get("clamped", [])) + [
+            {"name": "magnitude", "given": abs(wanted), "used": used,
+             "reason": "a price cannot fall more than 100%"}])
+    magnitude = -used
 
     shock = np.zeros(len(data["tickers"]))
     shock[asset] = magnitude

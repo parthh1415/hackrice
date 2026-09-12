@@ -151,12 +151,23 @@ def test_cached_values_are_the_recorded_ones_not_a_stub():
 
 
 def test_a_slider_position_we_never_recorded_still_answers():
-    # judges drag sliders. 5.37 is not on the recorded grid.
+    """Judges drag sliders. 5.37 is not on the recorded grid.
+
+    This used to assert `cached is True` — that an off-grid position was
+    answered FROM A RECORDING. That was the bug: the nearest recording to
+    leverage 2.5 was the one made at 1.5, and serving it put a 3.1x error on
+    screen (25.8x on /api/stabilise's sell instruction). The requirement was
+    always "it still answers", never "it answers from disk", and it answers by
+    computing — which costs 11-20ms and needs no network.
+    """
     result = api.handle("/api/break?leverage=5.37&gamma=0.23&breaches=3&demo=1", {})
 
-    assert result["cached"] is True
     assert result["found"] is True
     assert result["asset"] in result["tickers"]
+    if result.get("cached"):
+        assert result["cached_exact"], "served a recording of different settings"
+    live = api.handle("/api/break?leverage=5.37&gamma=0.23&breaches=3", {})
+    assert result["pct"] == pytest.approx(live["pct"], rel=1e-9)
 
 
 def test_nearest_match_picks_the_closest_recording_not_just_any():
@@ -387,11 +398,15 @@ def test_exact_means_exact_not_merely_close():
     """
     result = api.handle("/api/break?leverage=6.4&gamma=0.35&breaches=3&demo=1", {})
 
-    assert result["cached"] is True
-    if result["cached_for"] != {"leverage": 6.4, "gamma": 0.35, "breaches": 3.0}:
-        assert result["cached_exact"] is False, (
+    # Demo mode no longer serves a recording that is not of these settings, so
+    # the near-miss-called-exact case is now unreachable from here. The
+    # invariant is what matters and it is stated either way: anything served
+    # from disk is OF the settings asked for.
+    if result.get("cached"):
+        assert result["cached_exact"] is True, (
             f"served a recording for {result['cached_for']} and called it exact"
         )
+        assert result["cached_for"] == {"leverage": 6.4, "gamma": 0.35, "breaches": 3.0}
 
 
 def test_a_recording_of_the_asked_for_settings_is_exact():
@@ -400,3 +415,69 @@ def test_a_recording_of_the_asked_for_settings_is_exact():
     assert result["cached"] is True
     assert result["cached_exact"] is True
     assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "band": 1.05, "breaches": 3.0}
+
+
+# The slider positions that bit: each sits between two recordings, close
+# enough for the old threshold to serve one, far enough that the served answer
+# is a different answer. (route, knobs, what the recording claimed, the truth)
+OFF_GRID = [
+    ("/api/break", {"leverage": 2.5, "breaches": 3}),
+    ("/api/break", {"leverage": 2.75, "breaches": 3}),
+    ("/api/break", {"leverage": 2.76, "breaches": 3}),
+    ("/api/break", {"leverage": 3.0, "breaches": 3}),
+    ("/api/stabilise", {"leverage": 3.0, "breaches": 3}),
+    ("/api/stabilise", {"leverage": 2.5, "breaches": 3}),
+    ("/api/break", {"band": 1.01, "breaches": 3}),
+    ("/api/break", {"band": 1.40, "breaches": 3}),
+]
+
+
+@pytest.mark.parametrize("route,knobs", OFF_GRID)
+def test_demo_mode_computes_rather_than_serving_a_neighbours_answer(route, knobs):
+    """A recording may only stand in for the settings it was recorded at.
+
+    `_NEAR_ENOUGH` was an rms quarter-of-a-slider, which sounds tight until you
+    notice the leverage axis is recorded at 1.5 and then not again until 4.0.
+    Everything in that 2.5-turn hole was "near" something, so demo mode served
+    it:
+
+        /api/break?leverage=2.5&breaches=3     demo 51.527%   live 16.832%
+        /api/stabilise?leverage=3&breaches=3   demo sell $1,327,529
+                                               live sell $51,406
+
+    25.8x, on the one line in the whole product that tells somebody to do
+    something. And the error changes sign across the hole, so it was not even
+    conservative: at leverage 3.0 the demo understates the break point.
+
+    There was a cliff at the midpoint too — leverage 2.75 served the 1.5
+    recording and 2.76 served the 4.0 one, a 6.8x jump from a nudge of the
+    slider, both labelled `cached_near: true`.
+
+    Computing is cheap and always available: the dataset is committed, so
+    nothing here needs a network. A recording is served when it is OF these
+    settings, and otherwise we do the arithmetic.
+    """
+    query = "&".join(f"{k}={v}" for k, v in knobs.items())
+    served = api.handle(f"{route}?{query}&demo=1", {})
+    live = api.handle(f"{route}?{query}", {})
+
+    if served.get("cached"):
+        assert served.get("cached_exact"), (
+            f"{route} at {knobs} served a recording made at "
+            f"{served.get('cached_for')}, which is a different question"
+        )
+
+    # and the number has to be the number
+    assert served["pct"] == pytest.approx(live["pct"], rel=1e-9), (
+        f"demo mode answers {served['pct']:.3f}% where the engine says "
+        f"{live['pct']:.3f}%"
+    )
+
+
+def test_a_recorded_spot_is_still_served_from_disk():
+    """The tightening must not turn demo mode off — that is the whole feature."""
+    spot = api.GOLDEN_SPOTS[0]
+    query = "&".join(f"{k}={v}" for k, v in spot.items())
+    out = api.handle(f"/api/break?{query}&demo=1", {})
+    assert out.get("cached") is True, "a recorded spot stopped being served"
+    assert out.get("cached_exact") is True

@@ -9,6 +9,7 @@ knobs alone would serve one person's result to another. That is the
 `cached_for` mismatch in a far worse costume.
 """
 
+import json
 import pytest
 
 from firebreak import api
@@ -256,3 +257,65 @@ def test_a_limit_inside_the_range_is_not_reported_as_clamped():
     out = api.handle("/api/portfolio/full?limit=0.15", {})
     assert out["params"]["limit"] == pytest.approx(0.15)
     assert not [c for c in out["params"].get("clamped", []) if c["name"] == "limit"]
+
+
+@pytest.mark.parametrize("query,knob", [
+    ("/api/break?breaches=inf", "breaches"),
+    ("/api/break?breaches=-inf", "breaches"),
+    ("/api/break?leverage=inf&breaches=3", "leverage"),
+    ("/api/break?gamma=-inf&breaches=3", "gamma"),
+])
+def test_an_infinite_knob_is_clamped_and_declared_like_every_other(query, knob):
+    """`int(float("inf"))` raises OverflowError, which is not a ValueError.
+
+    It escaped the guard entirely and propagated out of handle(), whose
+    except-clause falls back to load_golden with no near check — so
+    `?breaches=inf` returned 200, found: true, pct 1.734%, and a params block
+    reading band=1.02, breaches=3 with clamped: []. Settings nobody asked for,
+    presented as the settings that were used. Every other out-of-range value
+    was clamped and declared; that one alone answered a different question
+    confidently.
+    """
+    out = api.handle(query, {})
+    assert out["found"] is True
+    names = [c["name"] for c in out["params"].get("clamped", [])]
+    assert knob in names, (
+        f"{query} used {out['params'].get(knob)} and reported {out['params'].get('clamped')}"
+    )
+    # and it must be answering the question asked, not one off the shelf
+    if out.get("cached"):
+        assert out.get("cached_exact"), out.get("cached_for")
+    # `given` has to survive json.dumps — a bare Infinity is not valid JSON
+    json.dumps(out["params"]["clamped"])
+
+
+def test_a_fractional_breach_count_says_it_was_truncated():
+    """int() truncates. 2.999999999 became 2 in silence.
+
+    That is exactly where a slider readout carrying float error lands, and 2
+    against 3 is 4.598% against 5.273% on the screen.
+    """
+    out = api.handle("/api/break?breaches=2.999999999", {})
+    entry = [c for c in out["params"]["clamped"] if c["name"] == "breaches"]
+    assert entry, out["params"].get("clamped")
+    assert entry[0]["used"] == 2
+
+
+@pytest.mark.parametrize("magnitude,expect_price", [(5, 0.0), (1.5, 0.0), (0.25, 0.75)])
+def test_a_price_cannot_fall_by_more_than_all_of_itself(magnitude, expect_price):
+    """/api/cascade took `-abs(float(...))` with no range and no record.
+
+    `magnitude=5` set prices[0] to -4.0 — a negative stock price — and then ran
+    a full cascade on top of it, reporting the result like any other.
+    """
+    out = api.handle(f"/api/cascade?asset=NVDA&magnitude={magnitude}", {})
+    assert out["trajectory"][0]["prices"][0] == pytest.approx(expect_price)
+    assert all(p >= 0.0 for p in out["trajectory"][0]["prices"]), "a negative price"
+    if magnitude > 1.0:
+        assert any(c["name"] == "magnitude" for c in out["params"].get("clamped", []))
+
+
+def test_an_unreadable_magnitude_is_zero_and_says_so_rather_than_becoming_nan():
+    out = api.handle("/api/cascade?asset=NVDA&magnitude=abc", {})
+    assert out["trajectory"][0]["prices"][0] == pytest.approx(1.0)
+    assert any(c["name"] == "magnitude" for c in out["params"].get("clamped", []))
