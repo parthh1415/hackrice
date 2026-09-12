@@ -221,6 +221,7 @@ async function checkRun(label, knobs) {
         text("fixLine").startsWith(`${fx.fund}: cut ${fx.asset} `), text("fixLine"));
 
   console.log("\nPRECISION — stated decimals, and no borrowed rounding");
+  const bd = band();   // still the demo cascade's; the split has its own footers
   check("amplification is 2dp everywhere", /^\d+\.\d{2}×$/.test(bd[2]) &&
         /amp \d+\.\d{2}×$/.test(text("footBefore")) && /amp \d+\.\d{2}×$/.test(text("footAfter")),
         `${bd[2]} / ${text("footBefore")} / ${text("footAfter")}`);
@@ -271,4 +272,13 @@ async function checkRun(label, knobs) {
   check("no runtime errors", errors.length === 0, errors.join("; "));
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
-})();
+})().catch((e) => {
+  /* An exception in here used to end the run quietly: the async IIFE rejected,
+     the rejection handler filed it in `errors` that nothing would go on to
+     read, and node exited 0 having printed a section heading and no checks
+     under it. A harness that stops early has to say so louder than one that
+     fails. */
+  console.log(`\n  [FAIL] harness threw before finishing — ${e && e.stack || e}`);
+  console.log("\nINCOMPLETE");
+  process.exit(1);
+});
