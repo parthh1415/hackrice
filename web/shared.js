@@ -61,8 +61,17 @@ function paintNav(current) {
   document.querySelectorAll(".nav-links a").forEach((a) => {
     const page = a.dataset.page;
     if (page === current) a.setAttribute("aria-current", "page");
-    if (!has[page]) a.setAttribute("data-locked", "");
-    else a.removeAttribute("data-locked");
+    /* pointer-events:none stops the mouse and nothing else — Tab then Enter
+       still navigated to a page the state cannot answer. */
+    if (!has[page]) {
+      a.setAttribute("data-locked", "");
+      a.setAttribute("aria-disabled", "true");
+      a.tabIndex = -1;
+    } else {
+      a.removeAttribute("data-locked");
+      a.removeAttribute("aria-disabled");
+      a.removeAttribute("tabindex");
+    }
   });
   const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
   set("navPf", "");

@@ -47,6 +47,16 @@
      Aliased rather than swept, because the semantic names are the right thing
      to read in the markup. `up`/`down` are the market words; `positive`/
      `destructive` are what a status means. */
+  /* One scale. Every size on the site is one of these steps; the ad-hoc
+     10.5/11.5/12/15/19/40 set was the clearest tell that nobody had decided. */
+  --fs-0:10px;   /* uppercase labels only: th, eyebrow, badge, stat key/caption */
+  --fs-1:11px;   /* everything you read: body, td, lede, small, buttons, nav */
+  --fs-2:13px;   /* h1 */
+  --fs-3:18px;   /* stat values, portfolio total */
+  --fs-4:28px;   /* the one figure per page */
+  --row:22px;    /* 21px box + 1px hairline: tables, headers, buttons, inputs */
+  --border-hi:#3a3a3a;
+
   --positive:var(--up);
   --destructive:var(--down);
   --muted-foreground:var(--text-dim);
@@ -56,7 +66,7 @@
 [hidden]{display:none!important}
 html,body{margin:0;padding:0;background:var(--bg)}
 body{
-  color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.45;
+  color:var(--text);font-family:var(--mono);font-size:var(--fs-1);line-height:16px;
   -webkit-font-smoothing:antialiased;
 }
 ::-webkit-scrollbar{width:8px;height:8px}
@@ -78,12 +88,12 @@ body{
   background:var(--panel-2);border-bottom:1px solid var(--border);font-size:11px;
   position:sticky;top:0;z-index:30;
 }
-.logo{color:var(--accent);font-weight:700;letter-spacing:.18em;text-decoration:none}
+.logo{color:var(--accent);font-weight:500;letter-spacing:.12em;text-decoration:none}
 .nav-links{display:flex;gap:0;margin-left:6px}
 .nav-links a{
   color:var(--text-dim);text-decoration:none;padding:0 11px;height:30px;
   display:flex;align-items:center;font-size:11px;letter-spacing:.06em;
-  text-transform:uppercase;border-bottom:2px solid transparent;
+  text-transform:uppercase;border-bottom:1px solid transparent;
 }
 .nav-links a:hover{color:var(--text)}
 .nav-links a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
@@ -100,7 +110,7 @@ body{
 body{min-height:100vh;display:flex;flex-direction:column}
 main{flex:1 0 auto}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
-.page{padding:14px 0 40px}
+.page{padding:12px 0 32px}
 
 /* ── status bar (OpenTerminal: the shortcuts live on screen) ────────────── */
 .statusbar{
@@ -119,17 +129,20 @@ main{flex:1 0 auto}
 .statusbar .sep{color:var(--border)}
 .statusbar .right{margin-left:auto;display:flex;gap:14px;align-items:center}
 .stack{display:flex;flex-direction:column}
-.gap-2{gap:2px}.gap-3{gap:6px}.gap-4{gap:10px}.gap-6{gap:14px}.gap-8{gap:18px}
+.gap-2{gap:2px}.gap-3{gap:6px}.gap-4{gap:8px}.gap-6{gap:12px}.gap-8{gap:16px}
 .row{display:flex;align-items:center}
 .between{justify-content:space-between}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* ── headings ───────────────────────────────────────────────────────────── */
-h1{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0;color:var(--text)}
-h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--accent)}
-.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dimmer)}
-.lede{color:var(--text-dim);font-size:11.5px;line-height:1.6;margin:0;max-width:96ch}
-.small{font-size:10.5px;line-height:1.55;color:var(--text-dim)}
+h1{font-size:var(--fs-2);font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--text)}
+h2{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--accent)}
+/* the eyebrow is a reading, not a disabled control: --text-dimmer is 2.3:1
+   on the panel and was carrying it. */
+.eyebrow{font-size:var(--fs-0);letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim)}
+.lede{color:var(--text-dim);font-size:var(--fs-1);line-height:16px;margin:0;max-width:80ch}
+/* the 10px step is for uppercase labels; sentences stay at the body step. */
+.small{font-size:var(--fs-1);line-height:16px;color:var(--text-dim)}
 
 /* ── panel (OT: .terminal-panel + .panel-title) ─────────────────────────── */
 .card{
@@ -138,7 +151,7 @@ h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
 }
 .card-header{
   background:var(--panel-2);border-bottom:1px solid var(--border);
-  color:var(--accent);font-weight:700;letter-spacing:.08em;padding:3px 8px;
+  color:var(--accent);font-weight:500;letter-spacing:.08em;padding:3px 8px;
   font-size:11px;text-transform:uppercase;display:flex;align-items:center;
   justify-content:space-between;gap:10px;flex-shrink:0;
 }
@@ -152,56 +165,65 @@ h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
 /* ── data table (OT: 11px, 2px 6px, right-aligned) ──────────────────────── */
 table{width:100%;border-collapse:collapse;font-size:11px}
 thead th{
-  color:var(--text-dim);text-align:right;padding:3px 8px;
+  color:var(--text-dim);text-align:right;height:21px;padding:0 8px;line-height:21px;
   border-bottom:1px solid var(--border);font-weight:400;
   text-transform:uppercase;font-size:10px;white-space:nowrap;letter-spacing:.05em;
 }
 thead th:first-child,tbody td:first-child{text-align:left}
-tbody td{text-align:right;padding:3px 8px;border-bottom:1px solid var(--border-2);white-space:nowrap}
+tbody td{text-align:right;height:21px;padding:0 8px;line-height:21px;border-bottom:1px solid var(--border-2);white-space:nowrap}
 tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:#1a1a1a}
+tbody tr:hover{background:var(--panel-2)}
 td.r,th.r{text-align:right}
 /* The table above is the OpenTerminal data grid: right-aligned and nowrap,
    which is right for columns of numbers and wrong for anything you read. A
    prose cell in it gets right-aligned and then runs off the card, because
    nowrap has nothing to wrap against. `.t` opts a cell back into being text. */
-td.t,th.t{text-align:left;white-space:normal}
-td b{font-weight:700;color:var(--text)}
+/* a prose cell keeps the row pitch when it is one line (3+15+3=21) and
+   grows in 15px steps when it wraps, so the grid never drifts. */
+td.t,th.t{text-align:left;white-space:normal;height:auto;padding:3px 8px;line-height:15px}
+td b{font-weight:500;color:var(--text)}
 
 /* ── buttons (OT: .term-btn) ────────────────────────────────────────────── */
 .btn{
   background:var(--panel-2);border:1px solid var(--border);color:var(--text);
-  padding:4px 10px;font-size:11px;font-family:inherit;cursor:pointer;
+  height:var(--row);padding:0 10px;font-size:var(--fs-1);font-family:inherit;cursor:pointer;
   text-decoration:none;display:inline-flex;align-items:center;gap:6px;
   letter-spacing:.05em;text-transform:uppercase;
 }
-.btn:hover,.btn.active{border-color:var(--accent);color:var(--accent)}
-.btn[disabled]{opacity:.4;pointer-events:none}
-.btn-primary{background:var(--accent-bg);border-color:var(--accent-dim);color:var(--accent)}
+/* an ordinary button is not a link: only the one primary action per page
+   gets to be cyan. */
+.btn:hover,.btn.active{border-color:var(--border-hi);color:var(--text)}
+/* opacity on 11px mono anti-aliases into mush; disabled is a colour. */
+.btn[disabled]{opacity:1;color:var(--text-dimmer);border-color:var(--border-2);background:transparent;pointer-events:none}
+.btn-primary{background:transparent;border-color:var(--accent);color:var(--accent)}
 /* the quiet sibling of btn-primary: same geometry, no fill. Used five times
    and undefined, so a secondary action looked identical to a plain one. */
 .btn-outline{background:transparent;border-color:var(--border);color:var(--text-dim)}
 .btn-outline:hover{border-color:var(--accent);color:var(--accent)}
 .btn-primary:hover{border-color:var(--accent);background:rgba(34,211,238,.18)}
-.btn-lg{padding:6px 16px;font-size:11.5px}
-.btn-sm{padding:2px 8px;font-size:10.5px}
+.btn-lg{height:26px;padding:0 14px;font-size:var(--fs-1)}
+.btn-sm{height:18px;padding:0 8px;font-size:var(--fs-0)}
 .btn-ghost{background:transparent}
 
 input,select,label.btn{font-family:inherit}
 input,select{
   background:var(--panel-2);border:1px solid var(--border);color:var(--text);
-  padding:3px 7px;font-size:11px;outline:none;
+  height:var(--row);padding:0 7px;font-size:var(--fs-1);outline:none;
 }
 input:focus,select:focus{border-color:var(--accent)}
-.btn:focus-visible{outline:1px solid var(--accent);outline-offset:1px}
+/* was .btn-only, so nav links, segments and in-table links had no visible
+   focus at all. Inset by 1px so the ring sits inside the hairline and
+   nothing shifts when it appears. */
+:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.nav-links a:focus-visible{outline-offset:-2px}
 
 /* ── badge ──────────────────────────────────────────────────────────────── */
 .badge{
   display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);
-  padding:1px 7px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  height:16px;padding:0 6px;line-height:14px;font-size:var(--fs-0);letter-spacing:.06em;text-transform:uppercase;
   color:var(--text-dim);
 }
-.badge i{width:5px;height:5px;background:currentColor;font-style:normal;border-radius:50%}
+.badge i{width:4px;height:4px;background:currentColor;font-style:normal;border-radius:50%}
 .badge-ok{color:var(--up);border-color:rgba(0,200,83,.35)}
 .badge-bad{color:var(--down);border-color:rgba(255,61,61,.35)}
 .badge-warn{color:var(--warn);border-color:rgba(255,153,0,.35)}
@@ -209,17 +231,23 @@ input:focus,select:focus{border-color:var(--accent)}
 /* ── stat strip ─────────────────────────────────────────────────────────── */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
   border-top:1px solid var(--border)}
-.stat{padding:7px 10px;border-right:1px solid var(--border-2)}
+/* 6+14+2+22+1+14+7 = 66 = three rows, so a tile strip with captions and one
+   without (cascade has no captions) are the same height on every page. */
+.stat{padding:6px 10px 7px;min-height:66px;border-right:1px solid var(--border-2)}
 .stat:last-child{border-right:0}
-.stat .k{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-dim)}
-.stat .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.stat .k{font-size:var(--fs-0);line-height:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim)}
+.stat .v{font-size:var(--fs-3);font-weight:500;line-height:22px;margin-top:2px;font-variant-numeric:tabular-nums;letter-spacing:0}
 .stat .v.bad{color:var(--down)}
 .stat .v.ok{color:var(--up)}
-.stat .s{font-size:10px;color:var(--text-dimmer);margin-top:2px}
+/* the caption carries the verdict — "breaches the limit" — so it has to be
+   legible rather than decorative. */
+.stat .s{font-size:var(--fs-0);line-height:14px;color:var(--text-dim);margin-top:1px}
 
 /* ── hero figure ────────────────────────────────────────────────────────── */
 .figure{display:flex;flex-direction:column;gap:5px}
-.figure .big{font-size:40px;font-weight:700;line-height:1;letter-spacing:-.02em;
+/* 28px is still 2.5x body and reads instantly; 40px negative-tracked was the
+   single most landing-page element on the site. */
+.figure .big{font-size:var(--fs-4);font-weight:500;line-height:32px;letter-spacing:0;
   font-variant-numeric:tabular-nums}
 .figure .big.bad{color:var(--down)}
 
@@ -230,10 +258,12 @@ input:focus,select:focus{border-color:var(--accent)}
 .seg{display:inline-flex;border:1px solid var(--border)}
 .seg button{
   background:var(--panel-2);border:0;border-right:1px solid var(--border);
-  color:var(--text-dim);padding:4px 14px;font:inherit;font-size:11px;cursor:pointer;
+  color:var(--text-dim);height:var(--row);padding:0 12px;font:inherit;font-size:var(--fs-1);cursor:pointer;
 }
 .seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+/* the one place a solid cyan block is right: a pressed segment is a setting,
+   not a link. */
+.seg button[aria-pressed="true"]{background:var(--accent);color:#000}
 .seg button:hover:not([aria-pressed="true"]){color:var(--text)}
 .empty{padding:34px 12px;text-align:center;color:var(--text-dim)}
 .empty h2{margin-bottom:6px}
