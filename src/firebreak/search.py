@@ -43,16 +43,20 @@ def amplification_above(factor):
 def find_weakest_shock(condition, holdings, tolerance=0.0005, **cascade_kwargs):
     """Smallest single-asset drop that trips `condition`, or None.
 
-    Breach count is monotone in shock size (verified across 12,200 runs on the
-    real books), so for breach-count conditions this really is a threshold.
-    Loss- and amplification-based conditions are NOT monotone — a bigger shock
-    can bankrupt a fund sooner, so it liquidates at a higher VWAP and the total
-    comes out slightly smaller. For those, read this as "the smallest shock the
-    grid scan found", not as a proven threshold.
+    Nothing here is a proven threshold, breach count included. The earlier
+    claim that it was survived because the sweep behind it kept leverage,
+    gamma and the shocked name at defaults; widen any of those and it breaks.
+    On the filed books at leverage 7.5 and gamma 0.1, TSLA -20% breaches five
+    funds and TSLA -21% breaches four. Bigger shocks kill the distressed funds
+    a round sooner, so they liquidate at a higher VWAP, so less damage reaches
+    the funds standing behind them and some of those never breach at all.
+    Loss and amplification conditions go the same way for the same reason.
 
-    Either way the scan walks up from zero in 1% steps and takes the first
-    crossing, so the answer is the smallest crossing on the grid; bisection
-    only refines inside that 1% bracket.
+    What the answer *is*: the scan walks down from zero in 1% steps and stops
+    at the first crossing, so it's the smallest crossing on the 1% grid, and
+    bisection refines inside that one bracket. It is a shock that genuinely
+    trips the condition and no whole-percent step below it does. It is not
+    guaranteed to be the infimum.
     """
     n_assets = np.asarray(holdings).shape[1]
     best = None

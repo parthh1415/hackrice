@@ -86,3 +86,74 @@ def test_loss_and_amplification_conditions_both_work():
     assert by_amp is not None
     assert run_cascade(shock=by_loss.shock, **system()).final_loss > 0.30
     assert run_cascade(shock=by_amp.shock, **system()).amplification > 1.2
+
+
+# --- what the search can and cannot promise -------------------------------
+
+
+def _staggered_default_book():
+    """Two funds behind one asset, one fund behind another, one bridging both.
+
+    The bridge is the whole point: it's the only seller in asset 0, and how
+    hard it sells depends on how much distress reaches it before it defaults.
+    """
+    return dict(
+        holdings=np.array([
+            [804665840.27, 0.0],            # only asset 0 — hurt second-hand
+            [882371564.30, 836019928.60],   # the bridge
+            [0.0, 538184754.06],
+            [0.0, 970176934.93],
+            [0.0, 986797182.03],
+        ]),
+        leverage=np.array([5.324533, 2.590321, 6.621589, 6.515861, 3.852326]),
+        max_leverage=np.array([6.134146, 2.984188, 7.628424, 7.506619, 4.438085]),
+        target_leverage=np.array([4.163121, 2.025308, 5.177258, 5.094591, 3.012039]),
+        gamma=0.9275268799821211,
+        adv=np.array([10770182322.75, 8583520840.37]),
+    )
+
+
+def test_breach_count_is_not_actually_monotone_in_shock_size():
+    """The docstrings used to promise it was, and the reverse search is built
+    on that promise. It doesn't hold.
+
+    Bigger shock, fewer breaches: at -14% the distressed funds die one round
+    apart, so the bridge fund is still solvent when the second wave hits, gets
+    dragged well past its limit and dumps asset 0 hard enough to break the
+    fund standing behind it. At -16% they all default in round one, the bridge
+    breaches by a hair instead, sells little, and that fund never goes.
+    """
+    book = _staggered_default_book()
+
+    counts = {}
+    for drop in (0.14, 0.16):
+        result = run_cascade(shock=np.array([0.0, -drop]), **book)
+        counts[drop] = len(result.breached)
+
+    assert counts[0.16] < counts[0.14], counts
+
+
+def test_the_shock_it_reports_really_does_break_you():
+    """Monotonicity is what would make the answer *minimal*. Without it the
+    guarantee is weaker and worth stating: the reported shock trips the
+    condition, and no whole-percent step below it does.
+    """
+    book = _staggered_default_book()
+    condition = at_least_n_breaches(4)
+
+    found = find_weakest_shock(condition=condition, **book)
+    assert found is not None
+
+    at = run_cascade(shock=found.shock, **book)
+    assert condition(at), "the hero number has to be a shock that actually breaks it"
+
+    step = 0.01
+    below = abs(found.magnitude) - step
+    while below > 0:
+        vector = np.zeros(book["holdings"].shape[1])
+        vector[found.asset] = -below
+        assert not condition(run_cascade(shock=vector, **book)), (
+            f"a {below:.2%} drop on asset {found.asset} already breaks it; "
+            f"the search reported {found.pct:.3f}%"
+        )
+        below -= step
