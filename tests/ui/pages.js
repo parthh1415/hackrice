@@ -555,7 +555,14 @@ function visibleText(d) {
     /* The solver strip. docs/devpost.md claims the engine name, evaluation
        count and exit flag are on screen; this is the check that keeps that
        claim true, since the redesign silently dropped them once already. */
-    const st = await (await fetch(ORIGIN + "/api/stabilise?leverage=5.0&gamma=0.2&band=1.05&asset=0")).json();
+    /* The card hardcoded its knobs and omitted `breaches` entirely, so it
+       answered a 2-breach question while the pitch quotes the 3-breach one —
+       Renaissance's $441,665 against Citadel's $1,731,560, four clicks apart
+       with no label on either. It has to describe the run this session did. */
+    const kp = full.params;
+    const st = await (await fetch(ORIGIN +
+      `/api/stabilise?leverage=${kp.leverage}&gamma=${kp.gamma}&band=${kp.band}` +
+      `&breaches=${kp.breaches}&asset=0`)).json();
     const shown = await until(() => a.d.getElementById("engineCard") &&
                                     !a.d.getElementById("engineCard").hidden);
     check("the solver provenance card renders", shown);
@@ -570,6 +577,11 @@ function visibleText(d) {
     check("the solve time is a duration, or says it was not recorded",
           st.engine.solve_ms != null ? /\b\d+(\.\d+)? ms\b/.test(eb)
                                      : eb.includes("not recorded"), eb.slice(0, 200));
+    has("the card names the breach count it is answering", eb, `${kp.breaches}+ breaching`);
+    has("and the patch it found, which is what the pitch quotes", eb, st.fix.fund);
+    has("with the dollar figure from that same scenario", eb,
+        "$" + Math.round(st.fix.sell_usd).toLocaleString("en-US"));
+
     if (st.bought && st.bought.measurable === false) {
       has("an unmeasurable change is reported as unmeasurable, not as a number",
           eb, "no measurable change");

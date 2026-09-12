@@ -107,9 +107,23 @@ bindKeys("assumptions");
      The redesign dropped this strip along with the rest of the institutional
      screen, which left docs/devpost.md claiming it was on screen when it was
      not. It lives here now: this is the page about the model. */
+  /* Driven by the knobs THIS session ran with, not by four literals. Hardcoded
+     — and with `breaches` omitted entirely, so it defaulted to 2 — the card
+     answered a question nobody had asked: Renaissance selling $441,665 over
+     301 evaluations, where the pitch and the video script quote Citadel's
+     $1,731,560 over 124, which is the >=3-breach answer. Two different
+     scenarios, no label on either, four clicks apart. */
+  const K = {
+    leverage: P.leverage != null ? P.leverage : 5.0,
+    gamma: P.gamma != null ? P.gamma : 0.2,
+    band: P.band != null ? P.band : 1.05,
+    breaches: P.breaches != null ? P.breaches : 2,
+  };
   let st;
-  try { st = await api("/api/stabilise?leverage=5.0&gamma=0.2&band=1.05&asset=0"); }
-  catch { return; }
+  try {
+    st = await api(`/api/stabilise?leverage=${K.leverage}&gamma=${K.gamma}` +
+                   `&band=${K.band}&breaches=${K.breaches}&asset=0`);
+  } catch { return; }
   const e = st && st.engine;
   if (!e) return;
 
@@ -122,8 +136,13 @@ bindKeys("assumptions");
      contradiction: a break point of 4.60% sitting two clicks after Analysis
      said 24.69%. */
   const erows = [
-    ["Applies to", "the five institutional books",
+    /* the scenario, stated, because the same solver gives a different fund and
+       a 4x different figure at a different breach count. */
+    ["Applies to", `the five institutional books, at ${K.breaches}+ breaching`,
       "not your portfolio — your own fix is on Defend, solved by an exhaustive Python scan"],
+    ["Patch found", `${st.fix.fund} sells ${usdExact(st.fix.sell_usd)} of ${st.fix.asset}`,
+      `${(st.fix.reduction * 100).toFixed(4)}% of that position, ` +
+      `${(st.fix.cost * 100).toFixed(4)}% of the system's gross assets`],
     ["Engine", e.name, e.note || ""],
     ["Solver", e.solver, e.kind === "matlab"
       ? "pattern search over (fund, asset, reduction) — no gradient, piecewise-constant feasible set"

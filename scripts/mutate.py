@@ -377,6 +377,10 @@ MUTATIONS = {
         "web/index.html",
         'for="csvFile" id="csvLabel" tabindex="0" role="button"',
         'for="csvFile" id="csvLabel"'),
+    "solver_card_hardcodes_its_scenario": (
+        "web/assumptions.html",
+        "    breaches: P.breaches != null ? P.breaches : 2,",
+        "    breaches: 3,"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -422,7 +426,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "one_frame_cascade_pretends_to_play",
                 "attribution_uses_direct_not_cascade",
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
-                "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order"}
+                "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order",
+                "solver_card_hardcodes_its_scenario"}
 
 
 def build(name):
