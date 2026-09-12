@@ -95,12 +95,36 @@ def normalise(rows, source="csv"):
     different opinions about how much you own.
     """
     merged, order = {}, []
-    for row in rows:
+    if isinstance(rows, dict) or not isinstance(rows, (list, tuple)):
+        # A single holding object rather than a list of them reached
+        # row.get() as a string and raised AttributeError, which is not on the
+        # refusal path — so the endpoint answered 200 with an `error` key and
+        # no `found` key at all, and the UI's `if (body.refused)` and
+        # `if (!body.found)` branches both fell through.
+        raise ValueError(
+            "`holdings` must be a list of holdings, not a single one. "
+            f"Received {type(rows).__name__}."
+        )
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ValueError(f"holding {i + 1} is a {type(row).__name__}, not an object "
+                             "with a symbol and a value.")
         symbol = str(row.get("symbol", "")).strip().upper()
-        if not symbol:
-            continue
         value = row.get("market_value")
         qty = row.get("quantity")
+        if not symbol:
+            # Skipping a nameless row is right when it is blank padding and
+            # wrong when it carries money: $2,000 under no symbol used to
+            # vanish and every other weight renormalised around the hole,
+            # which is the silent undercount this whole project exists to
+            # refuse. Say it rather than absorb it.
+            if value in (None, "", 0) and qty in (None, "", 0):
+                continue
+            raise ValueError(
+                f"holding {i + 1} has a value but no symbol, so it cannot be "
+                "placed in the modelled universe. Dropping it would renormalise "
+                "every other weight around the hole."
+            )
         if value is None and qty is not None and row.get("price") is not None:
             value = float(qty) * float(row["price"])
         if value is None:
@@ -108,7 +132,15 @@ def normalise(rows, source="csv"):
                 f"{symbol}: need market_value, or quantity and price. "
                 "A holding with no value cannot be weighted."
             )
-        value = float(value)
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{symbol}: market value {value!r} is not a number.")
+        # NaN defeats every comparison silently: `nan > 1e-9` is False, so the
+        # sum-to-one check downstream passed and the search reported "no shock
+        # in the tested range" for a book that was never scored at all.
+        if value != value or value in (float("inf"), float("-inf")):
+            raise ValueError(f"{symbol}: market value {value} is not a finite number.")
         if symbol not in merged:
             order.append(symbol)
             merged[symbol] = {"value": 0.0, "qty": 0.0, "has_qty": False}

@@ -11,6 +11,8 @@ import re
 import subprocess
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 
@@ -150,7 +152,15 @@ def test_every_mutation_anchor_still_exists_in_the_code_it_targets():
     twenty-minute mutation run.
     """
     import importlib.util
+    import os
     import pathlib
+
+    if os.environ.get("FIREBREAK_MUTANT"):
+        pytest.skip(
+            "running inside a mutant: the mutation has by definition changed "
+            "the line its own anchor points at, so this test would fail for "
+            "every mutation and hand each one a catch it did not earn"
+        )
 
     root = pathlib.Path(__file__).resolve().parents[1]
     spec = importlib.util.spec_from_file_location("_mutate", root / "scripts" / "mutate.py")

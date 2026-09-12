@@ -336,3 +336,105 @@ def test_the_no_break_point_answer_carries_the_range_it_searched():
     ], "source": "csv"})
     assert out["found"] is False
     assert out["search_max_drop"] == pytest.approx(_MAX_DROP)
+
+
+@pytest.mark.parametrize("name,body,needle", [
+    ("a NaN market value",
+     [{"symbol": "NVDA", "market_value": "nan"}, {"symbol": "CASH", "market_value": 1000}],
+     "not a finite number"),
+    ("an infinite market value",
+     [{"symbol": "NVDA", "market_value": 1e400}, {"symbol": "CASH", "market_value": 1}],
+     "not a finite number"),
+    ("a row with money and no symbol",
+     [{"symbol": "NVDA", "market_value": 1000}, {"symbol": "CASH", "market_value": 1000},
+      {"symbol": "", "market_value": 2000}],
+     "no symbol"),
+    ("a holding that is not an object", ["NVDA"], "not an object"),
+])
+def test_a_book_we_cannot_read_is_refused_rather_than_absorbed(name, body, needle):
+    """Each of these used to produce a confident answer about a different book.
+
+    A NaN value defeats every comparison silently — `nan > 1e-9` is False — so
+    the sum-to-one check downstream passed and the search reported "no shock
+    within the tested range" for a portfolio it had never scored.
+
+    A row carrying $2,000 under no symbol was skipped, and every other weight
+    renormalised around the hole: a $4,000 book answered as a $2,000 one, with
+    no refusal. That is the silent undercount this project exists to refuse —
+    the same shape as the CUSIP bug in its own origin story.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10", {"holdings": body, "source": "csv"})
+    assert out["found"] is False, f"{name} produced an answer"
+    assert out.get("refused") is True, f"{name} was not refused: {out.get('reason')}"
+    assert needle in out["reason"], out["reason"]
+
+
+def test_holdings_given_as_a_single_object_is_refused_not_a_crash():
+    """AttributeError is not on the refusal path.
+
+    `{"holdings": {...}}` reached row.get() as a string and raised, so the
+    endpoint answered 200 with an `error` key and NO `found` key — and both of
+    the UI's branches, `if (body.refused)` and `if (!body.found)`, fell
+    through it.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10",
+                     {"holdings": {"symbol": "NVDA", "market_value": 1000}, "source": "csv"})
+    assert "found" in out and out["found"] is False
+    assert out["refused"] is True
+    assert "must be a list" in out["reason"]
+
+
+def test_a_blank_padding_row_is_still_skipped():
+    """The guard must not turn trailing empty rows into a refusal — a CSV with
+    a stray comma line is not a broken portfolio."""
+    out = api.handle("/api/portfolio/full?limit=0.10", {"holdings": [
+        {"symbol": "NVDA", "market_value": 3600},
+        {"symbol": "CASH", "market_value": 8700},
+        {"symbol": "", "market_value": 0},
+        {"symbol": "  "},
+    ], "source": "csv"})
+    assert out["found"] is True
+    assert out["portfolio"]["total_value"] == pytest.approx(12300.0)
+
+
+@pytest.mark.parametrize("query", [
+    "/api/break?leverage=nan&breaches=3",
+    "/api/break?leverage=1e400&breaches=3",
+    "/api/break?gamma=nan&breaches=3",
+    "/api/break?band=inf&breaches=3",
+    "/api/stabilise?leverage=nan&breaches=3",
+    "/api/boundary?gamma=1e400",
+])
+def test_no_response_can_contain_a_bare_nan_or_infinity(query):
+    """json.dumps writes NaN and Infinity as bare tokens, which are not JSON.
+
+    `cached_for` echoed the RAW request rather than the clamped value, so
+    `?leverage=nan` put a bare NaN in the body and JSON.parse threw on the
+    whole response — a well-formed 200 that no browser could read.
+    """
+    raw = json.dumps(api.handle(query, {}))
+    assert "NaN" not in raw and "Infinity" not in raw, (
+        f"{query} produced a body that JSON.parse rejects"
+    )
+    json.loads(raw)  # and it round-trips
+
+
+@pytest.mark.parametrize("query,knob,used", [
+    ("/api/break?leverage=999&breaches=3", "leverage", 8.0),
+    ("/api/break?gamma=-5&breaches=3", "gamma", 0.0),
+])
+def test_cached_for_reports_the_knobs_the_answer_was_computed_with(query, knob, used):
+    """It echoed the request instead.
+
+    `?leverage=999` came back with `params {leverage: 8.0}` next to
+    `cached_for {leverage: 999.0}` and `cached_exact: true` — three fields
+    disagreeing about which question was answered, on a response that is not
+    cached at all.
+    """
+    out = api.handle(query, {})
+    assert out["cached"] is False
+    assert out["params"][knob] == pytest.approx(used)
+    assert out["cached_for"][knob] == pytest.approx(used), (
+        f"cached_for says {out['cached_for'][knob]} where the engine used "
+        f"{out['params'][knob]}"
+    )

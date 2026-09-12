@@ -87,7 +87,17 @@ def handle(path, body):
         return cached
 
     payload["cached"] = False
-    payload["cached_for"] = _knobs(route, params)
+    # The knobs the answer was actually COMPUTED with, which is `params` after
+    # clamping — not the raw request. Echoing the request here produced
+    # `cached_for {leverage: 999.0}` beside `params {leverage: 8.0}` and
+    # `cached_exact: true`, which reads as "this is an answer at 999x". Worse,
+    # the raw value went through json.dumps unfiltered: `?leverage=nan` wrote a
+    # bare `NaN` and `?leverage=1e400` a bare `Infinity`, neither of which is
+    # valid JSON, so JSON.parse threw on the whole response.
+    used = payload.get("params")
+    payload["cached_for"] = ({k: v for k, v in used.items()
+                              if k in KNOBS.get(route, {})}
+                             if isinstance(used, dict) else _knobs(route, params))
     # a live answer is of exactly what was asked, by construction
     payload["cached_exact"] = True
     payload["cached_near"] = True

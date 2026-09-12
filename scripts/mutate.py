@@ -274,6 +274,18 @@ MUTATIONS = {
         "src/firebreak/api.py",
         "    used = min(abs(wanted), 1.0)",
         "    used = abs(wanted)"),
+    "pm_nameless_money_is_dropped": (
+        "src/firebreak/portfolio.py",
+        '            if value in (None, "", 0) and qty in (None, "", 0):\n                continue',
+        "            continue"),
+    "pm_nan_value_scored": (
+        "src/firebreak/portfolio.py",
+        '        if value != value or value in (float("inf"), float("-inf")):\n            raise ValueError(f"{symbol}: market value {value} is not a finite number.")',
+        "        pass"),
+    "pm_cached_for_echoes_the_request": (
+        "src/firebreak/api.py",
+        '    used = payload.get("params")\n    payload["cached_for"] = ({k: v for k, v in used.items()\n                              if k in KNOBS.get(route, {})}\n                             if isinstance(used, dict) else _knobs(route, params))',
+        '    payload["cached_for"] = _knobs(route, params)'),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
@@ -451,7 +463,9 @@ def demo_payload(scratch):
         "print(json.dumps({'pct':b['pct'],'metrics':b['metrics'],'rounds':b['rounds'],"
         "'breached':b['breached'],'fix':s['fix'],'bought':s['bought']},sort_keys=True))")
     out = subprocess.run([sys.executable, "-c", code], cwd=scratch, text=True,
-                         capture_output=True, env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"})
+                         capture_output=True, env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin",
+                                      # the anchor test is about THIS tree, not a mutant of it
+                                      "FIREBREAK_MUTANT": "1"})
     return (out.stdout or out.stderr).strip()
 
 
@@ -487,7 +501,9 @@ def main():
             run = subprocess.run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header",
                                   "-p", "no:cacheprovider"],
                                  cwd=scratch, text=True, capture_output=True,
-                                 env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"})
+                                 env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin",
+                                      # the anchor test is about THIS tree, not a mutant of it
+                                      "FIREBREAK_MUTANT": "1"})
             tail = [l for l in run.stdout.splitlines() if l.startswith("FAILED")]
             summary = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else "no output"
             caught = run.returncode != 0
