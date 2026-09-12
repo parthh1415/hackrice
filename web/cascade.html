@@ -72,9 +72,11 @@ bindKeys("cascade");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("cascade");
 if (r) (async () => {
+  const limitX = (r.params.leverage * r.params.band).toFixed(2);
   document.getElementById("lede").textContent =
-    `${r.asset} falls ${r.pct.toFixed(2)}%. That alone costs you ${pct(r.direct_loss)}. ` +
-    `Watch what the institutional books do next.`;
+    `If ${r.asset} fell ${r.pct.toFixed(2)}%, that alone would cost you ${pct(r.direct_loss)}. ` +
+    `Here is what the modelled books do next. Red means a book is over its ` +
+    `${limitX}× leverage limit and selling.`;
 
   const body = await api(`/api/cascade?asset=${encodeURIComponent(r.asset)}` +
     `&magnitude=${Math.abs(r.magnitude)}&leverage=${r.params.leverage}` +
@@ -153,7 +155,11 @@ if (r) (async () => {
       const lev = mk("text", { x: RX + 20, y: fy(j) + 17,
         "font-family": "var(--mono)", "font-size": 10,
         fill: breached ? "hsl(359 100% 61%)" : "hsl(0 0% 38%)" });
-      lev.textContent = f.leverage[j] === null ? "INSOLVENT" : `L ${f.leverage[j].toFixed(2)}`;
+      /* "L 6.00" gave no unit and no threshold, so red against grey had no
+         visible rule — the number the boxes are compared against never
+         appeared anywhere on the page. */
+      lev.textContent = f.leverage[j] === null
+        ? "INSOLVENT" : `lev ${f.leverage[j].toFixed(2)}×`;
       svg.appendChild(lev);
     });
     document.getElementById("roundTitle").textContent =

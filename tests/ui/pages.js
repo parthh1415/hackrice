@@ -517,6 +517,16 @@ function visibleText(d) {
     ok("quantity and price with no value column",
        "symbol,quantity,price\nNVDA,20,180", "NVDA=20x180");
 
+    /* These strings are set with textContent, so a backtick is a backtick on
+       screen — seven of them were reaching the user as literal punctuation
+       around words like `symbol`. */
+    const errorText = (text) => { try { parse(text); return ""; } catch (e) { return e.message; } };
+    check("error messages carry no literal markdown backticks",
+          !["symbol,market_value\nNVDA,3,600", "ticker,foo\nNVDA,1",
+            "symbol,book_value\nNVDA,1200", "symbol,market_value\nNVDA,-1"]
+            .some((t) => errorText(t).includes("`")),
+          ["symbol,book_value\nNVDA,1200"].map(errorText).join(" | "));
+
     refuses("an unquoted 3,600 is refused, not read as 3",
             "symbol,market_value\nNVDA,3,600\nMSFT,3,150", "fields where the header has");
     refuses("a market value that disagrees with quantity x price is refused",

@@ -79,7 +79,11 @@ function paintNav(current) {
   if (pf) pf.innerHTML = `BOOK <b>${s.portfolio
     ? (s.portfolio.source === "demo" ? "DEMO_01" : "IMPORTED") : "—"}</b>`;
   const lim = document.getElementById("navLimit");
-  if (lim) lim.innerHTML = `LIMIT <b>${s.limit ? pct(s.limit, 2) : "—"}</b>`;
+  /* the limit was printed three ways on one screen: LIMIT 10.00% here, YOUR
+     LIMIT 10% in the tiles, "a limit of 10%" in the prose. It is a round
+     number the user picked from four buttons; two decimals were inventing
+     precision the choice does not have. */
+  if (lim) lim.innerHTML = `LIMIT <b>${s.limit ? pct(s.limit, 0) : "—"}</b>`;
   const sh = document.getElementById("navShock");
   /* Three states, not two. A search that ran and found nothing is not the same
      as a search that never ran, and calling it "NOT RUN" is simply false — the

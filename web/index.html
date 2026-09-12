@@ -185,16 +185,16 @@ function parseCsv(text) {
   const head = splitCsvLine(lines[0]).map(h => h.toLowerCase().trim());
   const at = (names) => head.findIndex(h => names.includes(h));
   const iSym = at(["symbol", "ticker"]);
-  if (iSym < 0) throw new Error("no `symbol` column in the header row");
+  if (iSym < 0) throw new Error("no symbol column in the header row");
   const iVal = at(VALUE_NAMES), iQty = at(QTY_NAMES), iPx = at(PRICE_NAMES);
   const lookalike = head.filter(h => /value/.test(h) && !VALUE_NAMES.includes(h));
 
   if (iVal < 0 && (iQty < 0 || iPx < 0)) {
     throw new Error(lookalike.length
-      ? `no market value column. \`${lookalike.join("`, `")}\` ${lookalike.length > 1 ? "are" : "is"} ` +
-        "not the market value of a holding, and guessing would price your whole " +
-        "book off the wrong column — add `market_value`, or `quantity` and `price`"
-      : "need `market_value`, or `quantity` and `price`");
+      ? `no market_value column (${lookalike.join(", ")} ${lookalike.length > 1 ? "are" : "is"} ` +
+        "not one). Guessing would price the whole book off the wrong column. " +
+        "Add market_value, or quantity and price."
+      : "need a market_value column, or quantity and price");
   }
 
   const rows = [];
@@ -226,9 +226,8 @@ function parseCsv(text) {
       }
     }
     if (v !== null && v < 0) {
-      throw new Error(`${at_} (${symbol}) has a negative market value. This build models ` +
-        "long-only books; a short is invisible to the 13F data underneath it, so " +
-        "we would rather refuse than weight a position we cannot see");
+      throw new Error(`${at_} (${symbol}): negative market value. 13F filings carry ` +
+        "no shorts, so this build is long-only.");
     }
     if (v !== null) r.market_value = v;
     if (q !== null) r.quantity = q;
@@ -239,8 +238,8 @@ function parseCsv(text) {
          sitting in a book_value cell, and the user has no idea why. */
       throw new Error(`${at_} (${symbol}) has no value: needs market_value, or quantity and price` +
         (lookalike.length
-          ? `. \`${lookalike.join("`, `")}\` ${lookalike.length > 1 ? "are" : "is"} not a market ` +
-            "value, so we are not reading it — rename it if that is what it holds"
+          ? `. ${lookalike.join(", ")} ${lookalike.length > 1 ? "are" : "is"} not a market value, ` +
+            "so it is not being read — rename it if that is what it holds"
           : ""));
     }
     rows.push(r);
