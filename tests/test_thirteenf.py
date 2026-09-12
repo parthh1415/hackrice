@@ -102,12 +102,17 @@ def test_a_fund_holding_nothing_in_the_universe_is_dropped():
 
 
 def test_share_classes_of_one_issuer_collapse_into_one_column():
-    # Alphabet files under four CUSIPs. Mapping only one of them captured
-    # 48% of Citadel's position and 15% of Millennium's — heterogeneous, so
-    # it doesn't cancel, it just invents dispersion in the overlap metric.
+    # Alphabet files under four CUSIPs. We mapped only 02079K30 and captured
+    # 47.9% of Citadel's $2.229B Alphabet position — and a different fraction
+    # of everyone else's, because class mixes differ. Heterogeneous, so it
+    # does not cancel; it invents dispersion in the overlap metric.
+    #
+    # The classes in this comment were the wrong way round until a review
+    # agent read titleOfClass in the filings instead of trusting the write-up.
+    # Verified against Citadel's accession 0001104659-26-104387.
     universe = {
-        "02079K10": "GOOGL",  # class A
-        "02079K30": "GOOGL",  # class C
+        "02079K10": "GOOGL",  # CAP STK CL C
+        "02079K30": "GOOGL",  # CAP STK CL A — the one we had
         "67066G10": "NVDA",
     }
     books = {"Alpha": {"02079K10": 900.0, "02079K30": 1070.0, "67066G10": 500.0}}

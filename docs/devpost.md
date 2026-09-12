@@ -204,22 +204,46 @@ price impact it caused. The funds driving the crash were the only ones untouched
 settle at the round's VWAP, midway between the pre- and post-impact price, which is both defensible and
 the reason the headline amplification number is 1.87 rather than something flattering.
 
-**The GOOGL CUSIP was Alphabet Class C.** 02079K30 is GOOG. Class A, 02079K10, is a different CUSIP and
-was being silently dropped. Because managers hold different Class A / Class C mixes, the undercount was
-heterogeneous: 48% of Citadel's Alphabet position missing, 15% of Millennium's, 100% of Point72's. This
-is the nastiest category of data bug, because nothing errors and nothing looks wrong. It just quietly
-renormalises every other column in the weight matrix, per fund, by a different amount. GOOGL weights
-moved by up to 9× when we fixed it, and the CUSIP map is many-to-one now.
+**We mapped one class of Alphabet and dropped the rest.** Our GOOGL entry was `02079K30`, which the
+filings label `CAP STK CL A`. Alphabet's Class C is `02079K10` (`CAP STK CL C`), and there are two
+depositary-share lines besides. All three were being silently dropped. In Citadel's Q2-2026 table the
+mapped class is **$1.069B of a $2.229B Alphabet position — 47.9% captured, 52.1% missing**, and because
+managers hold different class mixes the undercount was heterogeneous fund by fund. That is the nastiest
+category of data bug: nothing errors, nothing looks wrong, and it quietly renormalises every other
+column of the weight matrix by a different amount per fund. GOOGL weights moved by up to 10.25× when we
+fixed it. The CUSIP map is many-to-one now, and a test asserts every prefix is exactly eight characters
+and every name is held by at least two managers.
+
+> This paragraph was itself wrong for most of the project's life, in a way worth admitting on a page
+> about data bugs. It said "the GOOGL CUSIP was Alphabet Class C" and named `02079K10` as Class A —
+> both inverted — and gave per-fund percentages (48/15/100) that no single-CUSIP map reproduces; the
+> 48% was the share we *captured*, printed as the share we lost. We only caught it because a review
+> agent went back to the filings and read `titleOfClass` instead of trusting the write-up. Every figure
+> above is now taken from Citadel's actual information table, accession 0001104659-26-104387.
 
 **One firm, two registrants.** Two Sigma Investments and Two Sigma Advisers are separate CIKs filing
-separate 13Fs for the same quarter, and our manager map held one CIK per name, so we were reading
-half the firm. Nothing errored — we just had a smaller, differently-weighted Two Sigma book than the
-real one. A manager now maps to a list of CIKs and the holdings are summed. Total book across the
-five went from $38.4B to $40.9B.
+separate 13Fs for the same quarter, and our manager map held one CIK per name. A manager now maps to a
+list of CIKs and the holdings are summed.
+
+> And this one bought us nothing, which we would rather say than let the number next to it imply
+> otherwise. For *this* quarter Two Sigma Advisers filed a single placeholder row — issuer "No Issuer",
+> CUSIP 000000000, value $0 — so reading one CIK per manager gives byte-identical output. The
+> `$38.4B → $40.9B` move that used to sit in this paragraph is **entirely** the Alphabet class fix
+> above. The multi-CIK handling is correct and stays, because a quarter where Advisers files a real
+> book would otherwise lose it silently; it just is not a save we get to claim here.
 
 **`13F-HR` did not match `13F-HR/A`.** Our "latest filing" filter was an exact string match on form
-type, so a Citadel *restatement* of Q2 2026 was skipped and we spent a while reading superseded data as
-if it were current. Form 13F FAQ 58 covers amendment semantics; we follow it now.
+type, so a Citadel *restatement* of Q2 2026 was skipped and we read superseded data as if it were
+current. Form 13F FAQ 58 covers amendment semantics; we follow it now.
+
+> Measured honestly, this one is also inert for this quarter: Citadel's restatement moves $84,487,104
+> across its whole book and **$0 inside our ten names**. We keep it because it is right, and because
+> following that thread is what surfaced the real bug — a `13F-HR/A` whose cover page omits
+> `<amendmentType>` was being summed with the filing it amends, doubling Citadel's book from $14.6B to
+> $29.2B, gross from $40.9B to $55.5B, and taking the demo from four funds breaching to all five. The
+> form string says "/A" and the cover page says `<isAmendment>true</isAmendment>`; we were reading
+> neither. An amendment we cannot classify now raises instead of being guessed at, because the two
+> ways of guessing wrong differ by a factor of two.
 
 **The search asserted that zero shock was safe.** With the leverage slider pushed past the max-leverage
 limit, the system is already in breach before anything is shocked. The search took safety-at-zero as a

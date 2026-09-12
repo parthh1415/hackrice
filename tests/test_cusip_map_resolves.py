@@ -6,10 +6,16 @@ the map is invisible: point GOOGL's Class A prefix at Class C and the whole
 suite stays green while the holdings matrix quietly loses a column's worth
 of value and the crowding measure gains dispersion that is not there.
 
-That is not hypothetical. It shipped once: a CUSIP resolved to Class C
-instead of Class A and produced a heterogeneous undercount — 48% for one
-fund, 15% for another — which is exactly the shape of a real crowding
-signal, and wrong.
+That is not hypothetical. It shipped once: we mapped Alphabet's Class A
+(02079K30) and dropped Class C and both depositary-share lines, capturing
+47.9% of Citadel's $2.229B Alphabet position and a different fraction of
+everyone else's. Heterogeneous by fund is exactly the shape of a real
+crowding signal, and it was an artefact.
+
+(The write-up of that bug had the two classes the wrong way round for
+months, and quoted the captured share as the missing one. Both were found
+by going back to `titleOfClass` in the filings rather than re-reading our
+own prose — which is the same move this file automates.)
 
 So: the shipped artefact must have every ticker present and every column
 carrying value from at least two managers, which is the property the whole
