@@ -234,7 +234,20 @@ function measure(svg) {
   // whatever we last wrote — the diagram locks to its first guess forever.
   const parent = svg.parentElement && svg.parentElement.getBoundingClientRect();
   if (parent && parent.width > 40 && parent.height > 40) {
-    return { width: parent.width, height: parent.height };
+    // ...minus whatever else the container holds. #sceneNetwork contains only
+    // the svg, so this changes nothing there. .split-half is a column of
+    // caption + svg + footer, so the parent overstated the svg's height by
+    // 72px: the layout was built for a 473px box, written into a 473px
+    // viewBox, and then scaled down by the browser to fit the svg's real
+    // 401px — both halves of beat 4 rendering at 85% with ~89px of dead
+    // space each. Measuring the container is right; measuring ALL of it
+    // wasn't.
+    let siblings = 0;
+    for (const el of svg.parentElement.children) {
+      if (el !== svg) siblings += el.getBoundingClientRect().height;
+    }
+    const height = parent.height - siblings;
+    return { width: parent.width, height: height > 40 ? height : parent.height };
   }
   const stage = $("stage").getBoundingClientRect();
   return { width: Math.max(420, stage.width || 900), height: Math.max(280, stage.height || 520) };
@@ -568,20 +581,48 @@ function countTo(target) {
   node.removeAttribute("data-idle");
   const mine = ++countGen;
   countTarget = target;
-  const started = performance.now();
   const dur = 520;
-  function tick(now) {
+
+  const finish = () => {
     if (mine !== countGen) return;
-    // clamp BOTH ends. requestAnimationFrame hands you the frame's start
-    // timestamp, which can pre-date the performance.now() captured moments
-    // earlier when the callback actually runs — so (now - started) goes
-    // negative and target*k renders a large negative percentage. Caught on a
-    // screenshot showing the hero at -85.66% while the diagram beside it read
-    // -5.27%. One-sided clamps are how that happens.
+    node.textContent = `${target.toFixed(2)}%`;
+    countTarget = null;
+  };
+
+  // The count-up is decoration. The number is the product. Anyone who has
+  // asked not to be animated at gets the number.
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    finish();
+    return;
+  }
+
+  // rAF is not a guarantee, and this went wrong twice in the same night.
+  // First its timestamp arrived BEHIND the performance.now() captured just
+  // before scheduling, so (now - started) went negative and the hero printed
+  // -85.66% beside a diagram reading -5.27%. Clamping the subtraction fixed
+  // the sign and produced the quieter version of the same failure: the hero
+  // sat at 0.00%, in the largest type on the page, and a screenshot of that
+  // looks like a finished render rather than a stalled one.
+  //
+  // So: start the clock on the first frame, so both ends come off one clock,
+  // and put a deadline underneath it, so the answer lands even if the frame
+  // clock never advances again — which is what a throttled background tab
+  // does, and what headless Chrome does under a virtual-time budget.
+  let started = null;
+  let done = false;
+  const deadline = setTimeout(() => { done = true; finish(); }, dur + 120);
+
+  function tick(now) {
+    if (mine !== countGen || done) { clearTimeout(deadline); return; }
+    if (started === null) started = now;
     const k = Math.max(0, Math.min(1, (now - started) / dur));
     node.textContent = `${(target * k).toFixed(2)}%`;
-    if (k < 1) requestAnimationFrame(tick);
-    else countTarget = null;
+    if (k < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      clearTimeout(deadline);
+      countTarget = null;
+    }
   }
   requestAnimationFrame(tick);
 }
@@ -1126,9 +1167,20 @@ function fillAssumptions(data, run) {
       `<b>$${(gross / 1e9).toFixed(1)}B</b> gross notional. Anyone can reproduce it from EDGAR.`],
     ["declared", "Leverage", `No fund discloses it. It is the slider, applied uniformly at ` +
       `<b>${lev.toFixed(1)}\u00d7</b>, and every number on screen moves when it changes.`],
+    // The sensitivity pair is a MEASUREMENT, and it was measured at leverage
+    // 5.0 with the >=3 condition. Quoted unconditionally it drifted badly:
+    // at leverage 3.0 the real pair is -4.59% / -57.12%, so the panel stated
+    // -1.73% / -27.33% — wrong by 2.6x and 2.1x — while every row around it
+    // interpolated live values. Re-deriving it costs two more cascades per
+    // open, which this panel does not have; so it is shown only where it is
+    // true, and the claim it supports stands on its own everywhere else.
     ["declared", "Breach band", `<b>${(p.band == null ? 1.05 : p.band).toFixed(2)}</b> \u2014 how far over ` +
       `target a fund runs before it is forced to sell. This swings the headline harder than ` +
-      `leverage or impact: 1.02 gives \u22121.73%, 1.30 gives \u221227.33%.`],
+      `leverage or impact.` +
+      (lev === 5.0 && Number(p.breaches) === 3
+        ? ` At these settings, 1.02 gives \u22121.73% and 1.30 gives \u221227.33%.`
+        : ` The pair we measured \u2014 1.02 \u2192 \u22121.73%, 1.30 \u2192 \u221227.33% \u2014 was taken at ` +
+          `leverage 5.0 with \u22653 breaching, and does not describe the current settings.`)],
     ["declared", "Price impact", `A model, not a measurement. <code>\u0394p/p = \u2212\u03b3 \u00b7 (dollars sold) / ADV</code>, ` +
       `linear in participation, \u03b3 = <b>${(p.gamma == null ? 0.2 : p.gamma).toFixed(2)}</b>. ` +
       `At \u03b3=0 there is no contagion and amplification is exactly 1.00 \u2014 that is the control.`],

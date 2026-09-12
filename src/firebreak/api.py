@@ -588,9 +588,12 @@ _LIMITS = {
     "gamma": (0.0, 1.0, 0.2),
     # How far over target leverage a fund runs before it's forced to sell.
     # This was hardcoded at 1.05 and it matters more than either knob above:
-    # 1.02 gives NVDA -1.73% and amplification 3.10, 1.30 gives NVDA -27.33%
-    # and 1.43. Leaving the most influential parameter invisible while the
-    # other two sat on sliders is the worst version of this.
+    # at leverage 5.0 with >=3 breaching, 1.02 gives NVDA -1.73% and
+    # amplification 3.10, 1.30 gives NVDA -27.33% and 1.43. Those two figures
+    # are leverage-specific — at 3.0 the same pair is -4.59% and -57.12% — so
+    # read them as one measurement, not as the band's behaviour in general.
+    # Leaving the most influential parameter invisible while the other two sat
+    # on sliders is the worst version of this.
     "band": (1.0, 1.5, 1.05),
 }
 
