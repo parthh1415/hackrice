@@ -689,6 +689,36 @@ function playSplit() {
 
 /* ───────────────────────────── phase diagram ──────────────────────────── */
 
+/* Where a value sits on a swept axis, as a fractional cell index.
+   The overlap axis is measured, not constructed: each column is a blend step
+   and the axis records the mean cosine similarity that step produced, which
+   is steeply nonlinear — 0.00, 0.04, 0.10, 0.18, 0.30, 0.46, 0.63, 0.72,
+   0.74, 0.79 … Half the range is spent in the last three columns. The cells
+   are still drawn one per column, so interpolating between the two END
+   values put the real book four columns right of its own data: the marker
+   sat on a pale 1.19× cell while the cascade a screen earlier had reported
+   1.87×, and the dot landed in the blue band instead of the red one. Walk
+   the array rather than assume it is evenly spaced. */
+function axisIndex(values, v) {
+  const n = values.length;
+  for (let k = 0; k < n - 1; k++) {
+    const a = values[k], c = values[k + 1];
+    if ((v >= a && v <= c) || (v <= a && v >= c)) {
+      return a === c ? k : k + (v - a) / (c - a);
+    }
+  }
+  // outside the swept range — /api/boundary takes `here.leverage` straight
+  // off the query string, so a URL can ask for a point this grid never
+  // covered. Pin to the edge; the callout still prints the real value.
+  return Math.abs(v - values[0]) <= Math.abs(v - values[n - 1]) ? 0 : n - 1;
+}
+
+// cells are drawn from their top-left corner, so a value belongs at the
+// CENTRE of its cell. Axis labels use these too — one mapping, or the ticks
+// and the marker disagree about where the same number lives.
+const cellX = (L, cw, col) => L + (col + 0.5) * cw;
+const cellY = (T, ch, rows, row) => T + (rows - 1 - row + 0.5) * ch;
+
 function drawBoundary(svg, b) {
   const m = measure(svg);
   const W = Math.max(520, m.width), H = Math.max(300, m.height);
@@ -721,8 +751,8 @@ function drawBoundary(svg, b) {
 
   const lo = b.leverage_axis[0], hi = b.leverage_axis[b.rows - 1];
   const omin = b.overlap_axis[0], omax = b.overlap_axis[b.cols - 1];
-  const mx = L + ((b.here.overlap - omin) / (omax - omin)) * (R - L);
-  const my = T + ((hi - b.here.leverage) / (hi - lo)) * (B - T);
+  const mx = cellX(L, cw, axisIndex(b.overlap_axis, b.here.overlap));
+  const my = cellY(T, ch, b.rows, axisIndex(b.leverage_axis, b.here.leverage));
   svg.appendChild(el("circle", { cx: mx, cy: my, r: 7, fill: "none", stroke: "var(--ink-0)", "stroke-width": 2 }));
   svg.appendChild(el("circle", { cx: mx, cy: my, r: 2, fill: "var(--ink-0)" }));
 
@@ -746,10 +776,15 @@ function drawBoundary(svg, b) {
   label(px, my - 6, "YOU ARE HERE", { fill: "var(--ink-0)", anchor: "start", ls: "1.2" });
   label(px, my + 9, sub, { anchor: "start", fill: "var(--ink-1)" });
 
-  label(L - 10, B + 3, lo.toFixed(1), { anchor: "end" });
-  label(L - 10, T + 8, hi.toFixed(1), { anchor: "end" });
-  label(L + 2, B + 20, omin.toFixed(2), { anchor: "start" });
-  label(R, B + 20, omax.toFixed(2), { anchor: "end" });
+  label(L - 10, cellY(T, ch, b.rows, 0) + 4, lo.toFixed(1), { anchor: "end" });
+  label(L - 10, cellY(T, ch, b.rows, b.rows - 1) + 4, hi.toFixed(1), { anchor: "end" });
+  label(cellX(L, cw, 0), B + 20, omin.toFixed(2));
+  label(cellX(L, cw, b.cols - 1), B + 20, omax.toFixed(2));
+  // two end ticks on a nonlinear axis read as a linear one. The middle
+  // column is at overlap ~0.72, not ~0.50 — show it, or the eye reads the
+  // marker's horizontal position as a share of the range.
+  const midCol = Math.floor((b.cols - 1) / 2);
+  label(cellX(L, cw, midCol), B + 20, b.overlap_axis[midCol].toFixed(2));
   label((L + R) / 2, B + 38, "PORTFOLIO OVERLAP →", { ls: "1.4" });
   const yl = el("text", {
     "font-family": "var(--mono)", "font-size": 11, fill: "var(--ink-2)",
