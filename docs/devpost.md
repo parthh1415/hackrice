@@ -145,8 +145,9 @@ landscape is piecewise constant. `patternsearch` is built for exactly that, and 
 runs the solve over (fund, asset, reduction). The bridge is a JSON spec file in and a JSON result file
 out, rather than the Engine API, specifically so it runs from MATLAB Online with no local install. If
 MATLAB is not present the API falls back to an exhaustive Python position scan and **says so in the
-UI**, with the solver name, evaluation count and exit flag on screen. We would rather show the fallback
-than imply a solver we did not run.
+UI** — the Model page carries the engine name, solver, evaluation count, exit flag and solve
+time, and prints "not recorded" rather than a zero when a replayed run carries no timing. We would
+rather show the fallback than imply a solver we did not run.
 
 **Frontend.** Vanilla JS and inline SVG on a stdlib `http.server`. No npm, no bundler, no build step,
 no CDN — nothing to install on a demo machine and nothing that breaks when conference wifi does.

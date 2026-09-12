@@ -243,6 +243,10 @@ MUTATIONS = {
         "web/cascade.html",
         'val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "0.00%";',
         'val.textContent = `−${(drop * 100).toFixed(2)}%`;'),
+    "state_narrated_as_transition": (
+        "web/cascade.html",
+        "    const prev = new Set(t > 1 ? (frames[t - 1].breached || []) : []);",
+        "    const prev = new Set();"),
     "pct_forgets_the_hundred": (
         "web/shared.js",
         "const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;",
@@ -254,7 +258,8 @@ MUTATIONS = {
 }
 
 UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "negative_zero_returns",
-                "pct_forgets_the_hundred", "cold_page_renders_anyway"}
+                "pct_forgets_the_hundred", "cold_page_renders_anyway",
+                "state_narrated_as_transition"}
 
 
 def build(name):

@@ -37,6 +37,11 @@
     <div class="card">
       <div class="card-body tight"><table><tbody id="rows"></tbody></table></div>
     </div>
+
+    <div class="card" id="engineCard" hidden>
+      <div class="card-header">What computed the fix<span class="dim" id="engineNote"></span></div>
+      <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
+    </div>
   </div>
 </main>
 <script src="shared.js"></script>
@@ -63,7 +68,56 @@ paintNav("assumptions");
         <div class="stack gap-2">
           <span style="font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:${colour[kind]}">${kind}</span>
           <b>${name}</b></div></td>
-      <td class="small muted" style="line-height:1.6">${body}</td></tr>`).join("");
+      <td class="small muted t" style="line-height:1.6">${body}</td></tr>`).join("");
+
+  /* Which solver actually ran, and what it cost. The stabilisation step is
+     the piece that goes to MATLAB; when MATLAB is not on the machine the API
+     falls back to an exhaustive Python scan. Showing the fallback by name is
+     the point — the alternative is a pitch that implies a solver nobody ran.
+
+     The redesign dropped this strip along with the rest of the institutional
+     screen, which left docs/devpost.md claiming it was on screen when it was
+     not. It lives here now: this is the page about the model. */
+  let st;
+  try { st = await api("/api/stabilise?leverage=5.0&gamma=0.2&band=1.05&asset=0"); }
+  catch { return; }
+  const e = st && st.engine;
+  if (!e) return;
+
+  const ms = e.solve_ms == null ? "not recorded" : `${e.solve_ms} ms`;
+  const b = st.bought || {};
+  const erows = [
+    ["Engine", e.name, e.note || ""],
+    ["Solver", e.solver, e.kind === "matlab"
+      ? "pattern search over (fund, asset, reduction) — no gradient, piecewise-constant feasible set"
+      : "exhaustive scan over the same three-way grid"],
+    ["Evaluations", String(e.evaluations), "cascades simulated to find the cheapest patch"],
+    ["Exit flag", String(e.exit_flag), e.exit_flag === 1 ? "converged" : "did not converge cleanly"],
+    ["Solve time", ms, e.solve_ms == null
+      ? "the recorded run did not carry a timing, and we would rather say so than invent one"
+      : "wall clock for the solve alone"],
+  ];
+  if (b.before_pct != null) {
+    erows.push(["What it bought",
+      b.measurable
+        ? `break point ${b.before_pct.toFixed(2)}% → ${b.after_pct.toFixed(2)}%`
+        : `break point ${b.before_pct.toFixed(2)}% → ${b.after_pct.toFixed(2)}% · no measurable change`,
+      /* resolution_pct is deliberately TWICE the search tolerance: the delta is
+         the difference of two independently bisected searches, so each one's
+         error lands in it. Quoting the single-search figure alone here would
+         understate the bar this delta actually has to clear. */
+      /* the API's note is a sentence fragment with no terminator; joining it
+         to the next sentence bare reads as one run-on. */
+      `${(b.note || "").replace(/[^.]$/, "$&.")} Each search resolves to ±${(b.resolution_pct / 2).toFixed(3)}pp, ` +
+      `so a difference of two has to clear ${b.resolution_pct.toFixed(3)}pp to mean anything.`]);
+  }
+  document.getElementById("engineNote").textContent =
+    e.kind === "matlab" ? "MATLAB" : "fallback";
+  document.getElementById("engineRows").innerHTML = erows.map(([k, v, note]) => `
+    <tr><td style="width:150px"><b>${k}</b></td>
+        <td class="num t" style="width:320px">${v}</td>
+        <td class="small muted t" style="line-height:1.6">${note}</td></tr>`).join("");
+  document.getElementById("engineCard").hidden = false;
 })();
 </script>
 </body>

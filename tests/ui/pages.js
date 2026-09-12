@@ -200,6 +200,23 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
     check("the shocked name's drop matches the trajectory", labels.includes(wantDrop),
           `${wantDrop} not among ${labels.filter((t) => /%/.test(t)).join(" ")}`);
 
+    /* The round log narrates `breached`, which is a STATE (who was over the
+       limit at the start of the round), and it must not be read out as a
+       transition. A book already over at round t-1 has not "crossed" at t. */
+    const lines = [...c.d.querySelectorAll("#log tr")].map((tr) =>
+      tr.textContent.replace(/\s+/g, " ").trim());
+    eq("one log line per trajectory frame", lines.length, cas.trajectory.length);
+    for (let t = 2; t < cas.trajectory.length; t++) {
+      const prev = new Set(cas.trajectory[t - 1].breached || []);
+      const carried = (cas.trajectory[t].breached || [])
+        .filter((j) => prev.has(j)).map((j) => cas.funds[j]);
+      const said = lines[t] || "";
+      const crossed = said.split(";")[0];
+      const wrong = carried.filter((n) => crossed.includes(n) && /crossed/.test(crossed));
+      check(`round ${t} does not say a book crossed when it was already over`,
+            wrong.length === 0, `${wrong.join(", ")} in: ${said}`);
+    }
+
     store = c.dump();
   }
 
@@ -260,6 +277,25 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
     const a = await load("assumptions.html", store);
     check("assumptions.html runs clean", a.errors.length === 0, a.errors.join("; "));
     check("the model page has content", a.d.body.textContent.trim().length > 200);
+
+    /* The solver strip. docs/devpost.md claims the engine name, evaluation
+       count and exit flag are on screen; this is the check that keeps that
+       claim true, since the redesign silently dropped them once already. */
+    const st = await (await fetch(ORIGIN + "/api/stabilise?leverage=5.0&gamma=0.2&band=1.05&asset=0")).json();
+    const shown = await until(() => a.d.getElementById("engineCard") &&
+                                    !a.d.getElementById("engineCard").hidden);
+    check("the solver provenance card renders", shown);
+    const eb = a.d.getElementById("engineRows").textContent;
+    has("the engine names itself", eb, st.engine.name);
+    has("the evaluation count is the solver's own", eb, String(st.engine.evaluations));
+    has("the exit flag is the solver's own", eb, String(st.engine.exit_flag));
+    check("an unrecorded solve time says so rather than printing a zero",
+          st.engine.solve_ms != null ? eb.includes(String(st.engine.solve_ms))
+                                     : eb.includes("not recorded"), eb.slice(0, 200));
+    if (st.bought && st.bought.measurable === false) {
+      has("an unmeasurable change is reported as unmeasurable, not as a number",
+          eb, "no measurable change");
+    }
   }
 
   /* ---- the nav must not offer a page the state cannot answer ---- */

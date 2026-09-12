@@ -116,6 +116,11 @@ tbody td{text-align:right;padding:3px 8px;border-bottom:1px solid var(--border-2
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:#1a1a1a}
 td.r,th.r{text-align:right}
+/* The table above is the OpenTerminal data grid: right-aligned and nowrap,
+   which is right for columns of numbers and wrong for anything you read. A
+   prose cell in it gets right-aligned and then runs off the card, because
+   nowrap has nothing to wrap against. `.t` opts a cell back into being text. */
+td.t,th.t{text-align:left;white-space:normal}
 td b{font-weight:700;color:var(--text)}
 
 /* ── buttons (OT: .term-btn) ────────────────────────────────────────────── */

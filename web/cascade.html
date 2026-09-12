@@ -146,12 +146,31 @@ if (r) (async () => {
 
   document.getElementById("log").innerHTML = frames.map((f, t) => {
     if (t === 0) return `<tr><td class="num dim" style="width:70px">R00</td>
-      <td style="text-align:left">${r.asset} marked down ${r.pct.toFixed(2)}%</td></tr>`;
-    const who = (f.breached || []).map(j => F[j]);
-    const msg = who.length
-      ? `<b>${who.join(", ")}</b> crossed ${who.length > 1 ? "their limits" : "its limit"} and ${who.length > 1 ? "are" : "is"} forced to sell`
-      : "no new breaches — the cascade settles";
-    return `<tr><td class="num dim" style="width:70px">R${String(t).padStart(2, "0")}</td><td style="text-align:left">${msg}</td></tr>`;
+      <td class="t">${r.asset} marked down ${r.pct.toFixed(2)}%</td></tr>`;
+    /* A frame's `breached` is who was OVER THE LIMIT AT THE START of that
+       round — a state, not a transition. Reading it as "crossed" narrates
+       R02 as four books newly breaking when three of them had been over
+       since the shock, which is a considerably more alarming sentence than
+       the truth. Split the set: who is new here, and who is still over. */
+    /* Frame 0 is the post-shock state, not a round of selling — it carries the
+       same breach set as frame 1 by construction. Diffing round 1 against it
+       makes every book that broke on the shock read as "still over, selling
+       again" when round 1 is the first time any of them sells. Round 1 is
+       measured against nothing; rounds 2+ against the round before. */
+    const prev = new Set(t > 1 ? (frames[t - 1].breached || []) : []);
+    const now = f.breached || [];
+    const fresh = now.filter(j => !prev.has(j)).map(j => F[j]);
+    const still = now.filter(j => prev.has(j)).map(j => F[j]);
+    const verb = (n) => n > 1 ? "their limits" : "its limit";
+    let msg;
+    if (!now.length) msg = "no book is over its limit — the cascade settles";
+    else if (!fresh.length)
+      msg = `<b>${still.join(", ")}</b> still over ${verb(still.length)}, selling again`;
+    else if (!still.length)
+      msg = `<b>${fresh.join(", ")}</b> crossed ${verb(fresh.length)} and ${fresh.length > 1 ? "are" : "is"} forced to sell`;
+    else
+      msg = `<b>${fresh.join(", ")}</b> crossed ${verb(fresh.length)}; <b>${still.join(", ")}</b> still over — all forced to sell`;
+    return `<tr><td class="num dim" style="width:70px">R${String(t).padStart(2, "0")}</td><td class="t">${msg}</td></tr>`;
   }).join("");
 
   document.getElementById("prevBtn").onclick = () => { at = Math.max(0, at - 1); draw(at); };
