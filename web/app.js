@@ -132,8 +132,9 @@ function computeLayout(run, width, height) {
    corner. Measure the PARENT, which is a laid-out flex/grid child, and refuse
    any measurement that looks like a pre-layout zero. */
 function measure(svg) {
-  const box = svg.getBoundingClientRect();
-  if (box.width > 40 && box.height > 40) return { width: box.width, height: box.height };
+  // Measure the CONTAINER, never the svg. An svg sizes itself from its own
+  // viewBox when its height can't resolve, so measuring it just reads back
+  // whatever we last wrote — the diagram locks to its first guess forever.
   const parent = svg.parentElement && svg.parentElement.getBoundingClientRect();
   if (parent && parent.width > 40 && parent.height > 40) {
     return { width: parent.width, height: parent.height };
