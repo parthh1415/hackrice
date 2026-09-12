@@ -1,6 +1,7 @@
 # Running the MATLAB solve
 
-Five minutes, no install. Until you do this, the solver strip reads
+Five minutes, no install. Until you do this, the Model page's "What computed the
+institutional patch" card reads
 **"SciPy-free Python · exhaustive position scan"** with a note saying MATLAB is
 not available on this machine. Do this once and it reads
 **"MATLAB · patternsearch"** instead.
@@ -103,11 +104,13 @@ thing we can actually still verify.
 
 ## 3. Run it
 
-The app writes a spec every time you press **Stabilise**:
+The app writes a spec every time it asks the institutional question — which is
+when you open the **Model** page (it is the only caller of `/api/stabilise`), or
+when you hit that endpoint yourself:
 
     data/cache/solve_spec.json
 
-(written by `write_spec` on every `/api/stabilise` call — `api.py:380`.)
+(written by `write_spec` on every `/api/stabilise` call.)
 
 In MATLAB Online:
 
@@ -118,7 +121,7 @@ In MATLAB Online:
 
 3. Download `solve_out.json` back into `data/cache/`
 
-Reload the app. The engine readout now reads **MATLAB · patternsearch** with
+Reload the app and press `7`. The card now reads **MATLAB · patternsearch** with
 the real evaluation count, exit flag and wall time. (`engine_label` and
 `solve_stabilisation` in `src/firebreak/matlab_bridge.py` pick between three
 paths — `matlab`, `matlab-offline`, `python` — and the UI is told which one

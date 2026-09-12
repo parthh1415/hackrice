@@ -25,7 +25,8 @@ Six pages, reachable from the nav or by pressing `1`–`6`:
 | `3` | Cascade | why the loss grows |
 | `4` | Defend | the cheapest single-position change |
 | `5` | Verify | did it actually help |
-| `6` | Model | what is measured, what is declared, what computed the patch |
+| `6` | Boundary | where the system stops absorbing at all |
+| `7` | Model | what is measured, what is declared, what computed the patch |
 
 Also: `←` / `→` step the cascade, `space` plays it, `?` lists the keys. A bottom
 status bar shows the shortcuts, the book, and the dataset.
@@ -46,6 +47,7 @@ it is safe to rehearse against.
 3. press **See why the loss grows** → Cascade
 4. press **Find the cheapest single-position fix** → Defend
 5. press **Check it actually helped** → Verify
+6. press **Map the whole system** → Boundary
 
 ---
 
@@ -65,8 +67,8 @@ it is safe to rehearse against.
 | 2.4 | **RETARGET — better than written** | Cascade page. **Prev / Play / Next**, or `←` `→` `space`. Steps at 900ms, does not auto-play. The edges now carry the forced selling for that round, so the picture visibly dies out: `$8.7B → $2.5B → $818M`. At −24.69% **four** funds breach in round 1 — Citadel, Millennium, Two Sigma, Renaissance. |
 | 2.5 | **WRONG NUMBERS** | At −24.69%: four breach at round 1, Point72 joins at round 3, **5 of 5** breached, 3 rounds, amplification 1.38× on the portfolio. |
 | 2.6 | **GONE — but replaced** | The Point72 "never turned red" zoom has no screen; Point72 does breach at this shock. **Film the attribution table on Analysis instead.** MSFT, AMZN and GOOGL show `—` under *Shocked* and still carry a *From contagion* fall that lands in *Costs you*. Same thesis, more directly: damage arriving through other people's liquidation. |
-| 2.7 | **GONE** | No boundary UI. `/api/boundary` returns the grid, nothing fetches it. |
-| 2.8 | **GONE** | Same missing screen, and no slider to demonstrate the band with. |
+| 2.7 | **RETARGET — the screen exists now** | Press **6** for **Boundary**. The 16×16 map is there: leverage up the side (1.5 to 8.0), crowding along the bottom, a white line where amplification crosses 1.5×, and a cyan marker on where the real books sit. The axes and the contour are exactly the ones the script describes. |
+| 2.8 | **PARTLY BACK** | The `YOU ARE HERE` marker is real — cyan ring, dashed crosshairs to both axes, labelled `YOU · λ 5.0 · overlap 0.71`, and it sits just past the cliff. What is still gone is pulling a band slider and watching the grid redraw: there is no slider. The band-sensitivity numbers are correct and have to be narrated over the static map, or the page reloaded with `?demo` after hitting `/api/boundary?band=1.30` — the map follows the session's knobs. |
 | 2.9 | **RETARGET** | Defend. **"Sell $478 of NVDA"**, 13.3% of a $3,600 position, over a Loss before / Loss after / Your limit / Share of book moved strip and a before-and-after table that **foots to the same total** — which is a better proof than the old caption. |
 | 2.10 | **GONE, no substitute** | "Notice who it isn't" — patching the fund that breaches *second* because it is the biggest book. Portfolio mode always fixes a name in the user's own book, so this argument has no screen. If you want it, build a slide from `/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3`. It is one of the script's strongest beats; losing it costs something. |
 | 2.11 | **RETARGET** | Verify §1 is a two-column table (Current book / Defended book) at −24.69%: identical shock both sides, **10.00% → 9.00%**, and Breach / Within-limit badges *derived* from the replay rather than written in. No 2.6s split animation, so the scripted silence becomes a presenter pause. |
@@ -74,7 +76,7 @@ it is safe to rehearse against.
 | 3.1 | **OK** | Architecture slide. Contents verified: six registrants across five firms, options rows filtered, aggregation by CUSIP, engine genuinely a pure function. |
 | 3.2 | **RETARGET — wording only** | `matlab/stabilise.m` exists. The readout is a **card**, not a strip: "What computed the institutional patch" on the Model page. Narration survives verbatim. |
 | 3.3 | **RETARGET** | Not a masthead modal — a nav link labelled **Model**. The eight tagged rows are there and now print their values. Two things the script describes are absent: a **Scale / ~$8.2B system equity** row, and the "1.02 gives −1.73%, 1.30 gives −27.33%" sentence. **Better target:** Analysis's *"What this does not say"* table — header prints `NVDA −24.69% · limit 10% · λ 5.0× · band 1.05× · γ 0.2`, then Not a probability / Not a threshold / One name at a time / Your book is an observer. The honesty beat in one frame, on the page that just made the claim. |
-| 4.1 | **GONE** | No phase diagram. Cut to the cascade's final frame. |
+| 4.1 | **BACK** | The phase diagram exists — press **6**. Cut to it with the marker on it, which is what the script asks for. |
 | 4.2 | **OK** | Slide. "Bystander exposure view" now undersells you — CSV import works and the user's portfolio *is* the bystander. Reword or drop that bullet. |
 | 4.3 | **WRONG NUMBERS** | The hero is **NVDA −24.69%** and **5 of 5** books breach. The closing line has to change with it. |
 
@@ -96,6 +98,10 @@ it is safe to rehearse against.
    parameters in the header.
 6. **`?`** — the keyboard overlay. Two seconds, and it reads as a tool rather
    than a web page.
+7. **The Boundary map** (press `6`). Flat and dark at the bottom — every shock
+   absorbed — then a cliff, then bright. The cyan marker sits just past it, and
+   the tile reads **leverage headroom −0.03×**. This is the systemic argument,
+   and it is the strongest single frame in the product.
 
 ## Do not film
 

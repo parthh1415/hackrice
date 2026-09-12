@@ -218,3 +218,47 @@ def test_every_ui_mutation_is_a_mutation():
         "these mutate a file in web/ but are run under pytest, which never "
         f"loads a page: {misrouted}"
     )
+
+
+def test_the_pitch_does_not_promise_a_control_the_app_disables():
+    """devpost's first sentence said "You connect or upload a portfolio".
+
+    index.html's Connect brokerage button is `disabled` and carries the text
+    "Brokerage credentials are not included in this build, so that button is
+    disabled rather than pretending" — so the pitch was claiming a capability
+    the product explicitly disclaims on its own first screen. The app was more
+    honest than the document selling it.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    index = (root / "web" / "index.html").read_text()
+    devpost = (root / "docs" / "devpost.md").read_text()
+
+    if "connectBtn" in index or "Connect brokerage" in index:
+        assert "disabled" in index, "the brokerage button is no longer disabled"
+        assert "You connect or upload a portfolio" not in devpost, (
+            "the pitch promises a brokerage connection the app disables"
+        )
+
+
+def test_the_docs_do_not_describe_a_mode_toggle_that_does_not_exist():
+    """"Risk Desk Mode … one button away" survived the six-page rewrite.
+
+    The engine-level claim is true — the institutional question is the same
+    search with a different failure condition — but there is no switch. A
+    reader opens the app and looks for one.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    web = "\n".join(p.read_text() for p in (root / "web").glob("*.html"))
+    has_toggle = "risk desk" in web.lower()
+
+    for name in ["README.md", "docs/devpost.md"]:
+        text = (root / name).read_text()
+        if not has_toggle:
+            assert "one button away" not in text, (
+                f"{name} says the institutional mode is one button away; there is "
+                "no such button in web/"
+            )

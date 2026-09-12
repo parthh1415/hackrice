@@ -20,12 +20,17 @@ break point, and scoring both portfolios across hundreds of simulated stress sce
 Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
 ```
 
-Two modes, one engine:
+Two questions, one engine. The difference is only what counts as failure:
 
 | | |
 |---|---|
-| **Portfolio Mode** (default) | Your holdings. Fails when *you* cross your loss limit. |
-| **Risk Desk Mode** | Many leveraged books. Fails when *N funds* breach. The prime-brokerage question. |
+| **Your book** — the seven pages | Your holdings. Fails when *you* cross your loss limit. |
+| **The institutional books** — `/api/break`, `/api/stabilise`, `/api/boundary` | Many leveraged books. Fails when *N funds* breach. The prime-brokerage question. |
+
+The second is not a mode you toggle in this build. It surfaces on two screens —
+the Boundary map, which sweeps it across the whole configuration space, and the
+Model page's "What computed the institutional patch" card — and in full through
+the API.
 
 HackRice 16 — Finance track, plus the Capital One and MathWorks challenges.
 Full write-up in [`docs/devpost.md`](docs/devpost.md).
@@ -35,7 +40,7 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ```sh
 git clone <this repo> && cd firebreak
 python3 -m pip install numpy pytest      # the only dependencies
-python3 -m pytest tests/ -q              # 385 passing
+python3 -m pytest tests/ -q              # 387 passing
 PYTHONPATH=src python3 -m firebreak.server
 ```
 
@@ -50,7 +55,7 @@ a pip install at 3am.
 
 ## The product loop
 
-Everything below runs with no network and no account. `Try demo portfolio` is the path a
+Everything below runs with no network and no account. `Use demo portfolio` is the path a
 judge takes; CSV is the path a user takes.
 
 ```
@@ -147,7 +152,7 @@ you if the dataset moves out from under them.
 ## Tests
 
 ```sh
-python3 -m pytest tests/ -q      # 385, no network required
+python3 -m pytest tests/ -q      # 387, no network required
 ```
 
 The frontend has its own jsdom harness. It needs one extra install, because
@@ -179,6 +184,6 @@ a red run.
 | `web/` | the frontend, no build step |
 | `matlab/` | optional `patternsearch` solver — see [`matlab/README.md`](matlab/README.md) |
 
-MATLAB is optional. Without it the solver strip reads "SciPy-free Python · exhaustive
+MATLAB is optional. Without it the Model page's solver card reads "SciPy-free Python · exhaustive
 position scan" and everything still works; `matlab/README.md` covers wiring up the real
 one.

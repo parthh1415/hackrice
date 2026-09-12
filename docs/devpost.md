@@ -4,7 +4,8 @@
 drop that pushes *my* portfolio past the loss I refuse to tolerate — and what is the smallest change
 that buys me distance from it".
 
-You connect or upload a portfolio and name the loss you will not accept. Firebreak searches for the
+You upload a portfolio — a CSV, parsed in your browser — and name the loss you will not accept.
+(A brokerage connection is not in this build; the button is there and disabled, and says so.) Firebreak searches for the
 smallest single-name shock that crosses it, models how crowded institutional selling amplifies the
 damage on the way to you, shows the cascade round by round, recommends the smallest position change
 that helps — and then **tests whether that recommendation actually helped**, by replaying the
@@ -20,7 +21,9 @@ On the demo portfolio at a 10% limit: **NVDA −24.69%** breaks it, a **7.23%** 
 
 The same engine, asked the institutional question instead, is Risk Desk Mode: *what is the smallest
 market move that forces three leveraged funds to deleverage at once?* That is the prime-brokerage
-version and it is still here, one button away, unchanged.
+version, and the engine that answers it is unchanged. It is not a mode you can switch to in this
+build: the six-page product is the portfolio question, and the institutional answer surfaces as the
+"What computed the institutional patch" card on the Model page and through /api/stabilise.
 
 HackRice 16 — Finance track. Also submitted to the Capital One and MathWorks challenges.
 
@@ -78,8 +81,11 @@ is 1.16 at λ≈4.5 and 1.86 at λ≈5.0, and the 1.5× contour crosses at λ≈
 is whether you got unlucky or whether you are standing somewhere structurally bad. Worth saying
 plainly: *where* that boundary sits is a function of the breach band we declared, and the sweep
 honours it: at the same −5% reference, a band of 1.02 puts the boundary at λ≈2.7 and a band of 1.10
-at λ≈7.7, and at 1.30 the filed-overlap column never leaves 1.00 at all — only the top of the plot,
-λ=8.0, still cascades, 16 of 256 cells. The shape of the map is the finding; the location of the
+at λ≈7.7, and at 1.30 the filed-overlap column never leaves 1.00 at all — only 16 of 256 cells
+cascade, and they are not where you would guess: they span seven leverage rows from λ=5.40 to 8.00
+and sit at the *low*-overlap edge, overlap 0.00 to 0.18. Twelve of the sixteen cross 1.5×. (An
+earlier draft of this paragraph said "only the top of the plot, λ=8.0" — it was one row, and it is
+seven.) The shape of the map is the finding; the location of the
 marker on it is a consequence of parameters we chose and show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position and bisects on *how deep*
@@ -95,8 +101,8 @@ back "5%", which is what a grid floor looks like when you mistake it for a resul
 the shape but not the resolution: the depth tolerance was an absolute 0.002 while the true answer had
 shrunk to 0.0007, so the search was halting with a bracket wider than the number it reported and
 printing the top of it — 2.15× the true minimum, on the one number the product exists to produce.
-With a relative tolerance the cheapest cuts across our ten recorded scenarios run from 0.0027% to
-0.14%, $63K to $3.2M: varied, because finally measured rather than quantised.
+With a relative tolerance the cheapest cuts across our recorded scenarios run from 0.0027% to
+0.1465%, $63K to $3.2M: varied, because finally measured rather than quantised.
 
 **And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
 against the patched books and reports it as `bought`. The measured delta is +0.0039pp against a
@@ -393,8 +399,10 @@ Square-root price impact (`−Y σ √(V/ADV)`) alongside the linear form, so th
 be robust to the functional form and not an artefact of it.
 
 A bystander view. 13F holders are participants; a retail investor with no leverage cannot breach and
-cannot be forced to sell, but still eats the price impact. Import a broker CSV, get an exposure
-measurement. Exposure, never a prediction.
+cannot be forced to sell, but still eats the price impact. That is what the six-page product now
+is — you import a broker CSV and get an exposure measurement — so what is left here is the harder
+half: ranking which bystanders are most exposed across a family of shocks rather than one.
+Exposure, never a prediction.
 
 Robust defence, and this is the one that matters most. Our stabiliser minimises cost subject to
 clearing the failure condition under *one named shock*, which is why the fix it finds buys no
