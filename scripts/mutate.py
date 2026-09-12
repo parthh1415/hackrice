@@ -158,6 +158,35 @@ MUTATIONS = {
         '        "available": False,',
         '        "available": True, "worst_loss": 0.182,'),
 
+    "pm_fix_dollars_inflated": (
+        "src/firebreak/api.py",
+        '"dollars": fix["weight_moved"] * total,',
+        '"dollars": fix["weight_moved"] * total * 1.35,'),
+    "pm_direct_is_scaled_cascade": (
+        "src/firebreak/api.py",
+        "    direct = portfolio_loss(vector, cash, 1.0 + found.shock)",
+        "    direct = portfolio_loss(vector, cash, result.prices) * 0.5"),
+    "pm_newbreak_derived": (
+        "src/firebreak/validate.py",
+        '    now = find_portfolio_firebreak(after["vector"], after["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)',
+        '    now = find_portfolio_firebreak(before["vector"], before["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)'),
+    "pm_after_scored_with_before": (
+        "src/firebreak/validate.py",
+        '        after_losses.append(portfolio_loss(after["vector"], after["cash"], result.prices))',
+        '        after_losses.append(portfolio_loss(before["vector"], before["cash"], result.prices))'),
+    "pm_p95_is_p50": (
+        "src/firebreak/validate.py",
+        '        "p95_loss": float(np.percentile(a, 95)),',
+        '        "p95_loss": float(np.percentile(a, 50)),'),
+    "pm_worst_is_mean": (
+        "src/firebreak/validate.py",
+        '        "worst_loss": float(a.max()),',
+        '        "worst_loss": float(a.mean()),'),
+    "pm_empty_upload_is_demo": (
+        "src/firebreak/api.py",
+        '    if "holdings" not in body or body["holdings"] is None:',
+        "    if not body.get('holdings'):"),
+
     "pm_fix_first_feasible": (
         "src/firebreak/portfolio.py",
         "        if best is None or moved < best[0]:",

@@ -66,7 +66,8 @@ def new_breaking_point(before, after, limit, holdings, **cascade_kwargs):
     return out
 
 
-def synthetic_stress(before, after, holdings, n=1000, seed=20260912, **cascade_kwargs):
+def synthetic_stress(before, after, holdings, n=1000, seed=20260912,
+                     limit=None, **cascade_kwargs):
     """Test 3. N sampled shocks through the same engine, both portfolios scored
     on IDENTICAL draws.
 
@@ -97,8 +98,16 @@ def synthetic_stress(before, after, holdings, n=1000, seed=20260912, **cascade_k
         "scenarios": int(n),
         "seed": int(seed),
         "shock_range_pct": [1.0, 30.0],
-        "before": _summarise(before_losses),
-        "after": _summarise(after_losses),
+        # `limit` is threaded through so the survival rate — the headline number
+        # this module's own docstring advertises — actually exists. It did not:
+        # survival() was called by nothing but its own test, the API never
+        # computed a rate, and the UI never rendered one. The worked example
+        # described output the product did not produce.
+        "limit": (float(limit) if limit is not None else None),
+        "before": dict(_summarise(before_losses),
+                       survival=(survival(before_losses, limit) if limit else None)),
+        "after": dict(_summarise(after_losses),
+                      survival=(survival(after_losses, limit) if limit else None)),
         "mean_amplification": float(np.mean(amps)),
         "note": ("Sampled single-name shocks through the same contagion model. "
                  "Both portfolios were scored on identical draws."),

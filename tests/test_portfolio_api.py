@@ -143,3 +143,85 @@ def test_a_portfolio_worth_nothing_is_refused_not_scored(value):
     assert out["found"] is False and out["refused"] is True
     assert "worth" in out["reason"]
     assert "pct" not in out
+
+
+def test_every_number_in_the_recommendation_is_recomputed_not_just_positive():
+    """The one sentence the user acts on, pinned field by field.
+
+    A review agent moved each of these independently — inflating the dollars by
+    1.35x, halving the position fraction, inventing loss_after — and the suite
+    stayed at 282 passed every time. The only assertion guarding them was
+    `out["fix"]["dollars"] > 0`.
+
+    "Reduce NVDA by $478 · 13.3% of that position · leaves a 9.00% loss" is
+    four numbers, and a wrong one is a wrong trade.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10", {})
+    fix, total = out["fix"], out["portfolio"]["total_value"]
+    holding = next(h for h in out["portfolio"]["holdings"] if h["symbol"] == fix["symbol"])
+
+    assert fix["dollars"] == pytest.approx(fix["weight_moved"] * total), (
+        "the dollar figure must be the weight actually moved times the real total"
+    )
+    assert fix["fraction_of_position"] == pytest.approx(
+        fix["dollars"] / holding["market_value"], rel=1e-9), (
+        "the percentage and the dollars must describe the same cut"
+    )
+    assert fix["loss_after"] <= fix["target_loss"] + 1e-12
+    assert fix["target_loss"] == pytest.approx(
+        out["params"]["limit"] * (1.0 - fix["margin"]))
+
+
+def test_the_direct_loss_is_the_shock_alone_not_a_scaled_cascade():
+    """Amplification is cascade/direct, so a wrong direct loss moves the one
+    number the product's whole argument rests on. Recomputed here from the raw
+    shock, with no cascade involved at all."""
+    out = api.handle("/api/portfolio/full?limit=0.10", {})
+
+    weight = next(h["weight"] for h in out["portfolio"]["holdings"]
+                  if h["symbol"] == out["asset"])
+    assert out["direct_loss"] == pytest.approx(weight * abs(out["magnitude"]), rel=1e-9), (
+        "the direct loss is just the shocked name's weight times the shock"
+    )
+    assert out["amplification"] == pytest.approx(out["cascade_loss"] / out["direct_loss"])
+
+
+def test_a_csv_with_only_a_header_is_refused_not_replaced_by_the_demo():
+    """`[]` is falsy in Python and truthy in JavaScript.
+
+    So a header-only CSV posted `{"holdings": []}`, hit `if not rows`, and got
+    the demo book back — rendered as the user's own analysis, under a note
+    reading "Loaded 0 rows from your-file.csv".
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10", {"holdings": [], "source": "csv"})
+
+    assert out["found"] is False and out["refused"] is True
+    assert "no holdings" in out["reason"]
+    assert "portfolio" not in out, "nothing was analysed, so no portfolio may be reported"
+
+
+def test_an_absent_holdings_key_still_means_the_demo():
+    """The distinction the fix rests on: absent is not empty."""
+    assert api.handle("/api/portfolio/full?limit=0.10", {})["portfolio"]["source"] == "demo"
+    assert api.handle("/api/portfolio/full?limit=0.10",
+                      {"holdings": None})["portfolio"]["source"] == "demo"
+
+
+def test_step_four_replays_the_portfolio_s_own_shock():
+    """The "why" screen must animate the shock the result card just reported.
+
+    It called /api/break, which SEARCHES for the institutional shock rather
+    than replaying one — so the cascade underneath a result saying "NVDA
+    −24.69%, five institutions" was NVDA −5.27% with four.
+    """
+    full = api.handle("/api/portfolio/full?limit=0.10", {})
+    replay = api.handle(
+        f"/api/cascade?asset={full['asset']}&magnitude={abs(full['magnitude'])}"
+        f"&leverage=5&gamma=0.2&band=1.05", {})
+
+    assert replay["asset"] == full["asset"]
+    assert replay["pct"] == pytest.approx(full["pct"])
+    assert replay["breached"] == full["breached"], (
+        "the cascade shown must be the one the result card described"
+    )
+    assert replay["rounds"] == full["rounds"]

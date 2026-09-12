@@ -1585,6 +1585,7 @@ function validTab(which) {
     const s = v.synthetic;
     body.innerHTML = `<table>
       <tr><th>${s.scenarios} simulated scenarios</th><th>Before</th><th>After</th></tr>
+      <tr><td>Stayed under your limit</td><td><b>${pctOf(s.before.survival, 0)}</b></td><td><b>${pctOf(s.after.survival, 0)}</b></td></tr>
       <tr><td>Median loss</td><td><b>${pctOf(s.before.median_loss)}</b></td><td><b>${pctOf(s.after.median_loss)}</b></td></tr>
       <tr><td>95th percentile</td><td><b>${pctOf(s.before.p95_loss)}</b></td><td><b>${pctOf(s.after.p95_loss)}</b></td></tr>
       <tr><td>Worst modelled</td><td><b>${pctOf(s.before.worst_loss)}</b></td><td><b>${pctOf(s.after.worst_loss)}</b></td></tr>
@@ -1645,7 +1646,33 @@ $("limits").addEventListener("click", (ev) => {
   [...$("limits").children].forEach((x) => x.classList.toggle("on", x === b));
 });
 $("findBtn").addEventListener("click", () => runFirebreak());
-$("watchBtn").addEventListener("click", () => { setStep(4); attack(); });
+/* Step 4 replays the PORTFOLIO's shock, not the institutional search.
+   attack() hits /api/break, which searches for the shock that breaks N funds —
+   a different question with a different answer. It animated -5.27% with four
+   funds breaching under a result card that had just said -24.69% with five. */
+$("watchBtn").addEventListener("click", async () => {
+  setStep(4);
+  const r = pm.result;
+  if (!r || !r.found) { attack(); return; }
+  showScene("network");
+  const ticket = claimStage();
+  const { body } = await api(
+    `/api/cascade?asset=${encodeURIComponent(r.asset)}` +
+    `&magnitude=${Math.abs(r.magnitude)}&${params()}`, () => holdsStage(ticket));
+  if (!holdsStage(ticket)) return;
+  state.run = normalise(body);
+  state.layout = null;
+  state.knobs = knobs();
+  await new Promise((rs) => requestAnimationFrame(() => requestAnimationFrame(rs)));
+  ensureLayout(state.run, $("network"));
+  countTo(r.pct);
+  $("heroSub").textContent =
+    `${r.asset} · ${body.breached.length} of ${body.funds.length} institutions forced to sell` +
+    ` · your loss ${(r.cascade_loss * 100).toFixed(2)}%`;
+  setSolver("replaying your shock", `<span>${r.asset}</span> −${r.pct.toFixed(2)}%`);
+  $("defendBtn").disabled = false;
+  playCascade();
+});
 $("fixBtn").addEventListener("click", async () => {
   renderFix();
   await defend();

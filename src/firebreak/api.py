@@ -747,10 +747,24 @@ def _portfolio_scenario(params):
 
 
 def _rows_from(body):
-    rows = (body or {}).get("holdings")
-    if not rows:
+    """No holdings means the demo. An EMPTY list means an empty upload.
+
+    `if not rows` treated both the same, and [] is falsy in Python while being
+    truthy in JavaScript — so a CSV with a header row and no data rows posted
+    `{"holdings": [], "source": "csv"}`, got the demo book back, and rendered
+    it as the user's own analysis under a note reading "Loaded 0 rows from
+    your-file.csv". Showing somebody else's portfolio and calling it theirs.
+    """
+    body = body or {}
+    if "holdings" not in body or body["holdings"] is None:
         return list(DEMO_PORTFOLIO), "demo"
-    return rows, (body or {}).get("source", "csv")
+    rows = body["holdings"]
+    if not rows:
+        raise ValueError(
+            "that file had no holdings in it — a header row on its own is not a "
+            "portfolio. Check the file has data rows below the header."
+        )
+    return rows, body.get("source", "csv")
 
 
 def _limit_of(params):
@@ -774,9 +788,15 @@ def _solve_portfolio(params, body):
         normalise, portfolio_loss, weight_vector,
     )
 
-    rows, source = _rows_from(body)
     data, scenario, knobs = _portfolio_scenario(params)
     limit = _limit_of(params)
+
+    try:
+        rows, source = _rows_from(body)
+    except ValueError as exc:
+        return ({"found": False, "refused": True, "reason": str(exc),
+                 "params": dict(knobs, limit=limit), "tickers": data["tickers"]},
+                None, None, scenario, data)
 
     # A refusal is a RESULT, not an exception to be stringified upstream.
     #
@@ -883,13 +903,60 @@ def _portfolio_full(params, body=None):
     out["validation"] = {
         "identical_shock": V.replay_identical(before, after, found.shock, limit, **scenario),
         "new_breaking_point": V.new_breaking_point(before, after, limit, **scenario),
-        "synthetic": V.synthetic_stress(before, after, n=400, **scenario),
+        "synthetic": V.synthetic_stress(before, after, n=400, limit=limit, **scenario),
         "historical": V.historical_stress(),
     }
     return out
 
 
 BODY_ROUTES.update({"/api/portfolio/firebreak", "/api/portfolio/full"})
+
+def _cascade_at(params, body=None):
+    """Run a SPECIFIED shock and return what the stage animates.
+
+    Step 4 of Portfolio Mode is the "why" — and it was calling /api/break,
+    which does not replay a shock, it SEARCHES for the institutional one. So
+    the explanation animated a -5.27% four-fund cascade directly beneath a
+    result saying the break point was -24.69% with five. Two consecutive
+    screens, same session, contradicting each other, on the beat whose entire
+    job is to explain the one above it.
+
+    The portfolio's shock is a fact the caller already has. This replays it.
+    """
+    data = load_dataset()
+    scenario, knobs = _scenario(data, params)
+    try:
+        asset = data["tickers"].index(params.get("asset", data["tickers"][0]))
+    except ValueError:
+        raise NotFound("unknown asset")
+    magnitude = -abs(float(params.get("magnitude", 0.0)))
+
+    shock = np.zeros(len(data["tickers"]))
+    shock[asset] = magnitude
+    result = run_cascade(shock=shock, **scenario)
+
+    payload = result.as_dict()
+    payload.update({
+        "found": True,
+        "params": knobs,
+        "asset": data["tickers"][asset],
+        "asset_index": asset,
+        "magnitude": magnitude,
+        "pct": abs(magnitude) * 100.0,
+        "funds": data["funds"],
+        "fund_indices": list(range(len(data["funds"]))),
+        "tickers": data["tickers"],
+        "holdings": data["holdings"],
+        "adv": data["adv"],
+        "adv_units": "USD",
+        "quarter": data.get("quarter"),
+        "source": data.get("source"),
+        "replayed": True,
+    })
+    return payload
+
+
+ROUTES["/api/cascade"] = _cascade_at
 
 ROUTES["/api/portfolio/demo"] = lambda params: {
     "portfolio": _demo_portfolio_payload(), "source": "demo"}

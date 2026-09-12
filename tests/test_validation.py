@@ -134,20 +134,119 @@ def test_both_portfolios_are_scored_on_identical_draws(solved):
     assert c["before"] != a["before"], "a different seed produced identical draws"
 
 
-def test_the_fix_does_not_make_the_portfolio_worse_on_average(solved):
+def test_the_fix_cannot_make_the_portfolio_worse_and_that_is_a_theorem(solved):
+    """This assertion cannot fail, and saying so is more useful than deleting it.
+
+    Cash is held at par and cascade prices are bounded above by 1.0 — they
+    start there, the shock is negative-only, and the impact factor is at most
+    1. Moving weight f·vₐ from asset a into cash changes the loss by exactly
+    −f·vₐ·(1 − pₐ) ≤ 0. So no cut to cash can raise the loss in any scenario,
+    and this holds identically for a $1 cut, the right cut, or one a hundred
+    times too large.
+
+    Which means the evidence screen is STRUCTURALLY INCAPABLE of ever reporting
+    "this fix did not help". That is worth knowing on the screen whose entire
+    purpose is to be believed, and it is why the tests that carry weight here
+    are the ones checking the fix is CHEAPEST and that the numbers are
+    recomputed — not this one.
+
+    Kept as a guard on the price bound itself, which is the premise the theorem
+    rests on and is not obviously true from the outside.
+    """
     out = validate.synthetic_stress(solved["before"], solved["after"], n=120, seed=11,
                                     **solved["kw"])
-
     assert out["after"]["median_loss"] <= out["before"]["median_loss"]
     assert out["after"]["worst_loss"] <= out["before"]["worst_loss"]
 
+    from firebreak.engine import run_cascade
+    prices = run_cascade(shock=solved["found"].shock, **solved["kw"]).prices
+    assert (prices <= 1.0 + 1e-12).all(), (
+        "a price above par would break the argument above: a cut to cash could "
+        "then RAISE the loss, and the monotonicity this file assumes would be "
+        "an accident rather than a theorem"
+    )
+
+
+def test_the_new_break_point_is_a_real_search_not_a_multiple_of_the_old_one(solved):
+    """`after = before * 1.37` passed every existing assertion.
+
+    The docstring says "recomputed, never derived… a formula dressed as a
+    measurement" and the UI caption repeats it verbatim. The test asserted only
+    that after > before and that moved_pp was their difference — which any
+    monotone formula satisfies.
+
+    A real search lands on the adjusted portfolio's OWN break point, so it has
+    to agree with running that search directly.
+    """
+    out = validate.new_breaking_point(
+        solved["before"], solved["after"], LIMIT, **solved["kw"])
+
+    direct = find_portfolio_firebreak(
+        solved["after"]["vector"], solved["after"]["cash"], LIMIT, **solved["kw"])
+    assert direct is not None
+    assert out["after_pct"] == pytest.approx(direct.pct), (
+        "the reported new break point is not what the search returns for that "
+        "portfolio — it is coming from somewhere else"
+    )
+    assert out["after_asset"] == direct.asset
+
+
+def test_the_after_column_is_scored_with_the_after_weights(solved):
+    """Making "after" score the BEFORE weights left the suite green.
+
+    The existing draw test checks that a seed reproduces and that a different
+    seed differs — neither of which has anything to do with which weights each
+    column was scored with. So the evidence screen's After column could have
+    been a copy of Before.
+    """
+    out = validate.synthetic_stress(solved["before"], solved["after"], n=80, seed=5,
+                                    **solved["kw"])
+
+    assert out["after"] != out["before"], (
+        "both columns are identical; the After column may be scoring the "
+        "before-portfolio's weights"
+    )
+    # and the direction is the one the theorem above guarantees
+    assert out["after"]["worst_loss"] < out["before"]["worst_loss"]
+
+
+def test_the_percentile_and_worst_summaries_are_what_they_claim(solved):
+    """p95 -> p50 and worst -> mean both left the suite green."""
+    losses = [0.01, 0.02, 0.03, 0.50]
+    summary = validate._summarise(losses)
+
+    assert summary["worst_loss"] == pytest.approx(0.50), "worst is the maximum"
+    assert summary["median_loss"] == pytest.approx(0.025)
+    assert summary["mean_loss"] == pytest.approx(0.14)
+    assert summary["p95_loss"] > summary["median_loss"], "p95 is not the median"
+    assert summary["p95_loss"] == pytest.approx(np.percentile(losses, 95))
+
 
 def test_no_scenario_produces_a_nan_or_an_infinity(solved):
+    """Every summary field is a real number — with `survival` explicitly
+    required, because it is None unless a limit is passed and this test caught
+    that the first time it ran."""
     out = validate.synthetic_stress(solved["before"], solved["after"], n=120, seed=3,
-                                    **solved["kw"])
+                                    limit=LIMIT, **solved["kw"])
     for side in ("before", "after"):
+        assert out[side]["survival"] is not None, (
+            f"{side}.survival is None — a limit was passed, so a rate must exist"
+        )
         for key, value in out[side].items():
             assert np.isfinite(value), f"{side}.{key} is {value}"
+
+
+def test_survival_is_absent_rather_than_zero_when_no_limit_is_given():
+    """A rate you cannot compute is None, not 0.0 — which would read as
+    "nothing survived"."""
+    import json, pathlib
+    out = validate.synthetic_stress(
+        {"vector": np.zeros(len(TICKERS)), "cash": 1.0},
+        {"vector": np.zeros(len(TICKERS)), "cash": 1.0},
+        n=5, seed=1, **scenario())
+
+    assert out["limit"] is None
+    assert out["before"]["survival"] is None
 
 
 def test_survival_counts_scenarios_under_the_limit():
