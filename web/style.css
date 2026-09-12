@@ -129,16 +129,41 @@ button.ghost:hover{color:var(--ink-0);background:var(--bg-2)}
    second half lives only in a doc is the weaker half of an honest claim. */
 /* Docked to the left edge, not a scrim over everything. A judge asks where
    leverage comes from while looking at the network, and the answer is worth
-   nothing if opening it hides the thing they were looking at. 30rem clears
-   the asset column — the rail is 248px and the stage's left node column sits
-   at 24% of what's left, so the diagram stays whole beside it. */
+   nothing if opening it hides the thing they were looking at.
+
+   It did exactly that. The old width was 30rem and the comment here derived
+   its clearance from the node column: rail 248px, left nodes at 24% of the
+   remainder, therefore clear. But the tickers and price deltas are RIGHT-
+   anchored to the left of their circles, so the content reaches about 45px
+   further left than the circles do — and the derivation only ever looked at
+   the circles. Measured at 1280x800: panel edge 492, leftmost node 489,
+   leftmost label 444. The whole asset column read as bare circles with the
+   sheet open, which is the one thing this panel exists not to do.
+
+   25rem puts the edge at 412, clearing the labels by 32px at 1280 and more
+   at 1440. Measured, not derived — the derivation is what got this wrong. */
 .overlay{
   position:fixed;top:12px;left:12px;bottom:12px;z-index:20;
-  width:min(30rem,92vw);display:flex;
+  width:min(25rem,92vw);display:flex;
 }
 .overlay[hidden]{display:none}
+/* The bottom fade is a scroll shadow, and it shows itself only when there is
+   something below the fold. Narrowing this panel from 30rem to 25rem to stop
+   it covering the asset column pushed the content 88px past the bottom at
+   1280x800 — the last row, "Not a prediction", ends 67px under — behind a 2px
+   scrollbar nobody sees. A judge reads the list as ending at "Scale", and the
+   row they never reach is the one disclaiming the whole thing.
+   Two layers do it with no JS: the `local` gradient scrolls with the content
+   and sits at its very bottom, the `scroll` shadow is pinned to the element.
+   Scrolled to the end the first covers the second, so the fade is present
+   exactly when there is more to see. At 1440 the content fits and it never
+   appears at all. */
 .sheet{
-  background:var(--bg-1);border:1px solid var(--rule-hi);border-radius:var(--r);
+  background:
+    linear-gradient(to top, var(--bg-1) 38%, rgba(18,18,18,0)) bottom / 100% 40px no-repeat local,
+    radial-gradient(farthest-side at 50% 100%, rgba(13,13,13,.85), rgba(13,13,13,0)) bottom / 100% 20px no-repeat scroll,
+    var(--bg-1);
+  border:1px solid var(--rule-hi);border-radius:var(--r);
   width:100%;overflow:auto;box-shadow:0 0 0 1px var(--bg-0),24px 0 48px rgba(13,13,13,.55);
 }
 .sheet-head{
@@ -167,7 +192,18 @@ dl.assume dd code{font:11.5px var(--mono);background:var(--bg-2);padding:.1em .3
 
 /* ───────────────────────────── control rail ───────────────────────── */
 
-.rail{grid-area:rail;padding:18px 16px;display:flex;flex-direction:column;gap:18px;overflow:hidden}
+/* overflow-y:auto, never hidden. At 1280x800 the rail wants 509px inside a
+   482px box, and `overflow:hidden` cut the last 27 of them with no scrollbar
+   to say so — the solver readout, the one element on screen that names which
+   engine actually ran, ended 9px past the edge. A laptop is the likeliest
+   machine this gets demoed on. Content that does not fit has to be reachable,
+   not quietly gone.
+   The media query is so it does not come to that on a 800px-tall screen:
+   the fourth knob is what tips it over, and tightening the gaps buys 38px. */
+.rail{grid-area:rail;padding:18px 16px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;overflow-x:hidden}
+@media (max-height: 860px){
+  .rail{padding:14px 16px;gap:12px}
+}
 .knob{display:flex;flex-direction:column;gap:9px}
 .knob label{
   display:flex;justify-content:space-between;align-items:baseline;gap:8px;
@@ -227,9 +263,18 @@ button:focus-visible{outline:1px solid var(--ink-0);outline-offset:2px}
 /* The split used to stack .fix-line and .split-stamp as absolute overlays on
    top of the halves. They landed exactly on .split-cap and .split-foot, so
    "Before"/"After" and BOTH outcome readouts were painted and then covered —
-   the entire payoff of beat 4, invisible. Rows now, no overlays. */
-.split-scene{display:grid;grid-template-rows:auto 1fr auto;min-height:0}
-.split{display:grid;grid-template-columns:1fr 1px 1fr;min-height:0}
+   the entire payoff of beat 4, invisible. Rows now, no overlays.
+
+   And a column flex, not `grid-template-rows: auto 1fr auto`. That template
+   named the growing row by POSITION, so when .bought was added as a fourth
+   child the 1fr landed on it and .split fell through to an auto row: a
+   one-line banner became a 214px void while both networks collapsed from
+   577x490 to 577x222, at which height the asset labels of adjacent rows
+   interleave into "-5AMZN", "-1AAPL". Beat 4, illegible, because a sibling
+   was added three rows above. Here the element that should grow says so
+   itself, and nothing breaks when the next child arrives. */
+.split-scene{display:flex;flex-direction:column;min-height:0}
+.split{flex:1;display:grid;grid-template-columns:1fr 1px 1fr;min-height:0}
 .split .divider{background:var(--rule)}
 .split-half{display:flex;flex-direction:column;min-width:0;min-height:0}
 .split-cap{font:400 11px/1 var(--mono);padding:12px 16px;color:var(--ink-2);border-bottom:1px solid var(--rule)}
