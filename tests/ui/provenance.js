@@ -103,28 +103,42 @@ const band = () => [...d.querySelectorAll("#band .v")].map((e) => e.textContent)
    sitting in the label for the whole of the next fetch — so the predicate was
    satisfiable by the state it existed to see replaced. An audit instrumented
    every call: against a slow server all four post-boot waits returned on
-   entry with zero polls, and one already does so on a fast machine. Both
+   entry with zero polls, and one already did so on a fast machine. Both
    directions of wrong came out of that: the DEFAULTING scenario asserted the
    previous run's DOM against the new run's payload and reported ten app bugs
    that do not exist, while the DEMO scenario's twelve checks all passed
    without observing a single repaint, because the stale state and the
    expected state happened to coincide.
 
-   `attack()` now writes "searching" before it fetches, so the label must
-   leave that state and THEN reach `round N / N`. A run that has not started
-   cannot satisfy it and neither can the run before. */
-const settled = async (opts = {}) => {
-  const { started = false } = opts;
-  let sawStart = started;
+   `state.request` is the app's own generation counter — claimStage()
+   increments it, holdsStage() compares against it — so a run that has not
+   started cannot satisfy this, and neither can the run before.
+
+   My first attempt polled for the label to pass through "searching", which
+   attack() now writes before fetching. That does not work and is worth
+   recording: the live endpoints answer in 13-43ms and the poll runs every
+   20ms, so the transient is routinely missed and every wait timed out. A
+   predicate that depends on CATCHING a state is a race; one that depends on
+   a counter having moved is not. */
+const generation = () => (window.state ? window.state.request : null);
+
+const settled = async (since = null) => {
+  const before = since;
   for (let i = 0; i < 900; i++) {
-    const label = text("roundLabel");
-    if (/^searching/.test(label)) sawStart = true;
-    const m = label.match(/^round (\d+) \/ (\d+)$/);
-    if (sawStart && m && m[1] === m[2]) return;
+    const moved = before === null || generation() !== before;
+    const m = text("roundLabel").match(/^round (\d+) \/ (\d+)$/);
+    if (moved && m && m[1] === m[2]) return;
     await sleep(20);
   }
-  check("settled() timed out waiting for a run to finish",
-        false, `label stuck at "${text("roundLabel")}"`);
+  check("settled() timed out waiting for a run to finish", false,
+        `label "${text("roundLabel")}", generation ${generation()} (was ${before})`);
+};
+
+/* Click and wait for the run that click starts. */
+const runAttack = async (id = "attackBtn") => {
+  const before = generation();
+  d.getElementById(id).dispatchEvent(new window.Event("click"));
+  await settled(before);
 };
 
 const QS = "leverage=5&gamma=0.2&breaches=3";
@@ -143,9 +157,12 @@ async function checkRun(label, knobs) {
   setKnob("leverage", String(knobs.leverage));
   setKnob("gamma", String(knobs.gamma));
   d.getElementById("breaches").value = String(knobs.breaches);
+  const _gen = generation();
   d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
-  await sleep(1200);
-  await settled();
+  // The sleep(1200) that used to carry this past the previous run's label is
+  // gone: it was a magic number that happened to exceed the fetch time on one
+  // machine, not a barrier. The generation counter is the barrier.
+  await settled(_gen);
 
   const run = await api(`/api/break?${qs}`);
   const last = run.trajectory[run.trajectory.length - 1];
@@ -230,7 +247,9 @@ async function requireServer() {
 
 (async () => {
   await requireServer();
-  await sleep(1000);
+  // Boot. No generation to compare against because nothing here started the
+  // run — the app auto-attacks on load — so this one waits on the label
+  // alone, which is sound exactly once, before any run exists to go stale.
   await settled();
 
   const run = await checkRun("DEMO SCENARIO — hero, band, network readouts",
@@ -247,9 +266,12 @@ async function requireServer() {
 
   setKnob("leverage", "5"); setKnob("gamma", "0.2");
   d.getElementById("breaches").value = "3";
+  const _gen = generation();
   d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
-  await sleep(1200);
-  await settled();
+  // The sleep(1200) that used to carry this past the previous run's label is
+  // gone: it was a magic number that happened to exceed the fetch time on one
+  // machine, not a barrier. The generation counter is the barrier.
+  await settled(_gen);
 
   console.log("\nBOUNDARY — the marker must sit on its own data");
   /* Deliberately NOT the default band. At 1.05 the caption's old fallback
@@ -354,6 +376,7 @@ async function requireServer() {
      and the expectations wrong — ten failures that all say "the band works". */
   bandSlider.value = "1.05";
   bandSlider.dispatchEvent(new window.Event("input"));
+  const _gen0 = generation();
   d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
   // This was the one attack in the file with no settle discipline in front of
   // it, and the audit caught its settled() returning on entry with zero polls
@@ -361,7 +384,7 @@ async function requireServer() {
   // attack was still in flight, and the two raced on claimStage(). Masked
   // only because the stale state it read was the demo state this reset was
   // trying to produce.
-  await settled();
+  await settled(_gen0);
 
   console.log("\nSPLIT VIEW — footers and fix line against /api/stabilise");
   d.getElementById("defendBtn").dispatchEvent(new window.Event("click"));
