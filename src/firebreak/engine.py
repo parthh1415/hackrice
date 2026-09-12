@@ -195,7 +195,14 @@ def run_cascade(
     adv = np.asarray(adv, dtype=float)
     n_funds, n_assets = book.units.shape
     breached, defaulted = set(), set()
-    trajectory = [_snapshot(book, 0, [], np.zeros((n_funds, n_assets)))]
+    # t=0 is the post-shock, pre-deleverage state, and some funds are already
+    # over their limit in it. Reporting nobody there puts a fund on screen at
+    # 8.1x against a 6.3 limit with no breach marker on it. Same reading as
+    # every later frame — who was over at the start of the round — and it
+    # doesn't touch CascadeResult.breached, which the loop still owns.
+    trajectory = [
+        _snapshot(book, 0, book.over_limit(max_leverage), np.zeros((n_funds, n_assets)))
+    ]
     rounds, converged = 0, True
 
     for step in range(1, max_rounds + 1):
