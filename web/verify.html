@@ -9,19 +9,21 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-inner">
-    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
-    <div class="nav-links">
-      <a href="index.html"    data-page="portfolio">Portfolio</a>
-      <a href="analysis.html" data-page="analysis">Analysis</a>
-      <a href="cascade.html"  data-page="cascade">Cascade</a>
-      <a href="defend.html"   data-page="defend">Defend</a>
-      <a href="verify.html"   data-page="verify">Verify</a>
-    </div>
-    <div class="nav-right">
-      <span class="badge" id="navBadge">No portfolio</span>
-      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
-    </div>
+  <a class="logo" href="index.html">FIREBREAK</a>
+  <div class="nav-links">
+    <a href="index.html"    data-page="portfolio">Portfolio</a>
+    <a href="analysis.html" data-page="analysis">Analysis</a>
+    <a href="cascade.html"  data-page="cascade">Cascade</a>
+    <a href="defend.html"   data-page="defend">Defend</a>
+    <a href="verify.html"   data-page="verify">Verify</a>
+    <a href="assumptions.html" data-page="assumptions">Model</a>
+  </div>
+  <div class="nav-right">
+    <span class="status" id="navPf">BOOK <b>—</b></span>
+    <span class="status" id="navLimit">LIMIT <b>—</b></span>
+    <span class="status" id="navShock">SHOCK <b>—</b></span>
+    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
+    <span class="status num" id="navClock">--:--:--</span>
   </div>
 </nav>
 <main>
@@ -59,9 +61,8 @@ if (r && r.validation) {
     </div>
 
     <div class="card">
-      <div class="card-header bordered">
-        <span class="card-title">1 — The same shock, replayed</span>
-        <span class="card-desc">${s.note}</span>
+      <div class="card-header">
+        <span class="card-title">1 — The same shock, replayed</span><span class="sub">${s.note}</span>
       </div>
       <div class="card-body tight"><table>
         <thead><tr><th></th><th class="r">Current book</th><th class="r">Defended book</th></tr></thead>
@@ -75,9 +76,8 @@ if (r && r.validation) {
     </div>
 
     <div class="card">
-      <div class="card-header bordered">
-        <span class="card-title">2 — The new break point</span>
-        <span class="card-desc">Recomputed by re-running the same search against the defended
+      <div class="card-header">
+        <span class="card-title">2 — The new break point</span><span class="sub">Recomputed by re-running the same search against the defended
           book — not derived from the size of the cut.</span>
       </div>
       <div class="card-body tight"><table><tbody>
@@ -89,9 +89,8 @@ if (r && r.validation) {
     </div>
 
     <div class="card">
-      <div class="card-header bordered">
-        <span class="card-title">3 — ${syn.scenarios} simulated stresses</span>
-        <span class="card-desc">Both books scored on identical draws. Seed ${syn.seed}, so this
+      <div class="card-header">
+        <span class="card-title">3 — ${syn.scenarios} simulated stresses</span><span class="sub">Both books scored on identical draws. Seed ${syn.seed}, so this
           reproduces exactly.</span>
       </div>
       <div class="card-body tight"><table>
@@ -107,9 +106,8 @@ if (r && r.validation) {
     </div>
 
     <div class="card">
-      <div class="card-header bordered">
-        <span class="card-title">4 — Historical replay</span>
-        <span class="card-desc">Not available in this build.</span>
+      <div class="card-header">
+        <span class="card-title">4 — Historical replay</span><span class="sub">Not available in this build.</span>
       </div>
       <div class="card-body">
         <p class="lede">${v.historical.reason}</p>

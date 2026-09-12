@@ -10,19 +10,21 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-inner">
-    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
-    <div class="nav-links">
-      <a href="index.html"    data-page="portfolio">Portfolio</a>
-      <a href="analysis.html" data-page="analysis">Analysis</a>
-      <a href="cascade.html"  data-page="cascade">Cascade</a>
-      <a href="defend.html"   data-page="defend">Defend</a>
-      <a href="verify.html"   data-page="verify">Verify</a>
-    </div>
-    <div class="nav-right">
-      <span class="badge" id="navBadge">No portfolio</span>
-      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
-    </div>
+  <a class="logo" href="index.html">FIREBREAK</a>
+  <div class="nav-links">
+    <a href="index.html"    data-page="portfolio">Portfolio</a>
+    <a href="analysis.html" data-page="analysis">Analysis</a>
+    <a href="cascade.html"  data-page="cascade">Cascade</a>
+    <a href="defend.html"   data-page="defend">Defend</a>
+    <a href="verify.html"   data-page="verify">Verify</a>
+    <a href="assumptions.html" data-page="assumptions">Model</a>
+  </div>
+  <div class="nav-right">
+    <span class="status" id="navPf">BOOK <b>—</b></span>
+    <span class="status" id="navLimit">LIMIT <b>—</b></span>
+    <span class="status" id="navShock">SHOCK <b>—</b></span>
+    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
+    <span class="status num" id="navClock">--:--:--</span>
   </div>
 </nav>
 <main>
@@ -33,7 +35,7 @@
       <p class="lede" id="sub">Scanning every modelled name for the smallest shock that crosses your limit.</p>
     </div>
     <div class="card" id="resultCard" hidden>
-      <div class="card-header bordered">
+      <div class="card-header">
         <span class="card-title">Nearest modelled break point</span>
         <span class="card-desc" id="resultDesc">—</span>
       </div>

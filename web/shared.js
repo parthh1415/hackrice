@@ -47,10 +47,40 @@ function paintNav(current) {
     if (!has[page]) a.setAttribute("data-locked", "");
     else a.removeAttribute("data-locked");
   });
-  const badge = document.getElementById("navBadge");
-  if (badge && s.portfolio) {
-    badge.textContent = s.portfolio.source === "demo" ? "Demo portfolio" : "Imported";
-  }
+  const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
+  set("navPf", "");
+  const pf = document.getElementById("navPf");
+  if (pf) pf.innerHTML = `BOOK <b>${s.portfolio
+    ? (s.portfolio.source === "demo" ? "DEMO_01" : "IMPORTED") : "—"}</b>`;
+  const lim = document.getElementById("navLimit");
+  if (lim) lim.innerHTML = `LIMIT <b>${s.limit ? pct(s.limit, 2) : "—"}</b>`;
+  const sh = document.getElementById("navShock");
+  if (sh) sh.innerHTML = s.result && s.result.found
+    ? `SHOCK <b class="down">${s.result.asset} −${s.result.pct.toFixed(2)}%</b>`
+    : `SHOCK <b>NOT RUN</b>`;
+
+  // clock and engine status, the way a terminal wears them
+  const tick = () => {
+    const c = document.getElementById("navClock");
+    if (c) c.textContent = new Date().toLocaleTimeString("en-GB", { hour12: false });
+  };
+  tick();
+  if (!window.__fbClock) window.__fbClock = setInterval(tick, 1000);
+
+  fetch("/api/health", { cache: "no-store" })
+    .then((r) => { if (!r.ok) throw 0; return r.json(); })
+    .then((h) => {
+      const dot = document.getElementById("navEngine");
+      const txt = document.getElementById("navEngineText");
+      if (dot) { dot.textContent = "●"; dot.className = "up"; }
+      if (txt) txt.textContent = h && h.cached ? "REPLAY" : "ENGINE LIVE";
+    })
+    .catch(() => {
+      const dot = document.getElementById("navEngine");
+      const txt = document.getElementById("navEngineText");
+      if (dot) { dot.textContent = "●"; dot.className = "down"; }
+      if (txt) txt.textContent = "OFFLINE";
+    });
 }
 
 function requireResult(current) {

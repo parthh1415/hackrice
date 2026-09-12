@@ -9,19 +9,21 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-inner">
-    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
-    <div class="nav-links">
-      <a href="index.html"    data-page="portfolio">Portfolio</a>
-      <a href="analysis.html" data-page="analysis">Analysis</a>
-      <a href="cascade.html"  data-page="cascade">Cascade</a>
-      <a href="defend.html"   data-page="defend">Defend</a>
-      <a href="verify.html"   data-page="verify">Verify</a>
-    </div>
-    <div class="nav-right">
-      <span class="badge" id="navBadge">No portfolio</span>
-      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
-    </div>
+  <a class="logo" href="index.html">FIREBREAK</a>
+  <div class="nav-links">
+    <a href="index.html"    data-page="portfolio">Portfolio</a>
+    <a href="analysis.html" data-page="analysis">Analysis</a>
+    <a href="cascade.html"  data-page="cascade">Cascade</a>
+    <a href="defend.html"   data-page="defend">Defend</a>
+    <a href="verify.html"   data-page="verify">Verify</a>
+    <a href="assumptions.html" data-page="assumptions">Model</a>
+  </div>
+  <div class="nav-right">
+    <span class="status" id="navPf">BOOK <b>—</b></span>
+    <span class="status" id="navLimit">LIMIT <b>—</b></span>
+    <span class="status" id="navShock">SHOCK <b>—</b></span>
+    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
+    <span class="status num" id="navClock">--:--:--</span>
   </div>
 </nav>
 <main>
@@ -50,9 +52,8 @@ if (r) {
     root.innerHTML = `
     <div class="stack gap-6">
       <div class="card">
-        <div class="card-header bordered">
-          <span class="card-title">Recommended change</span>
-          <span class="card-desc">Locked shock — ${r.asset} −${r.pct.toFixed(2)}%. Unchanged from the analysis.</span>
+        <div class="card-header">
+          <span class="card-title">Recommended change</span><span class="sub">Locked shock — ${r.asset} −${r.pct.toFixed(2)}%. Unchanged from the analysis.</span>
         </div>
         <div class="card-body">
           <div class="figure">
@@ -74,7 +75,7 @@ if (r) {
       </div>
 
       <div class="card">
-        <div class="card-header bordered"><span class="card-title">Holdings, before and after</span></div>
+        <div class="card-header"><span class="card-title">Holdings, before and after</span></div>
         <div class="card-body tight">
           <table>
             <thead><tr><th>Holding</th><th class="r">Current</th><th class="r">Defended</th><th class="r">Change</th></tr></thead>

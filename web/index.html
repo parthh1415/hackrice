@@ -10,19 +10,21 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-inner">
-    <a class="logo" href="index.html" style="color:inherit;text-decoration:none"><i></i>Firebreak</a>
-    <div class="nav-links">
-      <a href="index.html"    data-page="portfolio">Portfolio</a>
-      <a href="analysis.html" data-page="analysis">Analysis</a>
-      <a href="cascade.html"  data-page="cascade">Cascade</a>
-      <a href="defend.html"   data-page="defend">Defend</a>
-      <a href="verify.html"   data-page="verify">Verify</a>
-    </div>
-    <div class="nav-right">
-      <span class="badge" id="navBadge">No portfolio</span>
-      <a class="btn btn-ghost btn-sm" href="assumptions.html">Assumptions</a>
-    </div>
+  <a class="logo" href="index.html">FIREBREAK</a>
+  <div class="nav-links">
+    <a href="index.html"    data-page="portfolio">Portfolio</a>
+    <a href="analysis.html" data-page="analysis">Analysis</a>
+    <a href="cascade.html"  data-page="cascade">Cascade</a>
+    <a href="defend.html"   data-page="defend">Defend</a>
+    <a href="verify.html"   data-page="verify">Verify</a>
+    <a href="assumptions.html" data-page="assumptions">Model</a>
+  </div>
+  <div class="nav-right">
+    <span class="status" id="navPf">BOOK <b>—</b></span>
+    <span class="status" id="navLimit">LIMIT <b>—</b></span>
+    <span class="status" id="navShock">SHOCK <b>—</b></span>
+    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
+    <span class="status num" id="navClock">--:--:--</span>
   </div>
 </nav>
 <main>
@@ -36,9 +38,8 @@
     </div>
 
     <div class="card" id="loadCard">
-      <div class="card-header bordered">
-        <span class="card-title">Load a portfolio</span>
-        <span class="card-desc">Nothing leaves this machine. CSV is parsed in your browser.</span>
+      <div class="card-header">
+        <span class="card-title">Load a portfolio</span><span class="sub">Nothing leaves this machine. CSV is parsed in your browser.</span>
       </div>
       <div class="card-body row gap-3" style="flex-wrap:wrap">
         <button class="btn btn-primary" id="useDemo">Use demo portfolio</button>
@@ -52,7 +53,7 @@
     </div>
 
     <div class="card" id="pfCard" hidden>
-      <div class="card-header bordered row between">
+      <div class="card-header">
         <div class="stack gap-2">
           <span class="card-title" id="pfName">Demo portfolio</span>
           <span class="card-desc" id="pfMeta">—</span>
@@ -68,9 +69,8 @@
     </div>
 
     <div class="card" id="limitCard" hidden>
-      <div class="card-header bordered">
-        <span class="card-title">What loss would you refuse to tolerate?</span>
-        <span class="card-desc">Firebreak searches for the smallest single-name shock that crosses this.</span>
+      <div class="card-header">
+        <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Firebreak searches for the smallest single-name shock that crosses this.</span>
       </div>
       <div class="card-body">
         <div class="seg" id="limits">
@@ -163,6 +163,12 @@ document.getElementById("limits").addEventListener("click", (ev) => {
 
 if (!FB.state.limit) FB.set({ limit: 0.10 });
 if (FB.state.portfolio) render(FB.state.portfolio);
+
+/* ?demo — start with the book already loaded. Useful for a shareable link,
+   and it is the only way to screenshot a loaded state from a cold browser. */
+if (new URLSearchParams(location.search).has("demo") && !FB.state.portfolio) {
+  document.getElementById("useDemo").click();
+}
 </script>
 </body>
 </html>
