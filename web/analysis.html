@@ -127,7 +127,11 @@ paintNav("analysis");
   document.getElementById("stats").innerHTML = [
     ["Direct loss", pct(body.direct_loss), "the shock alone", ""],
     ["After cascade", pct(body.cascade_loss), "including forced selling", "bad"],
-    ["Amplification", `${body.amplification.toFixed(2)}×`, "the crowding multiplier", ""],
+    /* api.py sends null when the direct loss is zero — a shock on a name you do
+       not hold, reaching you only through contagion. I could not construct one
+       against this dataset, but the cost of being wrong about that is the
+       app's central screen rendering blank, and the cost of the guard is this. */
+    ["Amplification", `${num(body.amplification, 2)}×`, "the crowding multiplier", ""],
     /* cumulative across the cascade. The cascade page's tile counts one round,
        and identical wording for the two reads as a contradiction. */
     ["Cascade rounds", String(body.rounds),

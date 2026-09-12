@@ -34,6 +34,14 @@ const usd = (x) => {
 const usdExact = (x) => `$${Math.round(x).toLocaleString("en-US")}`;
 const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
 
+/* Any API field the server is allowed to send as null. `x.toFixed()` on one of
+   those throws, and when it happens inside a template literal the whole
+   innerHTML assignment is skipped — the page renders its heading over an empty
+   div rather than showing anything wrong, which is how verify.html went blank
+   exactly when the fix had worked best. Render the absence instead. */
+const num = (x, dp = 2, dash = "—") =>
+  (x === null || x === undefined || !Number.isFinite(x)) ? dash : x.toFixed(dp);
+
 /* The nav locks pages you have not earned yet. A link to an analysis that
    does not exist leads to a page explaining it does not exist, which is a
    worse answer than a link that is visibly not ready. */

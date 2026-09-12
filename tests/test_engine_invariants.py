@@ -139,3 +139,44 @@ def test_a_round_settles_at_the_midpoint_and_not_at_the_close(leverage, gamma):
     assert not np.allclose(live.prices, at_open, rtol=1e-9), (
         "settling at the opening price is indistinguishable here too"
     )
+
+
+def test_damage_from_a_zero_shock_is_not_reported_as_no_amplification():
+    """A ratio with a zero denominator is undefined, not one.
+
+    Books already over their limit before anything happens deleverage on their
+    own: a zero shock here destroys 14.2% of system equity across five funds
+    and two rounds. `amplification` fell back to 1.0, which is not a neutral
+    placeholder — it is the specific claim that forced selling added nothing to
+    the initial damage, and it is exactly false. The same books at a shock of
+    -1e-6 report 128,255.
+
+    Unreachable through the institutional API, which clamps the band to >= 1.0
+    so max_leverage can never start below leverage. Live for any other caller,
+    and this is the one case where the number is not merely imprecise but
+    inverted.
+    """
+    from firebreak.engine import run_cascade
+
+    over_from_the_start = run_cascade(
+        holdings=HOLDINGS, leverage=np.full(N_FUNDS, 6.0),
+        max_leverage=np.full(N_FUNDS, 5.0), target_leverage=np.full(N_FUNDS, 4.75),
+        gamma=0.2, adv=ADV, shock=np.zeros(HOLDINGS.shape[1]),
+    )
+    assert over_from_the_start.shock_loss == pytest.approx(0.0)
+    assert over_from_the_start.final_loss > 0.1, "this setup is meant to do damage"
+    assert over_from_the_start.amplification is None, (
+        "damage divided by no damage is undefined. Reporting 1.0 says the "
+        "cascade added nothing, next to a final_loss saying it destroyed "
+        f"{over_from_the_start.final_loss:.1%} of system equity"
+    )
+    assert over_from_the_start.as_dict()["metrics"]["amplification"] is None
+
+    # a genuinely quiet run — nothing happened — may still say 1.0
+    quiet = run_cascade(
+        holdings=HOLDINGS, leverage=np.full(N_FUNDS, 5.0),
+        max_leverage=np.full(N_FUNDS, 5.25), target_leverage=np.full(N_FUNDS, 4.75),
+        gamma=0.2, adv=ADV, shock=np.zeros(HOLDINGS.shape[1]),
+    )
+    assert quiet.final_loss == pytest.approx(0.0)
+    assert quiet.amplification == pytest.approx(1.0)

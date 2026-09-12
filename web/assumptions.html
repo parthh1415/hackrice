@@ -98,18 +98,24 @@ paintNav("assumptions");
       : "wall clock for the solve alone"],
   ];
   if (b.before_pct != null) {
+    /* after_pct is null when the patched books have no break point left in the
+       tested range — the fix working perfectly. Guarding only before_pct, as
+       this did, is the same shape as the bug that blanked verify.html: the
+       throw lands inside the template literal and takes the whole row with it. */
+    const after = b.after_pct == null
+      ? "none in range" : `${b.after_pct.toFixed(2)}%`;
     erows.push(["What it bought",
-      b.measurable
-        ? `break point ${b.before_pct.toFixed(2)}% → ${b.after_pct.toFixed(2)}%`
-        : `break point ${b.before_pct.toFixed(2)}% → ${b.after_pct.toFixed(2)}% · no measurable change`,
+      b.measurable || b.after_pct == null
+        ? `break point ${b.before_pct.toFixed(2)}% → ${after}`
+        : `break point ${b.before_pct.toFixed(2)}% → ${after} · no measurable change`,
       /* resolution_pct is deliberately TWICE the search tolerance: the delta is
          the difference of two independently bisected searches, so each one's
          error lands in it. Quoting the single-search figure alone here would
          understate the bar this delta actually has to clear. */
       /* the API's note is a sentence fragment with no terminator; joining it
          to the next sentence bare reads as one run-on. */
-      `${(b.note || "").replace(/[^.]$/, "$&.")} Each search resolves to ±${(b.resolution_pct / 2).toFixed(3)}pp, ` +
-      `so a difference of two has to clear ${b.resolution_pct.toFixed(3)}pp to mean anything.`]);
+      `${(b.note || "").replace(/[^.]$/, "$&.")} Each search resolves to ±${num(b.resolution_pct / 2, 3)}pp, ` +
+      `so a difference of two has to clear ${num(b.resolution_pct, 3)}pp to mean anything.`]);
   }
   document.getElementById("engineNote").textContent =
     e.kind === "matlab" ? "MATLAB" : "fallback";

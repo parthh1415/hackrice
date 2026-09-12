@@ -278,6 +278,64 @@ function visibleText(d) {
       eq("Play from the end restarts at the shock", tile("round"),
          `0 / ${cas.trajectory.length - 1}`);
       c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));  // stop the timer
+
+      /* Prev and Next used to leave the timer running, so stepping during
+         playback raced it: three Nexts inside one 900ms tick landed on the
+         last frame with the button reading "Replay", reporting a playthrough
+         in which the middle rounds were never drawn. */
+      const btn = () => c.d.getElementById("playBtn").textContent;
+      c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));
+      for (let i = 0; i < cas.trajectory.length; i++)
+        c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
+      await sleep(250);
+      eq("stepping during playback takes over from the timer", tile("round"),
+         `${cas.trajectory.length - 1} / ${cas.trajectory.length - 1}`);
+      eq("and the button describes where we actually are", btn(), "Replay");
+
+      c.d.getElementById("prevBtn").dispatchEvent(new c.window.Event("click"));
+      await sleep(30);
+      eq("stepping back off the end stops saying Replay", btn(), "Play");
+      eq("and shows the frame before the last", tile("round"),
+         `${cas.trajectory.length - 2} / ${cas.trajectory.length - 1}`);
+    }
+
+    /* A cascade that settles on the shock alone has one frame and nothing to
+       animate. Play used to fire the interval once, clamp and relabel — a
+       900ms pause pretending to be a playthrough. */
+    {
+      const rows = [{ symbol: "NVDA", market_value: 100000 }];
+      const one = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.03", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ holdings: rows, source: "csv" }),
+      })).json();
+      const onecas = one.found && await (await fetch(ORIGIN +
+        `/api/cascade?asset=${one.asset}&magnitude=${Math.abs(one.magnitude)}` +
+        `&leverage=${one.params.leverage}&gamma=${one.params.gamma}&band=${one.params.band}`)).json();
+      if (onecas && onecas.trajectory.length === 1) {
+        const z = await load("cascade.html", { fb: JSON.stringify(
+          { portfolio: one.portfolio, rows, limit: 0.03, result: one }) });
+        await until(() => z.d.querySelectorAll("#net circle").length > 0);
+        check("a one-frame cascade renders without error", z.errors.length === 0,
+              z.errors.join("; "));
+        const zt = [...z.d.querySelectorAll(".stat")]
+          .find((n) => n.querySelector(".k").textContent.toLowerCase().includes("round"))
+          .querySelector(".v").textContent.trim();
+        eq("and counts itself honestly", zt, "0 / 0");
+        eq("and offers Replay rather than a playthrough that cannot happen",
+           z.d.getElementById("playBtn").textContent, "Replay");
+        /* and pressing it must not arm an interval that has nowhere to go —
+           one tick, a clamp and a relabel is a 900ms pause pretending to be an
+           animation. Checking the label alone misses that entirely. */
+        z.d.getElementById("playBtn").dispatchEvent(new z.window.Event("click"));
+        eq("pressing Play on a one-frame cascade settles immediately",
+           z.d.getElementById("playBtn").textContent, "Replay");
+        await sleep(1100);
+        eq("and is still settled a tick later, having armed nothing",
+           z.d.getElementById("playBtn").textContent, "Replay");
+      } else {
+        check("a one-frame cascade is still reachable to test", false,
+              "no single-frame trajectory found; the checks above did not run");
+      }
     }
 
     store = c.dump();

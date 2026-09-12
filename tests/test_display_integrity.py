@@ -94,3 +94,68 @@ def test_the_hero_number_resolves_the_precision_it_prints():
         f"pct reports {default.pct} for a magnitude of {default.magnitude}. The "
         "hero number is a percentage of that magnitude and nothing else"
     )
+
+
+@pytest.mark.parametrize("leverage,gamma,band", [
+    (3.0, 0.05, 1.05),   # overstated the cut by 5.10% when the floor was 1e-7
+    (5.0, 0.20, 1.20),   # and by 3.28% here
+    (5.0, 0.20, 1.05),   # the demo default, where the relative bound always bound
+    (6.5, 1.00, 1.30),
+])
+def test_the_cheapest_fix_is_within_the_two_percent_it_promises(leverage, gamma, band):
+    """The depth search's stated guarantee, checked against a brute-force answer.
+
+    `_DEPTH_RTOL` says "land within 2% of the true minimum". A second, absolute
+    stop sat beside it as a fraction of a position, and took over silently as
+    soon as the answer fell below about 5e-6 — reachable at settings the
+    sliders ship with. The cut came out 5.1% above the true minimum while the
+    comment promised 2%.
+
+    Erring high is the safe direction — the recommendation is a bigger sale
+    than necessary, not a smaller one — which is exactly why nothing caught it.
+    """
+    import json
+    import pathlib
+
+    from firebreak.engine import run_cascade
+    from firebreak.stabilise import _DEPTH_RTOL, Fix, find_cheapest_fix
+
+    data = json.loads((pathlib.Path(__file__).resolve().parents[1]
+                       / "data" / "cache" / "dataset.json").read_text())
+    holdings = np.array(data["holdings"], dtype=float)
+    m = len(data["funds"])
+    kw = dict(leverage=np.full(m, leverage),
+              max_leverage=np.full(m, leverage * band),
+              target_leverage=np.full(m, leverage * 0.95),
+              gamma=gamma, adv=np.array(data["adv"], dtype=float))
+
+    condition = at_least_n_breaches(3)
+    found = find_weakest_shock(condition=condition, holdings=holdings, **kw)
+    if found is None:
+        pytest.skip("no shock in range at these settings")
+    fix = find_cheapest_fix(condition=condition, holdings=holdings,
+                            shock=found.shock, **kw)
+    if fix is None:
+        pytest.skip("no single-position fix at these settings")
+
+    # brute force the same (fund, asset) far past the search's own resolution
+    lo, hi = 0.0, fix.reduction
+    for _ in range(70):
+        mid = (lo + hi) / 2.0
+        if condition(run_cascade(holdings=Fix(fix.fund, fix.asset, mid, 0.0).apply(holdings),
+                                 shock=found.shock, **kw)):
+            lo = mid
+        else:
+            hi = mid
+
+    overstated = (fix.reduction - hi) / hi
+    assert overstated <= _DEPTH_RTOL, (
+        f"the fix is {overstated * 100:.2f}% above the true minimum at "
+        f"leverage={leverage}, gamma={gamma}, band={band}, against a promised "
+        f"{_DEPTH_RTOL * 100:.0f}%. A second stopping rule has taken over from "
+        "the relative one"
+    )
+    assert fix.reduction >= hi, (
+        "the fix is BELOW the true minimum, which means it does not actually "
+        "clear the condition — wrong in the unsafe direction"
+    )

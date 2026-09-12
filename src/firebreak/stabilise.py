@@ -31,7 +31,24 @@ _STEPS = 20
 # reported as the cheapest cut. An absolute tolerance can only be right at one
 # order of magnitude, and nothing pins the answer to that one.
 _DEPTH_RTOL = 0.02         # land within 2% of the true minimum
-_DEPTH_FLOOR = 1e-7        # and stop chasing below a ten-millionth of a position
+
+# The floor exists so the loop terminates: when the true minimum is zero, `hi`
+# goes to zero with it and `_DEPTH_RTOL * hi` goes to zero too, so a purely
+# relative stop never halts. But a floor stated as a fraction of a position is
+# an absolute tolerance wearing a different hat, and it has the same failure —
+# it can only be right at one order of magnitude. At 1e-7 it silently took over
+# from the 2% guarantee as soon as the answer fell below about 5e-6, which is
+# reachable at settings the sliders ship with: lambda=3.0, gamma=0.05,
+# band=1.05 reported a cut 5.10% above the true minimum, and lambda=5.0,
+# gamma=0.20, band=1.20 reported one 3.28% above. Both inside the stated 2%.
+# Erring high is the safe direction, but the claim was false.
+#
+# So the floor is in DOLLARS now, which is the unit in which "too small to
+# care" actually means something. A bracket narrower than a cent of the
+# position being cut is not worth another cascade, and for every position in
+# this dataset a cent is far below where the relative bound binds — so 2% is
+# the guarantee in practice rather than in the comment.
+_DEPTH_FLOOR_USD = 0.01
 
 
 @dataclass
@@ -109,7 +126,8 @@ def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
                 # minimum is inside that step. Bisect for it rather than
                 # reporting the grid point and calling it the answer.
                 lo, hi = reduction - 1.0 / _STEPS, reduction
-                while hi - lo > max(_DEPTH_FLOOR, _DEPTH_RTOL * hi):
+                floor = _DEPTH_FLOOR_USD / position if position > 0 else _DEPTH_RTOL
+                while hi - lo > max(floor, _DEPTH_RTOL * hi):
                     mid = (lo + hi) / 2.0
                     if condition(run_cascade(
                         holdings=Fix(fund, asset, mid, 0.0).apply(holdings),

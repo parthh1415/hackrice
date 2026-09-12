@@ -176,20 +176,42 @@ if (r) (async () => {
     return `<tr><td class="num dim" style="width:70px">R${String(t).padStart(2, "0")}</td><td class="t">${msg}</td></tr>`;
   }).join("");
 
-  document.getElementById("prevBtn").onclick = () => { at = Math.max(0, at - 1); draw(at); };
-  document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };
-  document.getElementById("playBtn").onclick = () => {
-    if (timer) { clearInterval(timer); timer = null; document.getElementById("playBtn").textContent = "Play"; return; }
-    document.getElementById("playBtn").textContent = "Pause";
+  const playBtn = document.getElementById("playBtn");
+  /* One place that owns the timer and the label, because they were drifting
+     apart. Prev and Next did not touch the timer, so stepping during playback
+     raced it: three Nexts inside the first 900ms tick jumped to the last frame
+     and the button then read "Replay", reporting a playthrough in which rounds
+     1 and 2 were never drawn. Stepping is a deliberate act — it takes over. */
+  function stop(label) {
+    if (timer) { clearInterval(timer); timer = null; }
+    playBtn.textContent = label;
+  }
+  function step(to) {
+    stop(at >= frames.length - 1 && to >= frames.length - 1 ? "Replay" : "Play");
+    at = Math.max(0, Math.min(frames.length - 1, to));
+    /* and the label has to describe where we ARE: stepping back off the end
+       used to leave "Replay" sitting over round 2. */
+    playBtn.textContent = at >= frames.length - 1 ? "Replay" : "Play";
+    draw(at);
+  }
+  document.getElementById("prevBtn").onclick = () => step(at - 1);
+  document.getElementById("nextBtn").onclick = () => step(at + 1);
+  playBtn.onclick = () => {
+    if (timer) { stop("Play"); return; }
+    playBtn.textContent = "Pause";
     at = 0; draw(at);
+    /* A single-frame cascade has nothing to play through. Without this the
+       interval fires once, clamps, and relabels — a 900ms pause pretending to
+       be an animation. */
+    if (frames.length <= 1) { playBtn.textContent = "Replay"; return; }
     timer = setInterval(() => {
       at += 1;
-      if (at >= frames.length) { clearInterval(timer); timer = null;
-        document.getElementById("playBtn").textContent = "Replay"; at = frames.length - 1; }
+      if (at >= frames.length - 1) { at = frames.length - 1; stop("Replay"); }
       draw(at);
     }, 900);
   };
   draw(0);
+  if (frames.length <= 1) playBtn.textContent = "Replay";
 })();
 </script>
 </body>

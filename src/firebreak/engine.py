@@ -227,7 +227,18 @@ def run_cascade(
     equity_end = book.equity().sum()
     shock_loss = (equity_start - equity_after_shock) / equity_start
     final_loss = (equity_start - equity_end) / equity_start
-    amplification = final_loss / shock_loss if abs(shock_loss) > _TINY else 1.0
+    # A zero denominator makes this ratio undefined, and 1.0 is not a neutral
+    # stand-in for undefined — it is the claim that forced selling added
+    # nothing to the initial damage. Books already over their limit before
+    # anything happens deleverage on their own, so a zero shock can destroy
+    # 14% of system equity across five funds and still divide by nothing; the
+    # old fallback printed "1.00x" beside it. Say the ratio does not exist.
+    if abs(shock_loss) > _TINY:
+        amplification = final_loss / shock_loss
+    elif abs(final_loss) <= _TINY:
+        amplification = 1.0        # nothing happened, so nothing was amplified
+    else:
+        amplification = None
 
     return CascadeResult(
         rounds=rounds,
@@ -237,7 +248,7 @@ def run_cascade(
         prices=book.prices.copy(),
         shock_loss=float(shock_loss),
         final_loss=float(final_loss),
-        amplification=float(amplification),
+        amplification=None if amplification is None else float(amplification),
         trajectory=trajectory,
     )
 

@@ -45,8 +45,15 @@ MUTATIONS = {
         "floor_cost = position * step / _STEPS / total"),
     "depth_absolute": (
         "src/firebreak/stabilise.py",
-        "while hi - lo > max(_DEPTH_FLOOR, _DEPTH_RTOL * hi):",
+        "while hi - lo > max(floor, _DEPTH_RTOL * hi):",
         "while hi - lo > 0.002:"),
+    # the floor taking over from the relative bound: 1e-7 as a fraction of a
+    # position is what silently overstated the cut by 5.1% at settings the
+    # sliders ship with.
+    "depth_floor_is_a_fraction_again": (
+        "src/firebreak/stabilise.py",
+        "                floor = _DEPTH_FLOOR_USD / position if position > 0 else _DEPTH_RTOL",
+        "                floor = 1e-7"),
     "report_grid_point": (
         "src/firebreak/stabilise.py",
         "candidate = Fix(fund, asset, hi, position * hi / total)",
@@ -291,6 +298,14 @@ MUTATIONS = {
         "web/defend.html",
         '              if (!rows.some(h => h.symbol === "CASH")) rows.push({ symbol: "CASH", market_value: 0 });',
         '              if (false) rows.push({ symbol: "CASH", market_value: 0 });'),
+    "stepping_does_not_stop_the_timer": (
+        "web/cascade.html",
+        '  document.getElementById("prevBtn").onclick = () => step(at - 1);\n  document.getElementById("nextBtn").onclick = () => step(at + 1);',
+        '  document.getElementById("prevBtn").onclick = () => { at = Math.max(0, at - 1); draw(at); };\n  document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };'),
+    "one_frame_cascade_pretends_to_play": (
+        "web/cascade.html",
+        "    if (frames.length <= 1) { playBtn.textContent = \"Replay\"; return; }",
+        "    if (false) { playBtn.textContent = \"Replay\"; return; }"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };',
@@ -332,7 +347,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "proceeds_vanish_without_a_cash_row", "next_skips_a_round",
                 "loss_tile_is_the_final_loss", "value_column_matched_loosely",
                 "ragged_row_accepted", "value_and_qty_price_not_reconciled",
-                "negative_holding_accepted"}
+                "negative_holding_accepted", "stepping_does_not_stop_the_timer",
+                "one_frame_cascade_pretends_to_play"}
 
 
 def build(name):
