@@ -158,6 +158,31 @@ async function checkRun(label, knobs) {
   check("per-fund leverage readouts equal frame.leverage",
         wantLev.every((s) => netText.includes(s)),
         wantLev.filter((s) => !netText.includes(s)).join(" ") || "ok");
+  /* The dashed ring is the only thing on the network that says WHICH name was
+     shocked. `assetIndex: body.asset_index ?? 0` has a comment in api.py
+     admitting the fallback is "correct only when the answer happens to be the
+     first name" — and nothing tested it, because at the demo settings the
+     answer IS the first name. Hardcoding it to 0 scored 47/47 while ringing
+     NVDA on a run whose shocked asset is AMZN. */
+  const shocked = [...svg("network").querySelectorAll("circle")]
+    .filter((c) => c.getAttribute("stroke-dasharray") === "2 3");
+  check("exactly one asset is ringed as the shocked one", shocked.length === 1,
+        `${shocked.length} rings`);
+  if (shocked.length === 1) {
+    const plain = [...svg("network").querySelectorAll("circle")]
+      .filter((c) => c.getAttribute("stroke-dasharray") !== "2 3");
+    const ringed = plain.reduce((best, c) =>
+      Math.abs(+c.getAttribute("cy") - +shocked[0].getAttribute("cy")) <
+      Math.abs(+best.getAttribute("cy") - +shocked[0].getAttribute("cy")) ? c : best, plain[0]);
+    const labels = [...svg("network").querySelectorAll("text")]
+      .filter((t) => run.tickers.includes(t.textContent));
+    const named = labels.reduce((best, t) =>
+      Math.abs(+t.getAttribute("y") - +ringed.getAttribute("cy")) <
+      Math.abs(+best.getAttribute("y") - +ringed.getAttribute("cy")) ? t : best, labels[0]);
+    eq("the ring is around the asset the payload says was shocked",
+       named.textContent, run.asset);
+  }
+
   check("defaulted funds read INSOLVENT rather than a stale multiple",
         run.defaulted.every((j) => last.leverage[j] === null),
         `defaulted ${JSON.stringify(run.defaulted)}`);
@@ -351,6 +376,29 @@ async function requireServer() {
         agrees(fx.cost, fx.sell_usd / gross, 1e-9),
         `cost ${fx.cost} vs sell/gross ${fx.sell_usd / gross}`);
 
+  /* Three numbers on beat 4 that nothing was reading back. Each renders a
+     visibly wrong value under mutation while every other check stays green:
+     "round 3 of 4" on a three-round cascade, "999 evals" where the payload
+     says 124, and a critical distance three inches from the hero disagreeing
+     with it. */
+  const rounds = Math.max(s.before.trajectory.length, s.after.trajectory.length) - 1;
+  const label = text("splitRound");
+  const denom = (label.match(/round \d+ of (\d+)/) || [])[1];
+  check("the split's round label counts the rounds the payload has",
+        label.includes("shock applied") || Number(denom) === rounds,
+        `"${label}" · payload has ${rounds} rounds`);
+
+  const evals = text("solverStats").replace(/\s+/g, " ");
+  check("the solver readout states the payload's evaluation count",
+        evals.includes(`${s.engine.evaluations} evals`),
+        `${evals} · payload ${s.engine.evaluations}`);
+
+  eq("the bought line opens on the run's OWN critical distance",
+     (text("boughtLine").match(/critical distance ([\d.]+)%/) || [])[1],
+     s.bought.before_pct.toFixed(2));
+  check("and that is the number the hero is showing",
+        text("boughtLine").includes(`${run.pct.toFixed(2)}%`), text("boughtLine"));
+
   console.log("\nPRECISION — stated decimals, and no borrowed rounding");
   const bd = band();   // still the demo cascade's; the split has its own footers
   check("amplification is 2dp everywhere", /^\d+\.\d{2}×$/.test(bd[2]) &&
@@ -413,6 +461,40 @@ async function requireServer() {
   window.fetch = realFetch;
 
   check("no runtime errors", errors.length === 0, errors.join("; "));
+  /* The failure this whole file names in its docstring — a frontend that
+     DERIVES a number instead of reading the one the engine sent — and the one
+     case it could not see. `mult(m.amplification)` and
+     `mult(m.final_loss / m.shock_loss)` render identically, forever, because
+     the engine defines amplification as exactly that ratio. Comparing the DOM
+     to the payload cannot separate them: both agree by construction.
+
+     So break the construction. Stub the field to something the ratio cannot
+     produce and see which one reaches the screen. A UI reading the field
+     prints the stub; a UI recomputing it prints the ratio. */
+  console.log("\nDERIVED vs READ — the number must come off the payload");
+  window.fetch = async (u, o) => {
+    const r = await realFetch(u, o);
+    const j = await r.json();
+    if (u.includes("/api/break") && j.metrics) {
+      j.metrics = { ...j.metrics, amplification: 9.99 };
+    }
+    return { ok: r.ok, status: r.status, json: async () => j };
+  };
+  // Poll for the repaint rather than calling settled(): its condition was
+  // already satisfied by the previous run, so it returned instantly and the
+  // assertion read a stale band. A wait that can be satisfied by the state
+  // you are trying to replace is not a wait.
+  const before = band()[2];
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  let shown = before;
+  for (let i = 0; i < 120 && shown === before; i++) {
+    await sleep(100);
+    shown = band()[2];
+  }
+  window.fetch = realFetch;
+  eq("amplification is read from the payload, not recomputed from the losses",
+     shown, "9.99×");
+
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
 })().catch((e) => {

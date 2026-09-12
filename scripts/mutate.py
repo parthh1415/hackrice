@@ -83,7 +83,35 @@ MUTATIONS = {
         "src/firebreak/api.py",
         'gross_usd=float(scenario["holdings"].sum())',
         'gross_usd=float(scenario["holdings"].sum() * 1.02)'),
+
+    # Frontend mutations. These need the UI harnesses, not pytest — run them
+    # with --ui, which drives tests/ui/provenance.js against the mutated web/
+    # and the real server. All five of these once scored 47/47 green while
+    # rendering a visibly wrong number on screen.
+    "amp_derived": (
+        "web/app.js",
+        "mult(m.amplification)",
+        "mult(m.final_loss / m.shock_loss)"),
+    "ring_always_zero": (
+        "web/app.js",
+        "shock: { assetIndex: body.asset_index ?? 0,",
+        "shock: { assetIndex: 0,"),
+    "split_round_off_by_one": (
+        "web/app.js",
+        "`round ${t} of ${longest - 1}`",
+        "`round ${t} of ${longest}`"),
+    "solver_evals_hardcoded": (
+        "web/app.js",
+        "${e.evaluations || 0} evals",
+        "${999} evals"),
+    "bought_before_is_after": (
+        "web/app.js",
+        "`critical distance <b>${b.before_pct.toFixed(2)}%</b> · <b>no measurable change</b>`",
+        "`critical distance <b>${b.after_pct.toFixed(2)}%</b> · <b>no measurable change</b>`"),
 }
+
+UI_MUTATIONS = {"amp_derived", "ring_always_zero", "split_round_off_by_one",
+                "solver_evals_hardcoded", "bought_before_is_after"}
 
 
 def build(name):
@@ -94,7 +122,16 @@ def build(name):
         if not src.exists():
             continue
         dst = scratch / item
-        shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
+        if src.is_dir():
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns("node_modules", "__pycache__"))
+        else:
+            shutil.copy2(src, dst)
+
+    # jsdom is large and identical in every copy; link rather than duplicate it.
+    mods = ROOT / "tests" / "ui" / "node_modules"
+    link = scratch / "tests" / "ui" / "node_modules"
+    if mods.exists() and not link.exists():
+        link.symlink_to(mods, target_is_directory=True)
 
     target = scratch / path
     text = target.read_text()
@@ -131,13 +168,24 @@ def main():
     green = []
     for name in names:
         scratch = build(name)
-        run = subprocess.run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header",
-                              "-p", "no:cacheprovider"],
-                             cwd=scratch, text=True, capture_output=True,
-                             env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"})
-        tail = [l for l in run.stdout.splitlines() if l.startswith("FAILED")]
-        summary = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else "no output"
-        caught = run.returncode != 0
+        if name in UI_MUTATIONS:
+            # Drives the real provenance harness against the mutated web/ and
+            # the live server, so every payload is genuine and any failure is
+            # the DOM disagreeing with it. Needs a server on 8765.
+            run = subprocess.run(["node", "provenance.js"],
+                                 cwd=scratch / "tests" / "ui", text=True, capture_output=True,
+                                 env={"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"})
+            tail = [l for l in run.stdout.splitlines() if "[FAIL]" in l]
+            summary = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else "no output"
+            caught = run.returncode != 0
+        else:
+            run = subprocess.run([sys.executable, "-m", "pytest", "tests/", "-q", "--no-header",
+                                  "-p", "no:cacheprovider"],
+                                 cwd=scratch, text=True, capture_output=True,
+                                 env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"})
+            tail = [l for l in run.stdout.splitlines() if l.startswith("FAILED")]
+            summary = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else "no output"
+            caught = run.returncode != 0
         print(f"{'CAUGHT ' if caught else 'GREEN  '} {name:<20} {summary}")
         for line in tail[:3]:
             print(f"           {line}")
