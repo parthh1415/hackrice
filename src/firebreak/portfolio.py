@@ -200,8 +200,24 @@ def cut_to_cash(vector, cash, asset, fraction):
     return out, cash + moved
 
 
-def cheapest_portfolio_fix(vector, cash, limit, shock, holdings, steps=200, **cascade_kwargs):
-    """Smallest single-position cut to cash that survives this exact shock.
+# How much headroom a recommendation has to buy, as a fraction of the limit.
+#
+# Without this the answer is ZERO, and correctly so: the break point is by
+# construction the shock where the loss lands exactly ON the limit, so an
+# infinitesimal cut already puts you under it. The first end-to-end run
+# returned "reduce NVDA by $0 (0.0% of the position)" and a new break point
+# 0.01pp further out. Arithmetically impeccable, worthless as advice, and
+# precisely the kind of true-but-useless number this project keeps catching.
+#
+# So a fix has to buy real distance, and how much is a DECLARED parameter
+# rather than a silent one. 0.1 means a 10% limit is defended to a 9% loss.
+FIX_MARGIN = 0.1
+
+
+def cheapest_portfolio_fix(vector, cash, limit, shock, holdings,
+                           margin=FIX_MARGIN, **cascade_kwargs):
+    """Smallest single-position cut to cash that survives this exact shock
+    with `margin` of headroom under the limit.
 
     Bisects on depth against a RELATIVE tolerance for the same reason the
     institutional stabiliser does: an absolute one is only right at one order
@@ -212,9 +228,7 @@ def cheapest_portfolio_fix(vector, cash, limit, shock, holdings, steps=200, **ca
     """
     from .engine import run_cascade
 
-    def survives(vec, csh):
-        result = run_cascade(holdings=holdings, shock=shock, **cascade_kwargs)
-        return portfolio_loss(vec, csh, result.prices) < limit
+    target = limit * (1.0 - margin)
 
     # The cascade does not depend on the user's weights at all — they are an
     # observer — so it is run ONCE and every candidate cut is scored against
@@ -228,12 +242,12 @@ def cheapest_portfolio_fix(vector, cash, limit, shock, holdings, steps=200, **ca
             continue
         lo, hi = 0.0, 1.0
         full, full_cash = cut_to_cash(vector, cash, asset, 1.0)
-        if portfolio_loss(full, full_cash, prices) >= limit:
-            continue            # selling all of it still does not save you
+        if portfolio_loss(full, full_cash, prices) >= target:
+            continue            # selling all of it still does not get you clear
         for _ in range(40):
             mid = (lo + hi) / 2.0
             vec, csh = cut_to_cash(vector, cash, asset, mid)
-            if portfolio_loss(vec, csh, prices) >= limit:
+            if portfolio_loss(vec, csh, prices) >= target:
                 lo = mid
             else:
                 hi = mid
@@ -250,4 +264,8 @@ def cheapest_portfolio_fix(vector, cash, limit, shock, holdings, steps=200, **ca
         "weight_moved": moved,
         "vector": vec,
         "cash": csh,
+        "limit": limit,
+        "margin": margin,
+        "target_loss": target,
+        "loss_after": portfolio_loss(vec, csh, prices),
     }
