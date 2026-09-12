@@ -125,3 +125,27 @@ def test_ticker_column_order_is_first_appearance():
     _, tickers, _ = build_holdings(books, universe)
 
     assert tickers == ["NVDA", "GOOGL"]
+
+
+def test_dropped_funds_are_reported_so_parameter_vectors_can_follow():
+    # Per-fund leverage is a vector built from the manager list, not a dict.
+    # Drop the third of five books and everything from index 2 onward slides
+    # up one seat: "Empty"'s leverage lands on D, D's on E, E's on nobody.
+    universe = {"67066G10": "NVDA"}
+    books = {
+        "A": {"67066G10": 10.0},
+        "B": {"67066G10": 20.0},
+        "Empty": {"99999999": 30.0},
+        "D": {"67066G10": 40.0},
+        "E": {"67066G10": 50.0},
+    }
+    leverage = [2.0, 3.0, 4.0, 5.0, 6.0]  # one per manager, original order
+
+    funds, _, matrix, kept = build_holdings(books, universe)
+
+    assert funds == ["A", "B", "D", "E"]
+    assert kept == [0, 1, 3, 4]
+    assert [leverage[i] for i in kept] == [2.0, 3.0, 5.0, 6.0]
+    # the slide the caller would otherwise get, spelled out
+    assert leverage[: len(funds)] == [2.0, 3.0, 4.0, 5.0]
+    assert len(kept) == matrix.shape[0]
