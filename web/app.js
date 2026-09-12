@@ -109,11 +109,18 @@ function checkKnobs() {
   else clearNote("knobs");
 }
 
-async function api(path, owns = () => true) {
+async function api(path, owns = () => true, payload = null) {
   const started = performance.now();
   let res;
   try {
-    res = await fetch(path, { cache: "no-store" });
+    // A portfolio goes in the body, not the query string: it is a document
+    // listing everything somebody owns and it has no business in a URL, a
+    // server log, or anybody's browser history.
+    res = await fetch(path, payload
+      ? { method: "POST", cache: "no-store",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload) }
+      : { cache: "no-store" });
   } catch (err) {
     throw Object.assign(new Error(`${path} → ${err.message}`), { transport: true });
   }
@@ -730,11 +737,18 @@ function startElapsed(label) {
 
 /* ────────────────────────────── scenes ────────────────────────────────── */
 
+const SCENES = {
+  network: "sceneNetwork",
+  boundary: "sceneBoundary",
+  split: "sceneSplit",
+  result: "sceneResult",
+  validate: "sceneValidate",
+};
+
 function showScene(which) {
   state.beat = which;
-  ["sceneNetwork", "sceneBoundary", "sceneSplit"].forEach((id) => {
-    $(id).hidden = id !== ({ network: "sceneNetwork", boundary: "sceneBoundary", split: "sceneSplit" }[which]);
-  });
+  const want = SCENES[which];
+  Object.values(SCENES).forEach((id) => { $(id).hidden = id !== want; });
 }
 
 /* ────────────────────────────── actions ───────────────────────────────── */
@@ -1352,3 +1366,261 @@ window.addEventListener("resize", () => {
 });
 
 boot();
+
+/* ── Portfolio Mode ──────────────────────────────────────────────────────
+   The product loop: my portfolio, my limit, my breaking shock, why, the
+   smallest fix, and whether that fix helped.
+
+   This layer sits ON TOP of the institutional app rather than replacing it.
+   Every scene below step 4 reuses the existing stage — the same drawNetwork,
+   the same trajectory frames, the same timeline — because the old product is
+   not a legacy path here, it is the "why" step of the new one. Risk Desk is
+   one button away and entirely unchanged. */
+
+const pm = {
+  portfolio: null,
+  limit: 0.10,
+  result: null,
+  step: 1,
+};
+
+const fmtUsd = (x) => {
+  const a = Math.abs(x);
+  if (a >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `$${(x / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `$${(x / 1e3).toFixed(1)}K`;
+  return `$${x.toFixed(0)}`;
+};
+const pctOf = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
+
+function setStep(n) {
+  pm.step = n;
+  [...$("steps").children].forEach((el) => {
+    const s = Number(el.dataset.step);
+    el.classList.toggle("on", s === n);
+    el.classList.toggle("done", s < n);
+  });
+}
+
+function showPane(n) {
+  $("pane1").hidden = n !== 1;
+  $("pane2").hidden = n !== 2;
+  setStep(n);
+}
+
+function renderHoldings(p) {
+  const rows = p.holdings.map((h) =>
+    `<div class="row"><b>${h.symbol}</b>` +
+    `<span class="v">${fmtUsd(h.market_value)}</span>` +
+    `<span class="v">${pctOf(h.weight, 1)}</span></div>`).join("");
+  $("holdingsBox").innerHTML =
+    `<div class="row head"><span>${p.source === "demo" ? "Demo portfolio" : "Your portfolio"}` +
+    `</span><span>${fmtUsd(p.total_value)}</span><span>weight</span></div>` + rows;
+  $("holdingsBox").hidden = false;
+  $("toLimit").disabled = false;
+}
+
+/* CSV parsed in the browser. The file never leaves the machine, which is the
+   right default for a document listing everything somebody owns, and it means
+   the upload path works with the network off like everything else here. */
+function parseCsv(text) {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("that file is empty");
+  const head = lines[0].toLowerCase().split(",").map((h) => h.trim());
+  const iSym = head.findIndex((h) => /^(symbol|ticker)$/.test(h));
+  if (iSym < 0) throw new Error("no `symbol` column — the header row needs one");
+  const iVal = head.findIndex((h) => /market_?value|value/.test(h));
+  const iQty = head.findIndex((h) => /quantity|shares|qty/.test(h));
+  const iPx = head.findIndex((h) => /^price$/.test(h));
+  if (iVal < 0 && (iQty < 0 || iPx < 0)) {
+    throw new Error("need a `market_value` column, or `quantity` and `price`");
+  }
+  return lines.slice(1).map((line) => {
+    const c = line.split(",").map((x) => x.trim());
+    const row = { symbol: c[iSym] };
+    if (iVal >= 0 && c[iVal]) row.market_value = Number(c[iVal].replace(/[$,]/g, ""));
+    if (iQty >= 0 && c[iQty]) row.quantity = Number(c[iQty]);
+    if (iPx >= 0 && c[iPx]) row.price = Number(c[iPx].replace(/[$,]/g, ""));
+    return row;
+  });
+}
+
+async function loadDemoPortfolio() {
+  const { body } = await api("/api/portfolio/demo");
+  pm.portfolio = body.portfolio;
+  pm.rows = null;
+  renderHoldings(body.portfolio);
+}
+
+function stage(text) { $("solverName").textContent = text; }
+
+async function runFirebreak() {
+  $("onboard").hidden = true;
+  showScene("result");
+  $("resultHero").textContent = "…";
+  $("resultSub").textContent = "Scanning candidate shocks, simulating cascades…";
+  $("resultGrid").innerHTML = "";
+  $("resultPlain").textContent = "";
+  setStep(3);
+
+  const payload = pm.rows ? { holdings: pm.rows, source: "csv" } : {};
+  const { body } = await api(`/api/portfolio/full?limit=${pm.limit}`, () => true, payload);
+  pm.result = body;
+
+  if (!body.found) {
+    $("resultHero").textContent = "none found";
+    $("resultSub").textContent = body.reason;
+    $("resultPlain").textContent =
+      "That is not the same as safe. We searched a range of single-name shocks and " +
+      "none of them crossed your limit under these assumptions.";
+    return;
+  }
+
+  const r = body;
+  $("resultHero").textContent = `${r.asset} −${r.pct.toFixed(2)}%`;
+  $("resultSub").textContent =
+    `Smallest modelled single-name shock that pushes this portfolio past a ` +
+    `${pctOf(r.params.limit, 0)} loss.`;
+  $("resultGrid").innerHTML = [
+    ["Direct loss", pctOf(r.direct_loss)],
+    ["After cascade", pctOf(r.cascade_loss)],
+    ["Amplification", `${r.amplification.toFixed(2)}×`],
+    ["Rounds", String(r.rounds)],
+  ].map(([l, v]) => `<div class="cell"><span class="v">${v}</span><span class="l">${l}</span></div>`).join("");
+  $("resultPlain").textContent =
+    `The ${r.asset} decline is only the trigger. ${r.breached.length} of the modelled ` +
+    `institutions cross their leverage limit and are forced to sell, and because they ` +
+    `hold the same names you do, that selling pushes your other positions down too — ` +
+    `turning a ${pctOf(r.direct_loss)} direct hit into ${pctOf(r.cascade_loss)}.`;
+}
+
+function renderFix() {
+  const r = pm.result;
+  if (!r || !r.found) return;
+  setStep(5);
+  if (!r.fix) {
+    $("fixLine").hidden = false;
+    $("fixLine").innerHTML = `<b>No single-position change clears it.</b> <em>${r.fix_reason}</em>`;
+    return;
+  }
+  const f = r.fix;
+  $("fixLine").hidden = false;
+  $("fixLine").innerHTML =
+    `<b>Reduce ${f.symbol} by ${fmtUsd(f.dollars)}</b> ` +
+    `<em>· ${pctOf(f.fraction_of_position, 1)} of that position, moved to cash ` +
+    `· leaves a ${pctOf(f.loss_after)} loss against your ${pctOf(r.params.limit, 0)} limit</em>`;
+  $("boughtLine").hidden = false;
+  $("boughtLine").innerHTML =
+    `<em>${f.note}</em>`;
+}
+
+function validTab(which) {
+  const v = pm.result && pm.result.validation;
+  if (!v) return;
+  [...$("validTabs").children].forEach((b) => b.classList.toggle("on", b.dataset.tab === which));
+  const body = $("validBody");
+
+  if (which === "same") {
+    const s = v.identical_shock;
+    body.innerHTML = `<table>
+      <tr><th></th><th>Before</th><th>After</th></tr>
+      <tr><td>Shock</td><td><b>${pm.result.asset} −${s.shock_pct.toFixed(2)}%</b></td><td><b>${pm.result.asset} −${s.shock_pct.toFixed(2)}%</b></td></tr>
+      <tr><td>Portfolio loss</td><td><b>${pctOf(s.before_loss)}</b></td><td><b>${pctOf(s.after_loss)}</b></td></tr>
+      <tr><td>Your limit</td><td>${pctOf(s.limit, 0)}</td><td>${pctOf(s.limit, 0)}</td></tr>
+      <tr><td>Crosses it?</td><td><b>${s.before_breaks ? "YES" : "no"}</b></td><td><b>${s.after_breaks ? "YES" : "no"}</b></td></tr>
+      </table><p class="valid-note">${s.note}</p>`;
+  } else if (which === "newbreak") {
+    const n = v.new_breaking_point;
+    body.innerHTML = n.after_pct === null
+      ? `<p>No shock in the tested range breaks the adjusted portfolio.</p>`
+      : `<table>
+      <tr><td>Break point before</td><td><b>−${n.before_pct.toFixed(2)}%</b></td></tr>
+      <tr><td>Break point after</td><td><b>−${n.after_pct.toFixed(2)}%</b></td></tr>
+      <tr><td>Moved outward by</td><td><b>${n.moved_pp.toFixed(2)}pp</b></td></tr>
+      <tr><td>Shock now required</td><td><b>${((n.moved_ratio - 1) * 100).toFixed(0)}% more</b></td></tr>
+      </table><p class="valid-note">Recomputed by re-running the same reverse search
+      against the adjusted portfolio — not derived from the size of the cut.</p>`;
+  } else if (which === "synthetic") {
+    const s = v.synthetic;
+    body.innerHTML = `<table>
+      <tr><th>${s.scenarios} simulated scenarios</th><th>Before</th><th>After</th></tr>
+      <tr><td>Median loss</td><td><b>${pctOf(s.before.median_loss)}</b></td><td><b>${pctOf(s.after.median_loss)}</b></td></tr>
+      <tr><td>95th percentile</td><td><b>${pctOf(s.before.p95_loss)}</b></td><td><b>${pctOf(s.after.p95_loss)}</b></td></tr>
+      <tr><td>Worst modelled</td><td><b>${pctOf(s.before.worst_loss)}</b></td><td><b>${pctOf(s.after.worst_loss)}</b></td></tr>
+      </table><p class="valid-note">${s.note} Seed ${s.seed}, so this reproduces exactly.
+      These are our scenarios, not a probability about the world.</p>`;
+  } else {
+    const h = v.historical;
+    body.innerHTML = `<p><b>Not available in this build.</b></p>
+      <p class="valid-note">${h.reason}</p>
+      <p class="valid-note">It would answer: ${h.what_it_would_answer} We would rather
+      show you nothing than a number computed from returns we invented.</p>`;
+  }
+}
+
+function showValidation() {
+  const r = pm.result;
+  if (!r || !r.validation) return;
+  setStep(6);
+  showScene("validate");
+  const s = r.validation.identical_shock, n = r.validation.new_breaking_point;
+  $("validTop").innerHTML = [
+    ["Break point", n.after_pct === null ? "no break found"
+      : `−${n.before_pct.toFixed(2)}% <em>→</em> −${n.after_pct.toFixed(2)}%`],
+    ["Loss at the same shock", `${pctOf(s.before_loss)} <em>→</em> ${pctOf(s.after_loss)}`],
+    ["Worst of 400 simulated", `${pctOf(r.validation.synthetic.before.worst_loss)} <em>→</em> ` +
+      `${pctOf(r.validation.synthetic.after.worst_loss)}`],
+  ].map(([l, v]) => `<div class="cell"><span class="v">${v}</span><span class="l">${l}</span></div>`).join("");
+  validTab("same");
+}
+
+/* wiring */
+$("useDemo").addEventListener("click", () => loadDemoPortfolio().catch((e) => {
+  $("connectNote").textContent = `Could not load the demo portfolio: ${e.message}`;
+}));
+
+$("csvFile").addEventListener("change", async (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    pm.rows = parseCsv(await file.text());
+    const { body } = await api("/api/portfolio/firebreak?limit=0.10", () => true,
+                               { holdings: pm.rows, source: "csv" });
+    pm.portfolio = body.portfolio;
+    renderHoldings(body.portfolio);
+    $("connectNote").textContent = `Loaded ${pm.rows.length} rows from ${file.name}.`;
+  } catch (e) {
+    $("connectNote").textContent = `Could not read that file: ${e.message}`;
+    $("toLimit").disabled = true;
+  }
+});
+
+$("toLimit").addEventListener("click", () => showPane(2));
+$("backToPortfolio").addEventListener("click", () => showPane(1));
+$("limits").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-limit]");
+  if (!b) return;
+  pm.limit = Number(b.dataset.limit);
+  [...$("limits").children].forEach((x) => x.classList.toggle("on", x === b));
+});
+$("findBtn").addEventListener("click", () => runFirebreak());
+$("watchBtn").addEventListener("click", () => { setStep(4); attack(); });
+$("fixBtn").addEventListener("click", async () => {
+  renderFix();
+  await defend();
+  const cta = document.createElement("button");
+  cta.className = "primary";
+  cta.textContent = "Validate recommendation";
+  cta.addEventListener("click", showValidation);
+  const stamp = $("splitRound").parentElement;
+  if (!stamp.querySelector("button")) stamp.appendChild(cta);
+});
+$("validTabs").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-tab]");
+  if (b) validTab(b.dataset.tab);
+});
+$("deskBtn").addEventListener("click", () => {
+  $("onboard").hidden = true;
+  showScene("network");
+  attack();
+});

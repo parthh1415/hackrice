@@ -330,3 +330,90 @@ button:focus-visible{outline:1px solid var(--ink-0);outline-offset:2px}
 .cell .d{font:400 11px/1 var(--mono);color:var(--ink-2);font-variant-numeric:tabular-nums}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ── Portfolio Mode ──────────────────────────────────────────────────────
+   The onboarding layer sits over the whole app. It is not a route: the
+   institutional stage underneath keeps its DOM, its animation and its tests,
+   and becomes step four rather than a thing we replaced. */
+.onboard{
+  position:fixed;inset:0;z-index:40;display:grid;place-items:center;
+  background:var(--bg-0);padding:24px;overflow:auto;
+}
+.onboard[hidden]{display:none}
+.onboard-card{width:min(58rem,100%);display:flex;flex-direction:column;gap:24px}
+
+.steps{display:flex;gap:4px;flex-wrap:wrap;font:400 11px/1 var(--mono);color:var(--ink-2)}
+.steps span{padding:6px 10px;border:1px solid var(--rule);border-radius:999px}
+.steps span.on{color:var(--ink-0);border-color:var(--rule-hi);background:var(--bg-2)}
+.steps span.done{color:var(--ink-1)}
+
+.pane{display:flex;flex-direction:column;gap:18px}
+.pane[hidden]{display:none}
+.pane h1{font:500 30px/1.15 var(--sans);letter-spacing:-.02em;margin:0;text-wrap:balance}
+.lede{margin:0;max-width:46rem;color:var(--ink-1);font-size:15px;line-height:1.55}
+.fineprint{margin:0;max-width:46rem;color:var(--ink-2);font:400 12px/1.5 var(--sans)}
+
+.choices{display:flex;gap:10px;flex-wrap:wrap}
+.big{padding:13px 20px;font-size:14px;border-radius:var(--r);cursor:pointer}
+label.big{display:inline-flex;align-items:center}
+.big[disabled]{opacity:.45;cursor:not-allowed}
+
+.limits{display:flex;gap:8px;flex-wrap:wrap}
+.limits button{
+  padding:14px 26px;font:500 18px/1 var(--mono);border-radius:var(--r);
+  background:var(--bg-2);border:1px solid var(--rule);color:var(--ink-1);cursor:pointer;
+}
+.limits button.on{background:var(--ink-0);color:var(--bg-0);border-color:var(--ink-0)}
+
+.advanced summary{cursor:pointer;font:400 12px/1 var(--mono);color:var(--ink-2);padding:6px 0}
+.pane-foot{display:flex;gap:10px;margin-top:4px}
+
+.holdings{
+  border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;
+  font:400 12px/1 var(--mono);
+}
+.holdings[hidden]{display:none}
+.holdings .row{
+  display:grid;grid-template-columns:1fr auto auto;gap:16px;
+  padding:10px 14px;border-bottom:1px solid var(--rule);
+}
+.holdings .row:last-child{border-bottom:0}
+.holdings .row.head{color:var(--ink-2);background:var(--bg-2)}
+.holdings .row b{color:var(--ink-0);font-weight:500}
+.holdings .v{font-variant-numeric:tabular-nums}
+
+/* result + validation share a card so the two screens read as one product */
+.result-scene{display:grid;place-items:center;padding:24px;overflow:auto}
+.result-card{width:min(44rem,100%);display:flex;flex-direction:column;gap:14px}
+.result-card.wide{width:min(56rem,100%)}
+.result-eyebrow{font:400 11px/1 var(--mono);color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase}
+.result-hero{font:500 62px/1 var(--mono);color:var(--alert);letter-spacing:-.03em}
+.result-sub{color:var(--ink-1);font-size:14px}
+.result-plain{margin:0;color:var(--ink-1);font-size:14px;line-height:1.6;max-width:44rem}
+.result-cta{display:flex;gap:10px;margin-top:6px}
+
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.result-grid .cell{background:var(--bg-1);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.result-grid .v{font:500 22px/1 var(--mono);color:var(--ink-0);font-variant-numeric:tabular-nums}
+.result-grid .l{font:400 11px/1 var(--mono);color:var(--ink-2)}
+
+.valid-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.valid-top .cell{background:var(--bg-1);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.valid-top .v{font:500 18px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-0)}
+.valid-top .v em{font-style:normal;color:var(--ink-2)}
+.valid-top .l{font:400 11px/1 var(--mono);color:var(--ink-2)}
+
+.valid-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.valid-tabs button{padding:8px 14px;font:400 12px/1 var(--mono);border-radius:999px;
+  background:transparent;border:1px solid var(--rule);color:var(--ink-2);cursor:pointer}
+.valid-tabs button.on{background:var(--bg-2);color:var(--ink-0);border-color:var(--rule-hi)}
+.valid-body{border:1px solid var(--rule);border-radius:var(--r);padding:16px;
+  font:400 13px/1.6 var(--sans);color:var(--ink-1);min-height:8rem}
+.valid-body table{width:100%;border-collapse:collapse;font:400 12px/1 var(--mono)}
+.valid-body td,.valid-body th{padding:9px 8px;text-align:right;border-bottom:1px solid var(--rule)}
+.valid-body th:first-child,.valid-body td:first-child{text-align:left;color:var(--ink-2)}
+.valid-body th{color:var(--ink-2);font-weight:400}
+.valid-body b{color:var(--ink-0);font-weight:500}
+.valid-note{margin:12px 0 0;color:var(--ink-2);font:400 12px/1.5 var(--sans)}

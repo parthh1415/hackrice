@@ -22,11 +22,38 @@ class Handler(SimpleHTTPRequestHandler):
             return self._api()
         return super().do_GET()
 
-    def _api(self):
+    def do_POST(self):
+        """Portfolio Mode posts holdings.
+
+        A portfolio is a document listing everything somebody owns. It has no
+        business in a query string, where it would land in server logs and
+        browser history, so it travels in a body and this is the method that
+        reads one.
+        """
+        if not self.path.startswith("/api/"):
+            return self.send_error(405, "POST is for the API")
+        return self._api(self._read_body())
+
+    def _read_body(self):
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return {}
+        if length <= 0:
+            return {}
+        try:
+            return json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, UnicodeDecodeError):
+            # A malformed body is the caller's problem, not a stack trace: the
+            # endpoint falls back to its default portfolio and says nothing was
+            # read, which is better than a 500 on the first screen of a demo.
+            return {}
+
+    def _api(self, body=None):
         from . import api
 
         try:
-            payload = api.handle(self.path, {})
+            payload = api.handle(self.path, body or {})
         except api.NotFound:
             return self.send_error(404, "no such endpoint")
         except Exception as exc:  # surface it in the browser, not just the log
