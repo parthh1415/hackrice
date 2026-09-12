@@ -133,7 +133,10 @@ if (r) (async () => {
     const cum = 1 - f.prices.reduce((acc, p, i) => acc + p * weightOf(T[i]), 0) - cashW;
     document.getElementById("stats").innerHTML = [
       ["Round", `${t} / ${frames.length - 1}`, ""],
-      ["Books breached", String((f.breached || []).length), (f.breached || []).length ? "bad" : ""],
+      /* this round's set, not the cascade's running total — the analysis page
+         shows the total, and identical labels for two different counts read
+         as a contradiction one click apart. */
+      ["Books over limit this round", String((f.breached || []).length), (f.breached || []).length ? "bad" : ""],
       ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],
       ["Your limit", pct(r.params.limit, 0), ""],
     ].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");

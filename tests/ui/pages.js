@@ -289,8 +289,12 @@ const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textConten
     has("the engine names itself", eb, st.engine.name);
     has("the evaluation count is the solver's own", eb, String(st.engine.evaluations));
     has("the exit flag is the solver's own", eb, String(st.engine.exit_flag));
-    check("an unrecorded solve time says so rather than printing a zero",
-          st.engine.solve_ms != null ? eb.includes(String(st.engine.solve_ms))
+    /* solve_ms is a live wall-clock measurement — the page's solve and this
+       harness's are two different runs, so the exact figure will not match and
+       asserting it would be flaky. What matters is that a missing timing says
+       so instead of rendering as 0 ms. */
+    check("the solve time is a duration, or says it was not recorded",
+          st.engine.solve_ms != null ? /\b\d+(\.\d+)? ms\b/.test(eb)
                                      : eb.includes("not recorded"), eb.slice(0, 200));
     if (st.bought && st.bought.measurable === false) {
       has("an unmeasurable change is reported as unmeasurable, not as a number",

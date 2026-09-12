@@ -62,6 +62,11 @@
 paintNav("analysis");
 
 (async () => {
+  /* ?demo works on cascade, defend and verify; without this it was the one
+     page in the flow that answered a demo deep-link with a redirect to the
+     portfolio screen. seedDemoIfAsked seeds the book and runs the analysis,
+     so re-read state rather than the copy taken before it. */
+  await seedDemoIfAsked();
   const s = FB.state;
   if (!s.portfolio) { location.replace("index.html"); return; }
   const payload = s.rows ? { holdings: s.rows, source: "csv" } : {};
@@ -109,16 +114,24 @@ paintNav("analysis");
     ["Direct loss", pct(body.direct_loss), "the shock alone", ""],
     ["After cascade", pct(body.cascade_loss), "including forced selling", "bad"],
     ["Amplification", `${body.amplification.toFixed(2)}×`, "the crowding multiplier", ""],
-    ["Cascade rounds", String(body.rounds), `${body.breached.length} books breached`, ""],
+    /* cumulative across the cascade. The cascade page's tile counts one round,
+       and identical wording for the two reads as a contradiction. */
+    ["Cascade rounds", String(body.rounds),
+      `${body.breached.length} of ${(body.funds || []).length} books breached in total`, ""],
   ].map(([k, v, s2, cls]) =>
     `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s2}</div></div>`
   ).join("");
 
+  const nFunds = (body.funds || []).length;
+  const nBroke = body.breached.length;
+  const who = nFunds && nBroke === nFunds
+    ? `all ${nFunds} of the institutional books we model`
+    : `${nBroke} of the ${nFunds || "modelled"} institutional books we model`;
   document.getElementById("why").textContent =
     `A ${body.pct.toFixed(2)}% fall in ${body.asset} costs this portfolio ${pct(body.direct_loss)} directly. ` +
-    `But ${body.breached.length} of the five institutional books we model cross their leverage limit at ` +
-    `that price and are forced to sell — and because they hold the same names you do, their selling ` +
-    `pushes your other positions down too. That is what turns ${pct(body.direct_loss)} into ${pct(body.cascade_loss)}.`;
+    `But ${who} cross their leverage limits at that price and are forced to sell — and because they ` +
+    `hold the same names you do, their selling pushes your other positions down too. That is what ` +
+    `turns ${pct(body.direct_loss)} into ${pct(body.cascade_loss)}.`;
 })();
 </script>
 </body>

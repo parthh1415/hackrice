@@ -856,6 +856,10 @@ def _solve_portfolio(params, body):
                           if direct > 0 else None),
         "rounds": result.rounds,
         "breached": result.breached,
+        # `breached` is the cumulative set across the whole cascade, so the UI
+        # needs the denominator to say "3 of 5" rather than hardcoding how many
+        # managers the dataset happens to hold today.
+        "funds": list(data["funds"]),
         "system": result.as_dict()["metrics"],
     })
     return out, found, (vector, cash), scenario, data
