@@ -644,11 +644,12 @@ function normalise(body) {
    at the same tempo from round 0 and you watch them diverge, rather than
    comparing two still pictures and taking our word for it. */
 
-const split = { before: null, after: null, layout: null, timers: [] };
+const split = { before: null, after: null, layout: null, timers: [], frame: 0 };
 
 function clearSplit() {
   stopAnimations();
   split.before = split.after = split.layout = null;
+  split.frame = 0;
   $("netBefore").textContent = "";
   $("netAfter").textContent = "";
   $("footBefore").textContent = "—";
@@ -673,6 +674,7 @@ function playSplit() {
   const step = DUR_BREACH + DUR_FLOW + SETTLE_HOLD;
 
   const draw = (t) => {
+    split.frame = t;
     splitFrame("before", $("netBefore"), t);
     splitFrame("after", $("netAfter"), t);
     $("splitRound").textContent =
@@ -811,10 +813,12 @@ function redrawCurrentScene() {
   if (state.beat === "network" && state.run) {
     drawNetwork($("network"), state.run, state.frame);
   } else if (state.beat === "split" && split.before) {
+    // whatever round the split is on, not its last — a reflow used to
+    // give away the ending and then let the animation rewind into it
     const half = measure($("netBefore"));
     split.layout = computeLayout(split.before, half.width, half.height);
-    splitFrame("before", $("netBefore"), split.before.frames.length - 1);
-    splitFrame("after", $("netAfter"), split.after.frames.length - 1);
+    splitFrame("before", $("netBefore"), split.frame);
+    splitFrame("after", $("netAfter"), split.frame);
   } else if (state.beat === "boundary" && state.boundary) {
     drawBoundary($("boundary"), state.boundary);
   }

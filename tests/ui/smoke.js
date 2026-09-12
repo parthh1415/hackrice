@@ -27,7 +27,8 @@ window.Element.prototype.getBoundingClientRect = function () {
   return { width: b[0], height: b[1], top: 0, left: 0, right: b[0], bottom: b[1], x: 0, y: 0 };
 };
 window.Element.prototype.animate = () => ({ finished: Promise.resolve() });
-window.ResizeObserver = class { observe() {} disconnect() {} };
+let reflow = () => {};
+window.ResizeObserver = class { constructor(cb) { reflow = cb; } observe() {} disconnect() {} };
 window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0);
 window.fetch = async (u, o) => {
   const r = await fetch(ORIGIN + u, o);
@@ -100,6 +101,22 @@ const svg = (id) => d.getElementById(id);
         d.getElementById("footBefore").textContent.includes("loss") &&
         d.getElementById("footAfter").textContent.includes("loss"));
   check("no errors across all four beats", errors.length === 0, errors.join("; "));
+
+  /* The webfont lands after first paint and reflows the masthead, so the
+     stage resizes and the ResizeObserver redraws — routinely while the
+     split is still animating. It must redraw the round that is on screen,
+     not the last one, or it shows the ending and then rewinds into it. */
+  console.log("\nREFLOW — a redraw must not skip to the ending");
+  d.getElementById("defendBtn").dispatchEvent(new window.Event("click"));
+  while (!/^shock applied/.test(d.getElementById("splitRound").textContent)) await sleep(20);
+  const round0 = svg("netBefore").innerHTML;
+  reflow();
+  await sleep(150);                       // handler is debounced 60ms
+  check("split redraw keeps the round it is on",
+        /^shock applied/.test(d.getElementById("splitRound").textContent) &&
+        svg("netBefore").innerHTML === round0,
+        d.getElementById("splitRound").textContent);
+  await sleep(6000);                      // let the split finish
 
   /* ── from here down: the paths a demo actually stumbles into ────────── */
 
