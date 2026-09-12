@@ -117,6 +117,54 @@ svg .pulse{transform-box:fill-box;transform-origin:center}
 .badge[data-mode="busy"] .dot{background:var(--alert)}
 .badge[data-mode="cached"]{color:var(--ink-2)}
 
+button.ghost{
+  background:transparent;border:1px solid var(--rule);color:var(--ink-2);
+  padding:7px 10px;font:400 11px/1 var(--mono);border-radius:var(--r-sm);
+}
+button.ghost:hover{color:var(--ink-0);background:var(--bg-2)}
+
+/* ── assumptions overlay ──
+   The credibility argument is "holdings are real, everything else is
+   declared, here is the list". Asserting the first half on screen while the
+   second half lives only in a doc is the weaker half of an honest claim. */
+/* Docked to the left edge, not a scrim over everything. A judge asks where
+   leverage comes from while looking at the network, and the answer is worth
+   nothing if opening it hides the thing they were looking at. 30rem clears
+   the asset column — the rail is 248px and the stage's left node column sits
+   at 24% of what's left, so the diagram stays whole beside it. */
+.overlay{
+  position:fixed;top:12px;left:12px;bottom:12px;z-index:20;
+  width:min(30rem,92vw);display:flex;
+}
+.overlay[hidden]{display:none}
+.sheet{
+  background:var(--bg-1);border:1px solid var(--rule-hi);border-radius:var(--r);
+  width:100%;overflow:auto;box-shadow:0 0 0 1px var(--bg-0),24px 0 48px rgba(13,13,13,.55);
+}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:16px 20px;border-bottom:1px solid var(--rule);position:sticky;top:0;
+  background:var(--bg-1);
+}
+.sheet-head h2{font:500 15px/1 var(--sans);margin:0;letter-spacing:-.01em}
+dl.assume{margin:0;padding:16px 20px 20px;display:grid;gap:14px}
+dl.assume div{display:grid;gap:4px;align-items:baseline}
+dl.assume dt{font:400 11px/1.5 var(--mono);color:var(--ink-2)}
+dl.assume dt[data-kind="measured"]{color:var(--ink-0)}
+dl.assume dt[data-kind="declared"]{color:var(--alert)}
+dl.assume dt[data-kind="limit"]{color:var(--ink-1)}
+dl.assume dd{margin:0;font-size:13px;color:var(--ink-1);line-height:1.55}
+dl.assume dd b{color:var(--ink-0);font-weight:500}
+dl.assume dd code{font:11.5px var(--mono);background:var(--bg-2);padding:.1em .35em}
+
+
+/* what the fix bought, stated where it can't be missed */
+.bought{
+  padding:9px 16px;border-top:1px solid var(--rule);background:var(--bg-1);
+  font:400 11.5px/1.4 var(--mono);color:var(--ink-2);
+}
+.bought b{color:var(--ink-0);font-weight:500}
+
 /* ───────────────────────────── control rail ───────────────────────── */
 
 .rail{grid-area:rail;padding:18px 16px;display:flex;flex-direction:column;gap:18px;overflow:hidden}

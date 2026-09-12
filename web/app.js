@@ -17,6 +17,7 @@ const SETTLE_HOLD = 180;
 
 const state = {
   run: null,        // last /api/break payload
+  dataset: null,    // provenance for the assumptions panel
   boundary: null,   // last /api/boundary payload, kept so a reflow can redraw
   layout: null,     // rebuilt whenever the measured stage moves
   frame: 0,
@@ -45,6 +46,7 @@ function knobs() {
   return {
     leverage: Number($("leverage").value),
     gamma: Number($("gamma").value),
+    band: Number($("breachBand").value),
     breaches: Number($("breaches").value),
   };
 }
@@ -53,6 +55,7 @@ function params() {
   return new URLSearchParams({
     leverage: $("leverage").value,
     gamma: $("gamma").value,
+    band: $("breachBand").value,
     breaches: $("breaches").value,
   }).toString();
 }
@@ -69,16 +72,21 @@ function checkKnobs() {
   if (!state.run || !state.knobs) return;
   const now = knobs(), was = state.knobs;
   const moved = now.leverage !== was.leverage || now.gamma !== was.gamma ||
-                now.breaches !== was.breaches;
+                now.band !== was.band || now.breaches !== was.breaches;
   if (moved) setNote("knobs", `showing ${knobLabel(was)} — press Find weakest shock`, true);
   else clearNote("knobs");
 }
 
 async function api(path, owns = () => true) {
   const started = performance.now();
-  const res = await fetch(path, { cache: "no-store" });
+  let res;
+  try {
+    res = await fetch(path, { cache: "no-store" });
+  } catch (err) {
+    throw Object.assign(new Error(`${path} → ${err.message}`), { transport: true });
+  }
   const ms = Math.round(performance.now() - started);
-  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`${path} → ${res.status}`), { transport: true });
   const body = await res.json();
   // a recorded answer must never pass for a live one — but only the answer
   // still on the stage gets to say anything about the engine at all
@@ -105,6 +113,7 @@ function knobLabel(at) {
   const bits = [];
   if (at.leverage !== undefined) bits.push(`L ${Number(at.leverage).toFixed(1)}`);
   if (at.gamma !== undefined) bits.push(`γ ${Number(at.gamma).toFixed(2)}`);
+  if (at.band !== undefined) bits.push(`band ${Number(at.band).toFixed(2)}`);
   if (at.breaches !== undefined) bits.push(`≥${Number(at.breaches).toFixed(0)}`);
   return bits.length ? bits.join(" ") : "other settings";
 }
@@ -611,10 +620,15 @@ function declareClamped(body) {
    describe the run before it, and the progress readout is frozen mid-count at
    "boundary sweep · elapsed 0.8s" as though it were still working. From the
    floor that is indistinguishable from a button that does nothing. */
-function failed(label, note, stale = false) {
-  setEngine("cached", "engine unreachable");
-  setSolver(label, "<span>failed</span> engine unreachable");
-  setNote("failed", note, stale);
+function failed(label, note, stale = false, err = null) {
+  // Only a request that never came back is an outage. A render that threw on
+  // a payload the server delivered fine is our bug, and calling it "engine
+  // unreachable" sends whoever is debugging it at 3am to the wrong process.
+  const outage = !err || err.transport;
+  const why = outage ? "engine unreachable" : "display error";
+  setEngine("cached", why);
+  setSolver(label, `<span>failed</span> ${why}`);
+  setNote("failed", outage ? note : `${label} could not be drawn — ${err.message}`, stale);
 }
 
 /* Any action that can exceed 3s shows incremental progress within 500ms.
@@ -684,6 +698,7 @@ async function attack() {
       return;
     }
     state.run = normalise(body);
+    if (state.dataset) fillAssumptions(state.dataset, body);
     state.layout = null;
     state.knobs = knobs();
     declareClamped(body);
@@ -708,7 +723,7 @@ async function attack() {
     failed("critical-shock search",
            state.run ? "engine unreachable — this is the previous run, not a new answer"
                      : "engine unreachable — no answer to show",
-           Boolean(state.run));
+           Boolean(state.run), err);
     $("heroSub").textContent = err.message;
   } finally {
     btn.disabled = false;
@@ -739,7 +754,7 @@ async function boundary() {
   } catch (err) {
     stop();
     if (!mine()) return;
-    failed("boundary sweep", "the boundary sweep did not run — engine unreachable");
+    failed("boundary sweep", "the boundary sweep did not run — engine unreachable", false, err);
   } finally {
     btn.disabled = false;
   }
@@ -777,6 +792,7 @@ async function defend() {
     $("fixLine").innerHTML =
       `<b>${f.fund}</b>: cut <b>${f.asset}</b> exposure ${(f.reduction * 100).toFixed(0)}% ` +
       `<em>· costs ${pct2(f.cost)} of gross assets</em>`;
+    showBought(body.bought);
 
     split.before = normalise({ ...body, ...body.before });
     split.after = normalise({ ...body, ...body.after });
@@ -802,10 +818,39 @@ async function defend() {
   } catch (err) {
     stop();
     if (!mine()) return;
-    failed("minimum-cost stabilisation", "stabilise did not run — engine unreachable");
+    failed("minimum-cost stabilisation", "stabilise did not run — engine unreachable", false, err);
   } finally {
     btn.disabled = false;
   }
+}
+
+/* What the fix actually buys, in the product's own headline metric, stated
+   before anyone can catch us not stating it. A judge presses Find weakest
+   shock again after Stabilise and has this in ten seconds: a cheapest
+   single-position cut defends against THE shock, not against the next one.
+
+   The engine re-searches the patched books and reports whether the movement
+   clears its own bisection tolerance. It usually does not — +0.0039pp against
+   a ±0.005pp resolution — so the arrow is drawn without a delta and the note
+   says so. Printing "+0.00pp" off a number the search cannot resolve would be
+   the same fake precision one level up. */
+function showBought(b) {
+  const line = $("boughtLine");
+  if (!b || b.before_pct === undefined) {
+    line.hidden = true;
+    line.textContent = "";
+    return;
+  }
+  // after_pct null is the strong outcome, not a missing one: the patched books
+  // could not be broken at all. Say that rather than hiding the line.
+  const after = b.after_pct === null ? "nothing breaks it" : `${b.after_pct.toFixed(2)}%`;
+  const movement = b.measurable && b.delta_pct !== null
+    ? `moves it ${b.delta_pct >= 0 ? "+" : ""}${b.delta_pct.toFixed(2)}pp`
+    : `<b>no measurable change</b> <em>(search resolves to ±${b.resolution_pct.toFixed(3)}pp)</em>`;
+  line.hidden = false;
+  line.innerHTML =
+    `critical distance <b>${b.before_pct.toFixed(2)}%</b> → <b>${after}</b> · ${movement}` +
+    ` — defends this shock, not the next one`;
 }
 
 /* Flatten the API's payload into the shape the stage draws from. */
@@ -834,6 +879,7 @@ const split = { before: null, after: null, layout: null, timers: [], frame: 0 };
 
 function clearSplit() {
   stopAnimations();
+  showBought(null);
   split.before = split.after = split.layout = null;
   split.frame = 0;
   $("netBefore").textContent = "";
@@ -935,6 +981,37 @@ function drawBoundary(svg, b) {
     fill: "none", stroke: "var(--rule-hi)", "stroke-width": 1,
   }));
 
+  // Marching squares at the amplification threshold. The plan specified a
+  // critical contour and the script says "the critical contour draws" — what
+  // actually rendered was five shaded bands, so the eye read the white-to-red
+  // STEP as the edge. A presenter describing a line over a heatmap with no
+  // line in it is describing a different product.
+  const ISO = 1.5;
+  const colX = (c) => L + (c + 0.5) * cw;
+  const rowY = (r) => T + (b.rows - 1 - r + 0.5) * ch;
+  for (let r = 0; r < b.rows - 1; r++) {
+    for (let c = 0; c < b.cols - 1; c++) {
+      const v = [b.grid[r][c], b.grid[r][c + 1], b.grid[r + 1][c + 1], b.grid[r + 1][c]];
+      const q = [[colX(c), rowY(r)], [colX(c + 1), rowY(r)],
+                 [colX(c + 1), rowY(r + 1)], [colX(c), rowY(r + 1)]];
+      const cross = [];
+      for (let k = 0; k < 4; k++) {
+        const a = v[k], d = v[(k + 1) % 4];
+        if ((a < ISO) === (d < ISO)) continue;
+        const t = (ISO - a) / (d - a);
+        const pa = q[k], pb = q[(k + 1) % 4];
+        cross.push([pa[0] + t * (pb[0] - pa[0]), pa[1] + t * (pb[1] - pa[1])]);
+      }
+      for (let k = 0; k + 1 < cross.length; k += 2) {
+        svg.appendChild(el("line", {
+          x1: cross[k][0].toFixed(1), y1: cross[k][1].toFixed(1),
+          x2: cross[k + 1][0].toFixed(1), y2: cross[k + 1][1].toFixed(1),
+          stroke: "var(--ink-0)", "stroke-width": 1.6, "stroke-linecap": "round",
+        }));
+      }
+    }
+  }
+
   const lo = b.leverage_axis[0], hi = b.leverage_axis[b.rows - 1];
   const omin = b.overlap_axis[0], omax = b.overlap_axis[b.cols - 1];
   const mx = cellX(L, cw, axisIndex(b.overlap_axis, b.here.overlap));
@@ -979,8 +1056,55 @@ function drawBoundary(svg, b) {
   yl.setAttribute("transform", `translate(24,${(T + B) / 2}) rotate(-90)`);
   svg.appendChild(yl);
 
-  label(R - 6, T - 10, `amplification · ${b.reference_kind} ${Math.abs(b.reference_shock * 100).toFixed(0)}% reference`,
+  label(R - 6, T - 10,
+    `amplification · contour at ${ISO.toFixed(1)}× · ${b.reference_kind} ` +
+    `${Math.abs(b.reference_shock * 100).toFixed(0)}% reference · band ${(b.band || 1.05).toFixed(2)}`,
     { anchor: "end", size: 10 });
+}
+
+/* ─────────────────────── assumptions, from live data ───────────────────── */
+
+/* The credibility argument is "holdings are real, everything else is
+   declared, here is the list". Asserting the first half on screen while the
+   second half lived only in a doc was the weaker half of an honest claim —
+   and the panel existed before I rebuilt the UI and got dropped in the
+   rewrite without anyone noticing for six hours. */
+function fillAssumptions(data, run) {
+  const p = (run && run.params) || {};
+  const lev = p.leverage == null ? 5 : p.leverage;
+  const adv = data.tickers
+    .map((t, i) => `${t} $${(data.adv[i] / 1e9).toFixed(1)}B`).join(" \u00b7 ");
+  const gross = data.holdings.reduce((a, row) => a + row.reduce((x, y) => x + y, 0), 0);
+  // 06-30-2026 is the filing's own spelling; a period is an ISO date everywhere
+  // else in this product and a judge reads it as a date, not a filename
+  const period = String(data.quarter || "")
+    .replace(/^(\d{2})-(\d{2})-(\d{4})$/, "$3-$1-$2") || data.quarter;
+
+  const rows = [
+    ["measured", "Holdings", `Real, and the only thing here that is. <b>${data.source}</b>, ` +
+      `period <b>${period}</b>, ${data.funds.length} managers across ${data.tickers.length} names, ` +
+      `<b>$${(gross / 1e9).toFixed(1)}B</b> gross notional. Anyone can reproduce it from EDGAR.`],
+    ["declared", "Leverage", `No fund discloses it. It is the slider, applied uniformly at ` +
+      `<b>${lev.toFixed(1)}\u00d7</b>, and every number on screen moves when it changes.`],
+    ["declared", "Breach band", `<b>${(p.band == null ? 1.05 : p.band).toFixed(2)}</b> \u2014 how far over ` +
+      `target a fund runs before it is forced to sell. This swings the headline harder than ` +
+      `leverage or impact: 1.02 gives \u22121.73%, 1.30 gives \u221227.33%.`],
+    ["declared", "Price impact", `A model, not a measurement. <code>\u0394p/p = \u2212\u03b3 \u00b7 (dollars sold) / ADV</code>, ` +
+      `linear in participation, \u03b3 = <b>${(p.gamma == null ? 0.2 : p.gamma).toFixed(2)}</b>. ` +
+      `At \u03b3=0 there is no contagion and amplification is exactly 1.00 \u2014 that is the control.`],
+    ["declared", "ADV", `Order-of-magnitude daily dollar volume. ${adv}`],
+    ["limit", "What 13F omits", `Long-only US equity, quarterly, filed 45 days late. Options and ` +
+      `bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us.`],
+    ["declared", "Scale", `$${(gross / 1e9).toFixed(1)}B across these names at ${lev.toFixed(1)}\u00d7 implies ` +
+      `~$${(gross / lev / 1e9).toFixed(1)}B of system equity, against firms holding far more. ` +
+      `<b>The mechanism transfers; the magnitude does not.</b>`],
+    ["limit", "Not a prediction", `This computes a stability property of a declared configuration. ` +
+      `The shock shown is the smallest the search found under these assumptions \u2014 ` +
+      `<b>not a proven threshold.</b>`],
+  ];
+
+  $("assumeBody").innerHTML = rows.map(([kind, term, body]) =>
+    `<div><dt data-kind="${kind}">${kind} \u00b7 ${term}</dt><dd>${body}</dd></div>`).join("");
 }
 
 /* ──────────────────────────────── boot ────────────────────────────────── */
@@ -1000,13 +1124,28 @@ async function boot() {
   // immediately and let watchStage() correct it when the font arrives. Never
   // block first paint on a third-party request.
   watchStage();
+  // Provenance for the assumptions panel. Deliberately NOT awaited: awaiting
+  // it pushed a whole round trip in front of first paint and every downstream
+  // timing shifted with it. Nothing on the stage needs it, so let it land
+  // whenever it lands and fill the panel then.
+  api("/api/dataset")
+    .then(({ body }) => {
+      state.dataset = body;
+      if (state.run) fillAssumptions(body, state.run);
+    })
+    .catch(() => { /* panel stays empty; the demo doesn't depend on it */ });
   await attack();
 }
 
-["leverage", "gamma"].forEach((id) =>
+/* The slider cannot be id="band": the metrics band already owns that id, and
+   getElementById returns the first match in document order — the rail comes
+   before the strip, so every paintBand() wrote its five cells into a range
+   input and the real band sat on its placeholder dashes for the whole run.
+   Two elements, two ids. */
+["leverage", "gamma", "breachBand"].forEach((id) =>
   $(id).addEventListener("input", (e) => {
     $(id + "Val").textContent =
-      id === "gamma" ? Number(e.target.value).toFixed(2) : Number(e.target.value).toFixed(1);
+      id === "leverage" ? Number(e.target.value).toFixed(1) : Number(e.target.value).toFixed(2);
     checkKnobs();
   })
 );
@@ -1018,6 +1157,14 @@ $("replayBtn").addEventListener("click", () => {
   if (state.run) { showScene("network"); playCascade(); }
 });
 $("boundaryBtn").addEventListener("click", boundary);
+$("assumeBtn").addEventListener("click", () => { $("assumePanel").hidden = false; });
+$("assumeClose").addEventListener("click", () => { $("assumePanel").hidden = true; });
+$("assumePanel").addEventListener("click", (e) => {
+  if (e.target === $("assumePanel")) $("assumePanel").hidden = true;
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") $("assumePanel").hidden = true;
+});
 $("defendBtn").addEventListener("click", defend);
 /* A window resize listener is not enough. The Geist webfont lands after
    first paint, reflows the masthead, and the stage changes height — so the

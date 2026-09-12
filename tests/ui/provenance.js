@@ -197,9 +197,16 @@ async function checkRun(label, knobs) {
         btext.includes(b.overlap_axis[b.cols - 1].toFixed(2)) &&
         btext.includes(b.leverage_axis[0].toFixed(1)) &&
         btext.includes(b.leverage_axis[b.rows - 1].toFixed(1)));
+  /* Exact-matching the whole caption made this a format test, and it broke
+     the moment the caption honestly gained the contour level and the breach
+     band. What matters is provenance: every number in it comes from the
+     payload, not from a literal in the drawing code. */
+  const caption = btext.find((t) => t.startsWith("amplification")) || "";
   check("reference shock label is the payload's",
-        btext.some((t) => t === `amplification · ${b.reference_kind} ${Math.abs(b.reference_shock * 100).toFixed(0)}% reference`),
-        btext.find((t) => t.startsWith("amplification")) || "missing");
+        caption.includes(`${b.reference_kind} ${Math.abs(b.reference_shock * 100).toFixed(0)}% reference`),
+        caption || "missing");
+  check("caption's breach band is the payload's",
+        caption.includes(`band ${(b.band == null ? 1.05 : b.band).toFixed(2)}`), caption);
   eq("solver readout cell count", text("solverStats").replace(/\s+/g, " ").trim().split(" ")[1],
      String(b.rows * b.cols));
 

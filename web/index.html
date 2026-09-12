@@ -19,6 +19,7 @@
     <div class="badge" id="badge" data-mode="cached">
       <span class="dot"></span><span id="badgeText">connecting</span>
     </div>
+    <button class="ghost" id="assumeBtn" aria-haspopup="dialog">Assumptions</button>
 
     <div class="hero">
       <span class="hero-val num" id="heroVal" data-idle>—</span>
@@ -38,6 +39,10 @@
     <div class="knob">
       <label for="gamma">Price impact γ <b class="num" id="gammaVal">0.20</b></label>
       <input type="range" id="gamma" min="0" max="1" step="0.05" value="0.2">
+    </div>
+    <div class="knob">
+      <label for="breachBand">Breach band <b class="num" id="breachBandVal">1.05</b></label>
+      <input type="range" id="breachBand" min="1.0" max="1.5" step="0.01" value="1.05">
     </div>
     <div class="knob">
       <label for="breaches">Failure condition</label>
@@ -76,6 +81,7 @@
 
     <div class="scene split-scene" id="sceneSplit" hidden>
       <div class="fix-line" id="fixLine" hidden></div>
+      <div class="bought" id="boughtLine" hidden></div>
       <div class="split">
         <div class="split-half">
           <div class="split-cap">Before</div>
@@ -104,6 +110,16 @@
     <div class="cell"><span class="v num">—</span><span class="l">Amplification</span></div>
     <div class="cell"><span class="v num">—</span><span class="l">Breaches</span></div>
     <div class="cell"><span class="v num">—</span><span class="l">Rounds</span></div>
+  </div>
+
+  <div class="overlay" id="assumePanel" hidden role="dialog" aria-label="Assumptions and what this does not claim">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h2>What is measured, and what is declared</h2>
+        <button class="ghost" id="assumeClose">Close</button>
+      </div>
+      <dl class="assume" id="assumeBody"></dl>
+    </div>
   </div>
 
 </div>
