@@ -104,6 +104,18 @@ MUTATIONS = {
         "web/app.js",
         "${e.evaluations || 0} evals",
         "${999} evals"),
+    "solver_exit_hardcoded": (
+        "web/app.js",
+        '` · <span>exit</span> ${e.exit_flag}`',
+        '` · <span>exit</span> 0`'),
+    "engine_name_literal": (
+        "web/app.js",
+        "$(\"solverName\").textContent = name;",
+        "$(\"solverName\").textContent = \"MATLAB · patternsearch\";"),
+    "bought_resolution_literal": (
+        "web/app.js",
+        "(search resolves to ±${b.resolution_pct.toFixed(3)}pp)",
+        "(search resolves to ±0.005pp)"),
     "bought_before_is_after": (
         "web/app.js",
         "`critical distance <b>${b.before_pct.toFixed(2)}%</b> · <b>no measurable change</b>`",
@@ -111,7 +123,9 @@ MUTATIONS = {
 }
 
 UI_MUTATIONS = {"amp_derived", "ring_always_zero", "split_round_off_by_one",
-                "solver_evals_hardcoded", "bought_before_is_after"}
+                "solver_evals_hardcoded", "bought_before_is_after",
+                "solver_exit_hardcoded", "engine_name_literal",
+                "bought_resolution_literal"}
 
 
 def build(name):

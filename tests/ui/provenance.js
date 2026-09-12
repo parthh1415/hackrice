@@ -392,6 +392,37 @@ async function requireServer() {
   check("the solver readout states the payload's evaluation count",
         evals.includes(`${s.engine.evaluations} evals`),
         `${evals} · payload ${s.engine.evaluations}`);
+  /* The exit flag is the solver's own verdict on whether it converged, and it
+     is the difference between "MATLAB found this" and "MATLAB gave up and we
+     printed the last thing it held". Rendered right beside the evals count and
+     checked by nothing. */
+  check("and the solver's own exit flag",
+        s.engine.exit_flag === undefined || evals.includes(`exit ${s.engine.exit_flag}`),
+        `${evals} · payload exit_flag ${s.engine.exit_flag}`);
+  eq("the solver readout names the engine that actually ran",
+     text("solverName").trim(), s.engine.name);
+
+  /* The whole bought line against the payload's own bought block, not just
+     its opening number. smoke.js regex-matches two phrases out of it and
+     nothing reads the rest — and this line is where the product admits how
+     little the fix bought, so every figure in it is load-bearing. */
+  const bought = text("boughtLine");
+  const measurable = s.bought.measurable;
+  check("the bought line takes the branch the payload's `measurable` asks for",
+        measurable ? /moves it [+-]/.test(bought) : /no measurable change/.test(bought),
+        `measurable=${measurable} · ${bought}`);
+  if (measurable) {
+    eq("and states the payload's delta",
+       (bought.match(/moves it ([+-][\d.]+)pp/) || [])[1],
+       `${s.bought.delta_pct >= 0 ? "+" : ""}${s.bought.delta_pct.toFixed(2)}`);
+  } else {
+    eq("and states the payload's own resolution, not a literal",
+       (bought.match(/resolves to ±([\d.]+)pp/) || [])[1],
+       s.bought.resolution_pct.toFixed(3));
+    check("an unmeasurable result shows no arrow between two numbers",
+          !bought.includes("→"),
+          "an arrow here points from one number to another we just called indistinguishable");
+  }
 
   eq("the bought line opens on the run's OWN critical distance",
      (text("boughtLine").match(/critical distance ([\d.]+)%/) || [])[1],
