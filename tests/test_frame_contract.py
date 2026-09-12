@@ -74,6 +74,22 @@ def test_round_zero_names_whoever_the_shock_already_put_over_the_limit():
     assert frame["breached"] == result.trajectory[1]["breached"]
 
 
+def test_insolvency_is_stated_outright_and_not_left_to_be_inferred():
+    # The stage prints INSOLVENT off this flag. It used to infer it from
+    # `leverage is None` instead — which is only how +inf survives JSON, so
+    # the label rode on a serialisation detail rather than on the fact. The
+    # two must agree frame by frame, or one of the two readings is lying.
+    result = run(gamma=1.0, leverage=8.0)
+
+    assert any(any(frame["insolvent"]) for frame in result.trajectory), \
+        "sanity: this scenario is supposed to kill funds"
+
+    for frame in result.trajectory:
+        for j, broke in enumerate(frame["insolvent"]):
+            assert broke == (frame["leverage"][j] is None), \
+                f"frame {frame['t']} fund {j}: insolvent and leverage disagree"
+
+
 def test_round_zero_is_empty_when_the_shock_left_everyone_inside_their_limit():
     result = run(gamma=0.9, leverage=1.0)
 
