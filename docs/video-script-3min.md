@@ -1,108 +1,113 @@
 # Firebreak — 3:30 shooting script
 
-The long script (`video-script.md`) stays as the reference: every number in it has been checked
-against a live run, and it carries the shot-by-shot notes and the warnings about which figures have
-moved. **This file is what you read aloud.** It is that script cut from 1,143 narration words to
-fit 3:42, because at 150 wpm the full text runs **7:37** and no amount of talking faster fixes that.
+**This is what you read aloud.** `video-script.md` is the long reference: every number in it
+is checked against a live run and it carries the shot-by-shot notes, but it is 1,143 words —
+**7:37 of speech against a 3:42 cap.** This is 321.
 
-What got cut, so you can put it back if you have room: the crowding statistics, the Caccioli and
-Greenwood–Landier–Thesmar citations, the boundary's axis explanation, and most of the assumptions
-panel. What did NOT get cut: the inverse-question framing, the fix being non-obvious, and the
-admission that the fix does not move the break point. Those three are the argument.
-
-Numbers verified live at commit time. If you re-record after changing anything, re-check them —
-`docs/video-script.md` §"recording notes" lists where each one comes from.
+Numbers verified live. If you change anything, re-check them before recording.
 
 ---
 
-## ACT 1 — FRAME (0:00 – 0:24)
+## ACT 1 — THE QUESTION (0:00 – 0:22)
 
-**Shot 1** · 0:00 – 0:10 · Title card, then the live app.
+**Shot 1** · Title, then the landing screen: *Find the market move your portfolio can't survive.*
 
-> "This is Firebreak. Every stress test asks the same question — what if the market drops twenty
-> percent? The scenario is an assumption, and the assumption is the part nobody checks."
+> "Every stress test asks the same question. What if the market drops twenty percent? The
+> scenario is an assumption — and the assumption is the part nobody checks."
 
-**Shot 2** · 0:10 – 0:24 · The network, already run. Hero reads `5.27%`.
+**Shot 2** · Click **Try demo portfolio**. Holdings table fills.
 
-> "Firebreak asks the inverse. What is the smallest shock that breaks this system — and what is the
-> cheapest change that prevents it. Real holdings, five hedge funds, their filed 13Fs for Q2 2026.
-> Forty point nine billion dollars."
+> "Firebreak asks the inverse. Here's a portfolio. Fifteen thousand dollars, five names."
 
 ---
 
-## ACT 2 — DEMO (0:24 – 2:50)
+## ACT 2 — THE BREAK (0:22 – 1:20)
 
-**Shot 3 · ATTACK** · 0:24 – 0:50 · Point at the three sliders, then click **Find weakest shock**.
+**Shot 3** · Click **Continue**, then **10%**.
 
-> "Leverage and price impact aren't in a 13F, so they're ours, and they're on screen the whole time.
-> Now — don't pick a scenario. Solve for it."
+> "How much loss would you refuse to tolerate? Ten percent. That's the whole configuration —
+> no leverage, no gamma, no jargon."
 
-*(let the search land)*
+**Shot 4** · Click **Find my Firebreak**. Let the search land.
 
-> "Negative five point two seven percent on NVIDIA. That's the smallest single-name move that forces
-> three or more of these funds to sell. Nobody guessed that number."
+> "NVIDIA, down twenty-four point seven percent. That's the smallest single-name move that
+> pushes this portfolio past a ten percent loss. Nobody guessed it. It was solved for."
 
-**Shot 4 · CASCADE** · 0:50 – 1:30 · Let it play. Point at the metrics band as it fills.
+**Shot 5** · Point at the four readouts.
 
-> "Watch what the shock does that the shock alone doesn't explain. Two funds breach their leverage
-> limit. They're forced to sell. They sell into a market where everyone holds the same ten names, so
-> the price falls for everyone — and that pushes the next fund over."
-
-> "Four point nine percent of direct loss becomes nine point one percent after three rounds. One
-> point eight seven times amplification. The damage isn't the shock. It's the feedback."
-
-**Shot 5 · BOUNDARY** · 1:30 – 2:00 · Click **Map the boundary**.
-
-> "Two hundred and fifty-six scenarios, swept over leverage and crowding. The contour is where
-> amplification hits one and a half times — the line where contagion takes over from arithmetic. The
-> marker is where this system actually sits. That's the map you'd hand a risk committee."
-
-**Shot 6 · STABILISE** · 2:00 – 2:50 · Click **Stabilise**. Let the split render.
-
-> "Now the part that's actually useful. What's the cheapest change that survives the identical
-> shock?"
-
-> "Citadel sells one point seven million dollars of NVIDIA. That's seventy-three thousandths of one
-> percent of a two point four billion dollar position — four ten-thousandths of a percent of the
-> system. Same shock, same books otherwise: four funds breaching becomes two, three rounds becomes
-> one."
-
-> "And notice who it is. Citadel doesn't breach until round two. It's the shocked name, in a fund
-> that isn't first to fail. Nobody would guess that either. That's why you solve it instead."
+> "And here's the thing. NVIDIA falling only costs this portfolio seven point two directly.
+> The loss is ten. Where did the other three points come from?"
 
 ---
 
-## ACT 3 — HONESTY & CLOSE (2:50 – 3:30)
+## ACT 3 — WHY (1:20 – 2:05)
 
-**Shot 7** · 2:50 – 3:10 · Point at the bought line, already on screen.
+**Shot 6** · Click **Watch why**. Let the cascade play.
 
-> "Here's what we'd rather tell you than have you find. We re-ran the search on the fixed books. The
-> break point doesn't measurably move. A cheapest single-position cut defends against this shock,
-> not the next one — and the app says so itself, on screen, every time."
+> "From everyone else. Crowded institutions hold the same names. NVIDIA falls, they breach
+> their leverage limits, they're forced to sell — and they sell into a market where their
+> positions are also *your* positions. That's the feedback. That's what turns seven into ten."
 
-**Shot 8** · 3:10 – 3:30 · Open **Assumptions**, then land on the network.
+*(let a round land in silence)*
 
-> "Holdings are real and the source is on screen. Leverage and impact are ours, declared, every row
-> labelled. This is a mechanism, not a prediction. Find the failure before it finds you."
+> "This is real filed data. Five hedge funds, their actual 13F holdings, forty billion dollars."
+
+---
+
+## ACT 4 — THE FIX AND THE PROOF (2:05 – 3:20)
+
+**Shot 7** · Click **Find a fix**.
+
+> "Now the useful part. Reduce NVIDIA by four hundred and seventy-eight dollars. That's the
+> smallest change we found that survives this exact shock — and it moves to cash, so the
+> portfolio is worth the same."
+
+**Shot 8** · Click **Validate recommendation**.
+
+> "But a recommendation isn't the end. How do you know it helped?"
+
+> "Same shock, same assumptions, only the portfolio changed: ten percent becomes nine. Then we
+> re-run the whole search on the new portfolio — the break point moves from twenty-four seven
+> to twenty-seven eight. Three points further away."
+
+**Shot 9** · Click through to **Simulated stress**, then **Historical**.
+
+> "Four hundred simulated scenarios, both portfolios on identical draws. Worst case improves.
+> And the historical tab says *not available* — we don't ship price history, so we won't show
+> you a number we made up."
+
+---
+
+## ACT 5 — CLOSE (3:20 – 3:30)
+
+**Shot 10** · Click **Risk Desk**.
+
+> "Same engine, institutional question: what's the smallest move that forces three leveraged
+> funds to deleverage at once? That's the prime brokerage version. Find the failure before it
+> finds you."
 
 ---
 
 ## Timing
 
-**420 narration words. At 150 wpm that is 2:48 of speech inside a 3:42 limit — 54 seconds of
-headroom** for the cascade to play, the sweep to render, and you to breathe.
+321 narration words. **2:08 at 150 wpm inside 3:42** — 94 seconds of headroom for the cascade to
+play, the search to land, and you to breathe.
 
-That headroom is the deliverable, not a rounding error. The full script is 1,143 words — **7:37 of
-speech against a 3:42 cap**, before anyone pauses. A script with no silence in it does not become
-shorter when you read it faster; it becomes a script nobody can follow, delivered by someone
-visibly rushing.
+The headroom is the deliverable, not slack. A script with none doesn't get shorter when you read
+it faster; it just gets delivered by someone visibly rushing. If the demo runs slower on the day
+than it does here, this is what absorbs it.
 
-(Counted with the same block-parser used on the long script: consecutive `> ` lines whose first
-line opens with a quote. Annotation lines in italics are not spoken and are not counted.)
+(Counted with the same parser used on the long script. My first draft of this line said 430 — I
+had estimated rather than counted, which on a page about not saying unverified numbers is the
+wrong way round.)
 
-## If you are still over
+## If you're long
 
-Cut Shot 5 entirely (30s, 52 words). The boundary is the most impressive thing on screen and the
-least necessary to the argument: beats 1, 2 and 4 carry the inverse question, the mechanism and the
-actionable fix without it. Do not cut Shot 7 to make room — an unprompted limitation is worth more
-to a judge than a fourth visualisation.
+Cut Act 5 (10s). Then Shot 9's second half. **Do not cut Shot 8** — the validation is the thing
+that separates this from a visualisation, and the "not available" line is worth more to a judge
+than any chart on the screen.
+
+## If a number looks wrong on the day
+
+Run `curl -s localhost:8765/api/portfolio/full?limit=0.10` and read the real ones. Do not say a
+figure from this page that the screen is not showing.
