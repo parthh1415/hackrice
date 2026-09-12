@@ -294,6 +294,10 @@ MUTATIONS = {
         "src/firebreak/dataset.py",
         "    if CACHE.exists() and not refresh:",
         "    if False:"),
+    "pm_boundary_cliff_flattened": (
+        "src/firebreak/api.py",
+        "_REF_SHOCK = -0.05",
+        "_REF_SHOCK = -0.005"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
