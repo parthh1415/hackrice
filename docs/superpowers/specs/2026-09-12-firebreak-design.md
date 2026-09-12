@@ -52,19 +52,52 @@ makes this a 2-hour job instead of a 4-hour one.
 
 Five funds, latest `13F-HR` (filed 2026-08-13/14), weights within a 10-name mega-cap universe:
 
+> **Corrected 2026-09-12** after external review. The first version of this table
+> mapped only Alphabet Class C and used superseded filings. Both are fixed below;
+> GOOGL weights move by up to 9×. See §2.4.
+
 | Fund | NVDA | AAPL | MSFT | AMZN | GOOGL | META | AVGO | AMD | TSLA | JPM |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Citadel | 17.6% | 15.7% | 10.5% | 19.3% | 8.0% | 4.7% | 8.2% | 6.9% | 3.8% | 5.4% |
-| Millennium | 33.0% | 3.0% | 21.5% | 13.3% | 0.5% | 9.9% | 1.9% | 6.8% | 5.5% | 4.6% |
-| Point72 | 3.1% | 0.0% | 0.4% | 37.2% | 4.6% | 11.2% | 13.6% | 27.1% | 0.0% | 2.8% |
-| Two Sigma | 14.0% | 13.5% | 7.6% | 15.2% | 9.0% | 4.2% | 2.4% | 9.8% | 13.4% | 10.8% |
-| Renaissance | 24.6% | 8.0% | 0.0% | 9.5% | 14.3% | 19.7% | 5.6% | 8.0% | 8.1% | 2.2% |
+| Citadel | 16.2% | 14.5% | 9.6% | 17.8% | 15.3% | 4.3% | 7.5% | 6.4% | 3.5% | 5.0% |
+| Millennium | 31.6% | 2.8% | 20.6% | 12.8% | 4.7% | 9.5% | 1.8% | 6.5% | 5.3% | 4.4% |
+| Point72 | 2.8% | 0.0% | 0.4% | 34.3% | 12.2% | 10.3% | 12.5% | 25.0% | 0.0% | 2.5% |
+| Two Sigma | 13.7% | 13.2% | 7.4% | 14.9% | 11.1% | 4.1% | 2.3% | 9.6% | 13.1% | 10.6% |
+| Renaissance | 22.4% | 7.3% | 0.0% | 8.6% | 21.9% | 18.0% | 5.1% | 7.3% | 7.4% | 2.0% |
+
+Period of report **2026-06-30** for all five (checked, not assumed).
 
 Pairwise overlap (cosine similarity of weight vectors):
 
-- **Mean off-diagonal: 0.699**
+- **Mean off-diagonal: 0.712**
 - **Max: 0.92** (Citadel ↔ Two Sigma — near-identical books)
-- **Min: 0.43** (Millennium ↔ Point72)
+- **Min: 0.44** (Millennium ↔ Point72)
+
+### 2.4 What external review caught
+
+Three reviewers went at this independently. Findings that changed the code:
+
+1. **Insolvent funds vanished from the cascade.** `E < 0` ⟹ `A/E < 0` ⟹ `L > L_max`
+   false, so the most distressed fund stopped breaching and stopped selling.
+   Damage was non-monotone — AMZN −53% gave 5 breaches, −54% gave 4, on the real
+   books at default sliders, in 30 of 32 (leverage, γ) combinations. Fixed:
+   insolvency is +inf leverage, full liquidation, marked defaulted. Breach count
+   now monotone across 12,200 runs.
+2. **Sales settled at book prices**, so a fund liquidating its whole book took
+   *zero* fire-sale loss — the funds causing the crash were the only ones immune.
+   Now settles at round VWAP.
+3. **GOOGL CUSIP was Class C**; Class A was dropped. Heterogeneous undercount
+   (48% Citadel, 15% Millennium, 100% Point72) which reweighted every other
+   column per fund. The CUSIP map is many-to-one now.
+4. **`13F-HR` never matched `13F-HR/A`**, so a Citadel RESTATEMENT of Q2-2026 was
+   ignored and we read superseded data. Now follows Form 13F FAQ 58.
+5. **The search asserted zero shock was safe** rather than testing it, so a
+   configuration already in breach bisected to −0.0003% and reported it.
+6. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
+   — portfolios are fixed until default, then fully liquidated — and uses
+   exponential impact. **Greenwood, Landier & Thesmar (2015), JFE 115(3) 471–485**
+   is the actual ancestor of our deleveraging rule; their `b_n = d/e` gives
+   `q = (λ−1)·loss`, identical to ours. Cite Caccioli for overlapping-portfolio
+   contagion and the critical-leverage boundary only.
 
 **Why this matters:** the original plan's fallback for a weak cascade was "create synthetic portfolios
 designed to demonstrate the mechanism." We do not need to. Real crowding at 0.70 mean overlap is more
@@ -174,6 +207,10 @@ record per-round state for animation
 | Breaches | count of distinct funds that breached at any round |
 | Rounds | rounds until stabilisation |
 | **Critical shock distance** | `min ‖s‖` such that the failure condition is met — **the hero number** |
+
+GLT report an "aggregate vulnerability" instead — spillover loss as a *share of
+total equity*, excluding the direct shock. The two map as `amp − 1 = AV / shock
+loss`. Worth reporting AV alongside; a quant judge may ask for it by name.
 
 Verified behaviour with the corrected definition: `γ=0 → amp = 1.000000`; disjoint books → 1.04
 (self-impact only, no cross-fund contagion); high overlap + λ=6 → **1.96**. Amplification rises
