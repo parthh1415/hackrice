@@ -3,210 +3,262 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Firebreak</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230D0D0D'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23FF383B'/%3E%3C/svg%3E">
+<title>Firebreak — Systemic Risk Terminal</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23071015'/%3E%3Crect x='3' y='3' width='10' height='10' fill='%23FF5B61'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="terminal.css">
 </head>
 <body>
-<!-- Portfolio Mode onboarding. Sits OVER the existing app rather than
-     replacing it: the cascade stage, timeline, assumptions panel and Risk Desk
-     rail underneath are untouched and still work exactly as they did. The old
-     product is not a legacy path here, it is step four of the new one. -->
-<div class="onboard" id="onboard">
-  <div class="onboard-card">
-    <div class="steps" id="steps">
-      <span data-step="1" class="on">1 Portfolio</span>
-      <span data-step="2">2 Risk limit</span>
-      <span data-step="3">3 Firebreak</span>
-      <span data-step="4">4 Cascade</span>
-      <span data-step="5">5 Fix</span>
-      <span data-step="6">6 Validate</span>
+<div class="app" id="app">
+
+  <!-- ── top status bar ─────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <b>FIREBREAK</b><span>SYSTEMIC RISK TERMINAL</span>
     </div>
 
-    <section class="pane" id="pane1">
-      <h1>Find the market move your portfolio can't survive.</h1>
-      <p class="lede">Firebreak reverse-stress-tests your portfolio, models how crowded
-        institutional selling amplifies losses, and finds the smallest change that makes
-        it more resilient.</p>
-      <div class="choices">
-        <button class="primary big" id="useDemo">Try demo portfolio</button>
-        <label class="big ghost" for="csvFile">Upload CSV<input type="file" id="csvFile" accept=".csv,text/csv" hidden></label>
-        <button class="big ghost" id="connectBtn" disabled
-                title="No brokerage credentials ship with this build.">Connect brokerage</button>
-      </div>
-      <p class="fineprint" id="connectNote">Brokerage connection is not configured in this
-        build, so the button is disabled rather than pretending. CSV and the demo portfolio
-        are the working paths. Read-only either way — Firebreak never places trades.</p>
-      <div class="holdings" id="holdingsBox" hidden></div>
-      <div class="pane-foot"><button class="primary" id="toLimit" disabled>Continue</button></div>
-    </section>
-
-    <section class="pane" id="pane2" hidden>
-      <h1>What loss would you refuse to tolerate?</h1>
-      <p class="lede">Firebreak looks for the smallest single-name move that pushes your
-        portfolio past this, after modelled forced selling.</p>
-      <div class="limits" id="limits">
-        <button data-limit="0.05">5%</button>
-        <button data-limit="0.10" class="on">10%</button>
-        <button data-limit="0.15">15%</button>
-        <button data-limit="0.25">25%</button>
-      </div>
-      <details class="advanced">
-        <summary>Advanced assumptions</summary>
-        <p class="fineprint">Gross leverage, price impact and the breach band describe the
-          institutional network around your holdings, not your account. They live on the
-          Risk Desk rail and default to 5.0&times;, 0.20 and 1.05.</p>
-      </details>
-      <div class="pane-foot">
-        <button class="ghost" id="backToPortfolio">Back</button>
-        <button class="primary" id="findBtn">Find my Firebreak</button>
-      </div>
-    </section>
-  </div>
-</div>
-
-<div class="app">
-
-  <header class="mast">
-    <div class="wordmark">Firebreak<small>Reverse stress testing</small></div>
-
-    <div class="badge" id="badge" data-mode="cached">
-      <span class="dot"></span><span id="badgeText">connecting</span>
+    <div class="context" data-ui="context">
+      <span class="ctx"><i>PORTFOLIO</i><b id="ctxPortfolio">—</b></span>
+      <span class="ctx"><i>LIMIT</i><b class="num" id="ctxLimit">10.00%</b></span>
+      <span class="ctx"><i>SHOCK</i><b class="num" id="ctxShock">NOT RUN</b></span>
     </div>
-    <button class="ghost" id="assumeBtn" aria-haspopup="dialog">Assumptions</button>
-    <button class="ghost" id="deskBtn" title="The institutional multi-fund view this was built on.">Risk Desk</button>
 
-    <div class="hero">
-      <span class="hero-val num" id="heroVal" data-idle>—</span>
-      <span class="hero-meta">
-        <span class="hero-label">Critical shock distance</span>
-        <span class="hero-sub" id="heroSub">smallest single-name drop that breaks the system</span>
-        <span class="hero-note" id="heroNote"></span>
-      </span>
+    <div class="topbar-right">
+      <div class="badge" id="badge" data-mode="cached">
+        <span class="dot"></span><span id="badgeText">connecting</span>
+      </div>
+      <button class="ghost" id="assumeBtn" aria-haspopup="dialog">ASSUMPTIONS</button>
+      <button class="ghost" id="helpBtn">HELP</button>
     </div>
   </header>
 
-  <aside class="rail">
-    <div class="knob">
-      <label for="leverage">Gross leverage <b class="num" id="leverageVal">5.0</b></label>
-      <input type="range" id="leverage" min="1.5" max="8" step="0.1" value="5">
-    </div>
-    <div class="knob">
-      <label for="gamma">Price impact γ <b class="num" id="gammaVal">0.20</b></label>
-      <input type="range" id="gamma" min="0" max="1" step="0.05" value="0.2">
-    </div>
-    <div class="knob">
-      <label for="breachBand">Breach band <b class="num" id="breachBandVal">1.05</b></label>
-      <input type="range" id="breachBand" min="1.0" max="1.5" step="0.01" value="1.05">
-    </div>
-    <div class="knob">
-      <label for="breaches">Failure condition</label>
-      <select id="breaches">
-        <option value="2">≥ 2 funds breach</option>
-        <option value="3" selected>≥ 3 funds breach</option>
-        <option value="4">≥ 4 funds breach</option>
-        <option value="5">≥ 5 funds breach</option>
-      </select>
-    </div>
+  <!-- ── left: portfolio + parameters ───────────────────────────────────── -->
+  <aside class="col-left">
+    <section class="panel">
+      <header class="panel__header">
+        <span class="panel__title">PORTFOLIO</span>
+        <span class="panel__status" id="pfSource">DEMO</span>
+      </header>
+      <div class="panel__body">
+        <div class="pf-total"><i>TOTAL</i><b class="num" id="pfTotal">—</b></div>
+        <div class="holdings" id="holdingsBox"></div>
+        <div class="pf-actions">
+          <label class="mini" for="csvFile">IMPORT CSV<input type="file" id="csvFile" accept=".csv,text/csv" hidden></label>
+          <button class="mini" id="useDemo">LOAD DEMO</button>
+          <button class="mini" id="connectBtn" disabled
+                  title="Brokerage credentials are not included in this build.">CONNECT</button>
+        </div>
+        <p class="note" id="connectNote">Brokerage credentials are not included in this build.
+          CSV and the demo book are the working paths. Read-only; Firebreak places no trades.</p>
+      </div>
+    </section>
 
-    <div class="actions">
-      <button class="primary" id="attackBtn">Find weakest shock</button>
-      <button id="replayBtn">Replay cascade</button>
-      <button id="boundaryBtn">Map the boundary</button>
-      <button id="defendBtn" disabled>Stabilise</button>
-    </div>
+    <section class="panel">
+      <header class="panel__header"><span class="panel__title">LOSS LIMIT</span></header>
+      <div class="panel__body">
+        <div class="seg" id="limits" data-ui="loss-limit">
+          <button data-limit="0.05">5%</button>
+          <button data-limit="0.10" class="on">10%</button>
+          <button data-limit="0.15">15%</button>
+          <button data-limit="0.25">25%</button>
+        </div>
+        <p class="note">The portfolio loss this book is not permitted to exceed.</p>
+      </div>
+    </section>
 
-    <div class="solver" id="solver">
-      <span class="k">Numerical engine</span>
-      <span class="v" id="solverName">—</span>
-      <span class="v" id="solverStats"><span>awaiting solve</span></span>
-    </div>
-  </aside>
-
-  <main class="stage" id="stage">
-    <div class="scene" id="sceneNetwork">
-      <svg id="network" role="img"
-           aria-label="Contagion network. Assets on the left, portfolios on the right, edge thickness proportional to position value, nodes coloured by state."></svg>
-    </div>
-
-    <div class="scene" id="sceneBoundary" hidden>
-      <svg id="boundary" role="img"
-           aria-label="Phase diagram. Portfolio overlap on the horizontal axis, gross leverage on the vertical, shaded by amplification, with the real system marked."></svg>
-    </div>
-
-    <div class="scene result-scene" id="sceneResult" hidden>
-      <div class="result-card">
-        <div class="result-eyebrow">Your nearest modelled break point</div>
-        <div class="result-hero num" id="resultHero">—</div>
-        <div class="result-sub" id="resultSub">—</div>
-        <div class="result-grid" id="resultGrid"></div>
-        <p class="result-plain" id="resultPlain"></p>
-        <div class="result-cta">
-          <button class="primary" id="watchBtn">Watch why</button>
-          <button class="ghost" id="fixBtn">Find a fix</button>
+    <section class="panel">
+      <header class="panel__header">
+        <span class="panel__title">MODEL PARAMETERS</span>
+        <span class="panel__status">DECLARED</span>
+      </header>
+      <div class="panel__body">
+        <div class="knob">
+          <label for="leverage">Gross leverage <b class="num" id="leverageVal">5.0</b></label>
+          <input type="range" id="leverage" min="1.5" max="8" step="0.1" value="5">
+        </div>
+        <div class="knob">
+          <label for="gamma">Price impact γ <b class="num" id="gammaVal">0.20</b></label>
+          <input type="range" id="gamma" min="0" max="1" step="0.05" value="0.2">
+        </div>
+        <div class="knob">
+          <label for="breachBand">Breach band <b class="num" id="breachBandVal">1.05</b></label>
+          <input type="range" id="breachBand" min="1" max="1.5" step="0.01" value="1.05">
+        </div>
+        <div class="knob">
+          <label for="breaches">Desk failure condition</label>
+          <select id="breaches">
+            <option value="2">≥ 2 funds breach</option>
+            <option value="3" selected>≥ 3 funds breach</option>
+            <option value="4">≥ 4 funds breach</option>
+            <option value="5">≥ 5 funds breach</option>
+          </select>
         </div>
       </div>
+    </section>
+  </aside>
+
+  <!-- ── centre: the workspace ──────────────────────────────────────────── -->
+  <main class="col-centre">
+    <nav class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-tab="attack" aria-selected="true" data-ui="tab-attack">ATTACK</button>
+      <button role="tab" data-tab="cascade" aria-selected="false" data-ui="tab-cascade">CASCADE</button>
+      <button role="tab" data-tab="defend" aria-selected="false" data-ui="tab-defend">DEFEND</button>
+      <button role="tab" data-tab="verify" aria-selected="false" data-ui="tab-verify">VERIFY</button>
+      <span class="tabs-spacer"></span>
+      <span class="ws-title" id="wsTitle">REVERSE STRESS TEST</span>
+    </nav>
+
+    <div class="ws-bar">
+      <span class="ws-sub" id="wsSub">Find the smallest modelled shock that breaches the loss limit.</span>
+      <span class="ws-actions">
+        <button class="primary" id="attackBtn" data-ui="run-reverse-test">RUN REVERSE TEST</button>
+        <button class="ghost" id="boundaryBtn">MAP FAILURE BOUNDARY</button>
+        <button class="ghost" id="replayBtn">REPLAY CASCADE</button>
+        <button class="ghost" id="defendBtn" disabled>COMPUTE DEFENSE</button>
+      </span>
     </div>
 
-    <div class="scene result-scene" id="sceneValidate" hidden>
-      <div class="result-card wide">
-        <div class="result-eyebrow">Did the change actually help?</div>
+    <div class="stage" id="stage">
+      <div class="scene" id="sceneNetwork">
+        <svg id="network" role="img"
+             aria-label="Contagion network. Assets left, institutional books right, edge thickness proportional to position value."></svg>
+      </div>
+
+      <div class="scene" id="sceneBoundary" hidden>
+        <svg id="boundary" role="img"
+             aria-label="Failure surface. Portfolio overlap horizontally, gross leverage vertically, shaded by amplification."></svg>
+      </div>
+
+      <div class="scene split-scene" id="sceneSplit" hidden>
+        <div class="locked" id="lockedShock" data-ui="locked-shock">LOCKED SHOCK — <span class="num">—</span></div>
+        <div class="fix-line" id="fixLine" data-ui="defense-trade" hidden></div>
+        <div class="bought" id="boughtLine" hidden></div>
+        <div class="split">
+          <div class="split-half">
+            <div class="split-cap">CURRENT BOOK</div>
+            <svg id="netBefore" role="img" aria-label="Cascade outcome, current book."></svg>
+            <div class="split-foot num" id="footBefore">—</div>
+          </div>
+          <div class="divider"></div>
+          <div class="split-half">
+            <div class="split-cap"><b>DEFENDED BOOK</b></div>
+            <svg id="netAfter" role="img" aria-label="Cascade outcome under the identical shock, defended book."></svg>
+            <div class="split-foot num" id="footAfter">—</div>
+          </div>
+        </div>
+        <div class="split-stamp"><span id="splitRound">—</span><span class="num" id="shockStamp">—</span></div>
+      </div>
+
+      <div class="scene verify-scene" id="sceneValidate" hidden>
+        <div class="verify-head">
+          <span class="ws-title">VALIDATION EVIDENCE</span>
+          <span class="ws-sub">Intervention recomputed against the same model.</span>
+        </div>
         <div class="valid-top" id="validTop"></div>
         <div class="valid-tabs" id="validTabs">
-          <button data-tab="same" class="on">Same shock</button>
-          <button data-tab="newbreak">New break point</button>
-          <button data-tab="synthetic">Simulated stress</button>
-          <button data-tab="historical">Historical</button>
+          <button data-tab="same" class="on" data-ui="verify-same-shock">SAME SHOCK</button>
+          <button data-tab="newbreak">NEW BREAK POINT</button>
+          <button data-tab="synthetic">SIMULATED STRESS</button>
+          <button data-tab="historical">HISTORICAL</button>
         </div>
         <div class="valid-body" id="validBody"></div>
       </div>
     </div>
 
-    <div class="scene split-scene" id="sceneSplit" hidden>
-      <div class="fix-line" id="fixLine" hidden></div>
-      <div class="bought" id="boughtLine" hidden></div>
-      <div class="split">
-        <div class="split-half">
-          <div class="split-cap">Before</div>
-          <svg id="netBefore" role="img" aria-label="Cascade outcome before intervention."></svg>
-          <div class="split-foot num" id="footBefore">—</div>
-        </div>
-        <div class="divider"></div>
-        <div class="split-half">
-          <div class="split-cap"><b>After firebreak</b></div>
-          <svg id="netAfter" role="img" aria-label="Cascade outcome after the intervention, under the identical shock."></svg>
-          <div class="split-foot num" id="footAfter">—</div>
-        </div>
-      </div>
-      <div class="split-stamp"><span id="splitRound">—</span><span class="num" id="shockStamp">—</span></div>
+    <div class="timeline">
+      <span class="round num" id="roundLabel">no run</span>
+      <div class="track" id="track"></div>
     </div>
   </main>
 
-  <div class="timeline">
-    <span class="tl-label" id="roundLabel">no run</span>
-    <div class="tl-track" id="track"></div>
-  </div>
-
-  <div class="band" id="band">
-    <div class="cell"><span class="v num">—</span><span class="l">Shock loss</span></div>
-    <div class="cell"><span class="v num">—</span><span class="l">After cascade</span></div>
-    <div class="cell"><span class="v num">—</span><span class="l">Amplification</span></div>
-    <div class="cell"><span class="v num">—</span><span class="l">Breaches</span></div>
-    <div class="cell"><span class="v num">—</span><span class="l">Rounds</span></div>
-  </div>
-
-  <div class="overlay" id="assumePanel" hidden role="dialog" aria-label="Assumptions and what this does not claim">
-    <div class="sheet">
-      <div class="sheet-head">
-        <h2>What is measured, and what is declared</h2>
-        <button class="ghost" id="assumeClose">Close</button>
+  <!-- ── right: risk telemetry ──────────────────────────────────────────── -->
+  <aside class="col-right">
+    <section class="panel">
+      <header class="panel__header">
+        <span class="panel__title">CRITICAL SHOCK</span>
+        <span class="panel__status" id="shockState" data-ui="shock-state">NOT RUN</span>
+      </header>
+      <div class="panel__body tele-shock">
+        <div class="tele-asset" id="heroSub">—</div>
+        <div class="tele-hero num" id="heroVal" data-ui="critical-shock" data-idle>—</div>
+        <div class="tele-note" id="heroNote"></div>
       </div>
-      <dl class="assume" id="assumeBody"></dl>
-    </div>
-  </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel__header"><span class="panel__title">LOSS DECOMPOSITION</span></header>
+      <div class="panel__body" id="lossDecomp">
+        <div class="row"><i>DIRECT</i><b class="num" id="teleDirect" data-ui="direct-loss">—</b></div>
+        <div class="bar"><span id="barDirect"></span></div>
+        <div class="row"><i>AFTER CASCADE</i><b class="num" id="teleCascade" data-ui="cascade-loss">—</b></div>
+        <div class="bar"><span id="barCascade"></span></div>
+        <div class="row"><i>AMPLIFICATION</i><b class="num" id="teleAmp">—</b></div>
+        <div class="row"><i>LOSS LIMIT</i><b class="num" id="teleLimit">10.00%</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel__header"><span class="panel__title">CASCADE STATE</span></header>
+      <div class="panel__body">
+        <div class="row"><i>BREACHED BOOKS</i><b class="num" id="teleBreached">—</b></div>
+        <div class="row"><i>ROUNDS</i><b class="num" id="teleRounds">—</b></div>
+        <div class="row"><i>ACTIVE ROUND</i><b class="num" id="teleActive">—</b></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel__header">
+        <span class="panel__title">SOLVER</span>
+        <span class="panel__status" id="solverState" data-ui="solver-status">IDLE</span>
+      </header>
+      <div class="panel__body" id="solver">
+        <div class="solver-name" id="solverName">—</div>
+        <div class="solver-stats num" id="solverStats">—</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header class="panel__header"><span class="panel__title">MODEL STATUS</span></header>
+      <div class="panel__body tags" id="modelTags">
+        <button class="tag" data-kind="measured">holdings · measured</button>
+        <button class="tag" data-kind="declared">leverage · declared</button>
+        <button class="tag" data-kind="declared">price impact · declared</button>
+        <button class="tag" data-kind="limit">scale · limitation</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ── metrics band, event stream, command deck ───────────────────────── -->
+  <div class="band" id="band"></div>
+
+  <section class="events" data-ui="event-log">
+    <header class="panel__header">
+      <span class="panel__title">EVENT STREAM</span>
+      <span class="panel__status" id="eventCount">0</span>
+    </header>
+    <div class="event-body" id="eventBody" role="log" aria-live="polite" aria-relevant="additions"></div>
+  </section>
+
+  <form class="deck" id="deck" autocomplete="off">
+    <label class="prompt" for="cmd">FIREBREAK://RISKDESK &gt;</label>
+    <input id="cmd" data-ui="command-input" spellcheck="false"
+           aria-label="Command input. Type help for the list of commands.">
+    <span class="deck-hint">⌘K focus · <code>help</code></span>
+  </form>
 
 </div>
+
+<div class="overlay" id="assumePanel" hidden role="dialog" aria-modal="false" aria-label="Model assumptions">
+  <div class="sheet">
+    <div class="sheet-head">
+      <span>MODEL ASSUMPTIONS</span>
+      <button class="ghost" id="assumeClose">CLOSE</button>
+    </div>
+    <dl class="sheet-body" id="assumeBody"></dl>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

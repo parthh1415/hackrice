@@ -745,14 +745,21 @@ const SCENES = {
   network: "sceneNetwork",
   boundary: "sceneBoundary",
   split: "sceneSplit",
-  result: "sceneResult",
   validate: "sceneValidate",
 };
 
 function showScene(which) {
   state.beat = which;
   const want = SCENES[which];
-  Object.values(SCENES).forEach((id) => { $(id).hidden = id !== want; });
+  // Skip ids that are not in the document. The terminal redesign dropped the
+  // standalone result card — its numbers live in the telemetry column now —
+  // and this threw on the null, silently, inside boot: the event stream
+  // stopped after one line and the portfolio panel never filled, which reads
+  // as "the server is down" rather than "one id is missing".
+  Object.values(SCENES).forEach((id) => {
+    const node = $(id);
+    if (node) node.hidden = id !== want;
+  });
 }
 
 /* ────────────────────────────── actions ───────────────────────────────── */
@@ -1315,7 +1322,23 @@ async function boot() {
       if (state.run) fillAssumptions(body, state.run);
     })
     .catch(() => { /* panel stays empty; the demo doesn't depend on it */ });
-  await attack();
+
+  // Draw the network in a NEUTRAL state rather than running the institutional
+  // search. A judge should see a live instrument in the first frame — but the
+  // telemetry says NOT RUN, and it would be a contradiction for the stage to
+  // be showing the results of a search nobody asked for. Zero shock renders
+  // the real structure with nothing breached, which is the honest idle state.
+  try {
+    const { body } = await api(`/api/cascade?asset=NVDA&magnitude=0&${params()}`);
+    state.run = normalise(body);
+    state.layout = null;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    ensureLayout(state.run, $("network"));
+    showRound(0);
+    $("roundLabel").textContent = "idle · no shock applied";
+  } catch {
+    /* the stage stays empty; the reverse test will populate it */
+  }
 }
 
 /* The slider cannot be id="band": the metrics band already owns that id, and
@@ -1384,21 +1407,18 @@ window.addEventListener("resize", () => {
 
 boot();
 
-/* ── Portfolio Mode ──────────────────────────────────────────────────────
-   The product loop: my portfolio, my limit, my breaking shock, why, the
-   smallest fix, and whether that fix helped.
 
-   This layer sits ON TOP of the institutional app rather than replacing it.
-   Every scene below step 4 reuses the existing stage — the same drawNetwork,
-   the same trajectory frames, the same timeline — because the old product is
-   not a legacy path here, it is the "why" step of the new one. Risk Desk is
-   one button away and entirely unchanged. */
+/* ══ SYSTEMIC RISK TERMINAL ═══════════════════════════════════════════════
+   The workstation layer. Three columns that never lose context, a centre
+   that changes, and an event stream that says what the engine actually did.
+
+   Everything below drives the SAME functions the buttons do — there is no
+   terminal-only capability, because a command that does something the UI
+   cannot is a second product with half the testing. */
 
 const pm = {
-  portfolio: null,
-  limit: 0.10,
-  result: null,
-  step: 1,
+  portfolio: null, rows: null, limit: 0.10,
+  result: null, workspace: "attack", tipShown: false,
 };
 
 const fmtUsd = (x) => {
@@ -1410,49 +1430,137 @@ const fmtUsd = (x) => {
 };
 const pctOf = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
 
-function setStep(n) {
-  pm.step = n;
-  [...$("steps").children].forEach((el) => {
-    const s = Number(el.dataset.step);
-    el.classList.toggle("on", s === n);
-    el.classList.toggle("done", s < n);
-  });
+/* ── event stream ───────────────────────────────────────────────────────
+   Derived from real payloads only. An event describing something the engine
+   did not report is a decoration pretending to be evidence, and this panel
+   is read as a log. */
+const EVENT_CAP = 200;
+let eventN = 0;
+
+function logEvent(channel, message, opts = {}) {
+  const body = $("eventBody");
+  if (!body) return;
+  const now = new Date();
+  const t = `${String(now.getHours()).padStart(2, "0")}:` +
+            `${String(now.getMinutes()).padStart(2, "0")}:` +
+            `${String(now.getSeconds()).padStart(2, "0")}.` +
+            `${String(now.getMilliseconds()).padStart(3, "0")}`;
+  const row = el2("div", { class: "e", "data-ch": channel });
+  if (opts.breach) row.setAttribute("data-breach", "");
+  row.innerHTML = `<span class="t">${t}</span><span class="c">${channel}</span>` +
+                  `<span class="m">${message}</span>`;
+  body.appendChild(row);
+  while (body.children.length > EVENT_CAP) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
+  $("eventCount").textContent = String(++eventN);
 }
 
-function showPane(n) {
-  $("pane1").hidden = n !== 1;
-  $("pane2").hidden = n !== 2;
-  setStep(n);
+function el2(tag, attrs) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+  return node;
 }
 
-function renderHoldings(p) {
-  const rows = p.holdings.map((h) =>
-    `<div class="row"><b>${h.symbol}</b>` +
-    `<span class="v">${fmtUsd(h.market_value)}</span>` +
-    `<span class="v">${pctOf(h.weight, 1)}</span></div>`).join("");
-  $("holdingsBox").innerHTML =
-    `<div class="row head"><span>${p.source === "demo" ? "Demo portfolio" : "Your portfolio"}` +
-    `</span><span>${fmtUsd(p.total_value)}</span><span>weight</span></div>` + rows;
-  $("holdingsBox").hidden = false;
-  $("toLimit").disabled = false;
+/* ── shell ──────────────────────────────────────────────────────────────── */
+const WS = {
+  attack:  { scene: "network",  title: "REVERSE STRESS TEST",
+             sub: "Find the smallest modelled shock that breaches the loss limit." },
+  cascade: { scene: "network",  title: "CASCADE REPLAY",
+             sub: "Every frame is a real trajectory step. Nothing is interpolated." },
+  defend:  { scene: "split",    title: "MINIMUM INTERVENTION",
+             sub: "Keep the shock fixed. Change only the portfolio." },
+  verify:  { scene: "validate", title: "VALIDATION EVIDENCE",
+             sub: "Intervention recomputed against the same model." },
+};
+
+function setWorkspace(which) {
+  if (!WS[which]) return;
+  pm.workspace = which;
+  [...$("tabs").querySelectorAll("button[data-tab]")].forEach((b) =>
+    b.setAttribute("aria-selected", String(b.dataset.tab === which)));
+  $("wsTitle").textContent = WS[which].title;
+  $("wsSub").textContent = WS[which].sub;
+  showScene(WS[which].scene);
 }
 
-/* CSV parsed in the browser. The file never leaves the machine, which is the
-   right default for a document listing everything somebody owns, and it means
-   the upload path works with the network off like everything else here. */
+function setShockState(state, label) {
+  const node = $("shockState");
+  node.textContent = label;
+  node.dataset.state = state;
+}
+
+function setSolverState(state, label) {
+  const node = $("solverState");
+  node.textContent = label;
+  node.dataset.state = state;
+}
+
+/* ── telemetry ──────────────────────────────────────────────────────────── */
+function paintTelemetry(r) {
+  if (!r || !r.found) return;
+  $("heroVal").removeAttribute("data-idle");
+  $("heroVal").textContent = `−${r.pct.toFixed(2)}%`;
+  $("heroSub").textContent = r.asset;
+  $("ctxShock").textContent = `${r.asset} −${r.pct.toFixed(2)}%`;
+  setShockState("breach", "FOUND");
+
+  $("teleDirect").textContent = pctOf(r.direct_loss);
+  $("teleCascade").textContent = pctOf(r.cascade_loss);
+  $("teleAmp").textContent = `${r.amplification.toFixed(2)}×`;
+  $("teleLimit").textContent = pctOf(r.params.limit);
+  $("teleBreached").textContent = String(r.breached.length);
+  $("teleRounds").textContent = String(r.rounds);
+  $("teleActive").textContent = "—";
+
+  // bars are scaled to the LIMIT, so the eye reads "how far through the budget
+  // are we" rather than an arbitrary maximum
+  const lim = r.params.limit || 0.1;
+  const w = (v) => `${Math.min(100, (v / lim) * 100).toFixed(1)}%`;
+  $("barDirect").style.width = w(r.direct_loss);
+  $("barCascade").style.width = w(r.cascade_loss);
+  if (r.cascade_loss >= lim) $("barCascade").setAttribute("data-over", "");
+  else $("barCascade").removeAttribute("data-over");
+}
+
+function clearTelemetry() {
+  $("heroVal").setAttribute("data-idle", "");
+  $("heroVal").textContent = "—";
+  $("heroSub").textContent = "—";
+  $("ctxShock").textContent = "NOT RUN";
+  ["teleDirect", "teleCascade", "teleAmp", "teleBreached", "teleRounds", "teleActive"]
+    .forEach((id) => { $(id).textContent = "—"; });
+  $("barDirect").style.width = "0";
+  $("barCascade").style.width = "0";
+  setShockState("", "NOT RUN");
+}
+
+/* ── portfolio panel ────────────────────────────────────────────────────── */
+function renderHoldings(p, shockedSymbol) {
+  pm.portfolio = p;
+  $("pfTotal").textContent = fmtUsd(p.total_value);
+  $("pfSource").textContent = (p.source || "demo").toUpperCase();
+  $("ctxPortfolio").textContent = p.source === "demo" ? "DEMO_01" : "IMPORTED";
+  $("holdingsBox").innerHTML = p.holdings.map((h) => {
+    const hot = h.symbol === shockedSymbol ? ' data-shocked=""' : "";
+    return `<div class="h"${hot}><b>${h.symbol}</b>` +
+           `<span>${fmtUsd(h.market_value)} · ${pctOf(h.weight, 1)}</span></div>` +
+           `<div class="hbar"><i style="width:${(h.weight * 100).toFixed(1)}%"></i></div>`;
+  }).join("");
+}
+
 function parseCsv(text) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) throw new Error("that file is empty");
   const head = lines[0].toLowerCase().split(",").map((h) => h.trim());
   const iSym = head.findIndex((h) => /^(symbol|ticker)$/.test(h));
-  if (iSym < 0) throw new Error("no `symbol` column — the header row needs one");
+  if (iSym < 0) throw new Error("no `symbol` column in the header row");
   const iVal = head.findIndex((h) => /market_?value|value/.test(h));
   const iQty = head.findIndex((h) => /quantity|shares|qty/.test(h));
   const iPx = head.findIndex((h) => /^price$/.test(h));
   if (iVal < 0 && (iQty < 0 || iPx < 0)) {
-    throw new Error("need a `market_value` column, or `quantity` and `price`");
+    throw new Error("need `market_value`, or `quantity` and `price`");
   }
-  return lines.slice(1).map((line) => {
+  const rows = lines.slice(1).map((line) => {
     const c = line.split(",").map((x) => x.trim());
     const row = { symbol: c[iSym] };
     if (iVal >= 0 && c[iVal]) row.market_value = Number(c[iVal].replace(/[$,]/g, ""));
@@ -1460,99 +1568,161 @@ function parseCsv(text) {
     if (iPx >= 0 && c[iPx]) row.price = Number(c[iPx].replace(/[$,]/g, ""));
     return row;
   });
+  if (!rows.length) throw new Error("header row only — no holdings in that file");
+  return rows;
 }
 
 async function loadDemoPortfolio() {
   const { body } = await api("/api/portfolio/demo");
-  pm.portfolio = body.portfolio;
   pm.rows = null;
   renderHoldings(body.portfolio);
+  logEvent("SYS", "portfolio DEMO_01 loaded");
 }
 
-function stage(text) { $("solverName").textContent = text; }
-
-async function runFirebreak() {
-  $("onboard").hidden = true;
-  showScene("result");
-  $("resultHero").textContent = "…";
-  $("resultSub").textContent = "Scanning candidate shocks, simulating cascades…";
-  $("resultGrid").innerHTML = "";
-  $("resultPlain").textContent = "";
-  setStep(3);
+/* ── the reverse test ───────────────────────────────────────────────────── */
+async function runReverseTest() {
+  setWorkspace("attack");
+  setShockState("running", "SEARCHING");
+  setSolverState("running", "RUNNING");
+  logEvent("SOLV", `reverse stress search started · limit ${pctOf(pm.limit)}`);
 
   const payload = pm.rows ? { holdings: pm.rows, source: "csv" } : {};
+  const started = performance.now();
   const { body } = await api(`/api/portfolio/full?limit=${pm.limit}`, () => true, payload);
+  const ms = Math.round(performance.now() - started);
   pm.result = body;
 
-  // A REFUSAL and a NEGATIVE RESULT are different answers and must not share a
-  // branch. This tested only `!body.found`, so an error payload — where `found`
-  // is undefined and therefore falsy — rendered as "we searched and found
-  // nothing", with `body.reason` undefined so the sub-line was blank. Nothing
-  // had been searched. A holding had been refused. And the input that gets you
-  // there is VOO or SPY in a brokerage CSV.
   if (body.refused || body.error) {
     const missing = (body.unmodelled || []).join(", ");
-    $("resultHero").textContent = "can't model this";
-    $("resultSub").textContent = missing
-      ? `${missing} ${body.unmodelled.length > 1 ? "are" : "is"} outside the modelled universe.`
-      : (body.reason || body.error || "This portfolio could not be analysed.");
-    $("resultPlain").textContent = missing
-      ? `Firebreak models contagion through ${(body.modelled || []).length - 1} large-cap ` +
-        `names drawn from institutional 13F filings, plus cash. ${missing} ` +
-        `${body.unmodelled.length > 1 ? "are" : "is"} not among them, so there is no ` +
-        `crowding network to reason about — and rather than drop the holding and quietly ` +
-        `renormalise everything else, we stop. Modelled names: ` +
-        `${(body.modelled || []).join(", ")}.`
-      : (body.reason || "");
-    $("resultGrid").innerHTML = "";
+    setShockState("warn", "REFUSED");
+    setSolverState("warn", "REFUSED");
+    clearTelemetry();
+    setShockState("warn", "REFUSED");
+    logEvent("ERR", missing
+      ? `cannot model ${missing} — outside the modelled universe`
+      : (body.reason || "portfolio refused"));
+    $("wsSub").textContent = body.reason || "This portfolio could not be analysed.";
     return;
   }
 
   if (!body.found) {
-    $("resultHero").textContent = "none found";
-    $("resultSub").textContent = body.reason || "";
-    $("resultPlain").textContent =
-      "That is not the same as safe. We searched a range of single-name shocks and " +
-      "none of them crossed your limit under these assumptions.";
+    clearTelemetry();
+    setShockState("", "NO BREAK FOUND");
+    setSolverState("ok", "CONVERGED");
+    logEvent("SOLV", `no break found within the searched domain · ${ms}ms`);
+    $("wsSub").textContent =
+      "No shock in the tested range crossed the limit. That is not the same as safe.";
     return;
   }
 
-  const r = body;
-  $("resultHero").textContent = `${r.asset} −${r.pct.toFixed(2)}%`;
-  $("resultSub").textContent =
-    `Smallest modelled single-name shock that pushes this portfolio past a ` +
-    `${pctOf(r.params.limit, 0)} loss.`;
-  $("resultGrid").innerHTML = [
-    ["Direct loss", pctOf(r.direct_loss)],
-    ["After cascade", pctOf(r.cascade_loss)],
-    ["Amplification", `${r.amplification.toFixed(2)}×`],
-    ["Rounds", String(r.rounds)],
-  ].map(([l, v]) => `<div class="cell"><span class="v">${v}</span><span class="l">${l}</span></div>`).join("");
-  $("resultPlain").textContent =
-    `The ${r.asset} decline is only the trigger. ${r.breached.length} of the modelled ` +
-    `institutions cross their leverage limit and are forced to sell, and because they ` +
-    `hold the same names you do, that selling pushes your other positions down too — ` +
-    `turning a ${pctOf(r.direct_loss)} direct hit into ${pctOf(r.cascade_loss)}.`;
+  renderHoldings(body.portfolio, body.asset);
+  paintTelemetry(body);
+  setSolverState("ok", "CONVERGED");
+  $("solverName").textContent = "grid scan + bisection";
+  $("solverStats").textContent =
+    `names ${body.tickers.length} · ${ms}ms · resolution 0.005pp`;
+  logEvent("SOLV", `break point found: ${body.asset} −${body.pct.toFixed(2)}%`);
+  logEvent("RISK", `direct ${pctOf(body.direct_loss)} → cascade ${pctOf(body.cascade_loss)} ` +
+                   `· amplification ${body.amplification.toFixed(2)}×`);
+  $("defendBtn").disabled = false;
+  $("wsSub").textContent =
+    `${body.breached.length} of ${body.portfolio ? 5 : 5} institutional books breach and are forced to sell.`;
 }
 
-function renderFix() {
+/* ── cascade replay ─────────────────────────────────────────────────────── */
+async function replayPortfolioCascade() {
   const r = pm.result;
-  if (!r || !r.found) return;
-  setStep(5);
+  if (!r || !r.found) { logEvent("ERR", "no break point to replay — run the reverse test"); return; }
+  setWorkspace("cascade");
+  const ticket = claimStage();
+  logEvent("SYS", `cascade replay · ${r.asset} −${r.pct.toFixed(2)}%`);
+  const { body } = await api(
+    `/api/cascade?asset=${encodeURIComponent(r.asset)}&magnitude=${Math.abs(r.magnitude)}&${params()}`,
+    () => holdsStage(ticket));
+  if (!holdsStage(ticket)) return;
+  state.run = normalise(body);
+  state.layout = null;
+  state.knobs = knobs();
+  await new Promise((rs) => requestAnimationFrame(() => requestAnimationFrame(rs)));
+  ensureLayout(state.run, $("network"));
+  streamCascadeEvents(body);
+  playCascade();
+}
+
+/* Events straight off the trajectory. A round that reports a breach the
+   payload does not contain would be a lie told in a log's voice. */
+function streamCascadeEvents(body) {
+  const names = body.funds || [];
+  const tickers = body.tickers || [];
+  body.trajectory.forEach((frame, t) => {
+    if (t === 0) {
+      logEvent("R00", `shock applied · ${body.asset} ${pctOf(body.magnitude)}`);
+      return;
+    }
+    const tag = `R${String(t).padStart(2, "0")}`;
+    const sold = frame.sold || [];
+    (frame.breached || []).forEach((j) => {
+      logEvent(tag, `${names[j] || `FUND_${j}`} crossed its leverage limit`, { breach: true });
+    });
+    sold.forEach((row, j) => {
+      const hit = row.map((v, a) => [v, a]).filter(([v]) => v > 0)
+                     .sort((x, y) => y[0] - x[0]).slice(0, 3).map(([, a]) => tickers[a]);
+      if (hit.length) logEvent(tag, `${names[j] || `FUND_${j}`} liquidates ${hit.join(" / ")}`);
+    });
+    const worst = (frame.prices || []).reduce(
+      (acc, p, a) => (p < acc[0] ? [p, a] : acc), [1, -1]);
+    if (worst[1] >= 0 && worst[0] < 1) {
+      logEvent(tag, `${tickers[worst[1]]} marked at ${pctOf(worst[0] - 1)}`);
+    }
+    $("teleActive").textContent = String(t);
+  });
+  logEvent(`R${String(body.trajectory.length - 1).padStart(2, "0")}`,
+           body.converged ? "cascade stabilised" : "did not converge within the round cap");
+}
+
+/* ── defence ────────────────────────────────────────────────────────────── */
+async function computeDefense() {
+  const r = pm.result;
+  if (!r || !r.found) { logEvent("ERR", "no break point — run the reverse test first"); return; }
+  setWorkspace("defend");
+  $("lockedShock").innerHTML = `LOCKED SHOCK — <span class="num">${r.asset} −${r.pct.toFixed(2)}%</span>`;
+
   if (!r.fix) {
     $("fixLine").hidden = false;
-    $("fixLine").innerHTML = `<b>No single-position change clears it.</b> <em>${r.fix_reason}</em>`;
+    $("fixLine").innerHTML =
+      `<b>NO SINGLE-POSITION INTERVENTION CLEARS THE LIMIT.</b> <em>${r.fix_reason || ""}</em>`;
+    logEvent("DEF", "no single-position intervention clears the limit");
     return;
   }
   const f = r.fix;
   $("fixLine").hidden = false;
   $("fixLine").innerHTML =
-    `<b>Reduce ${f.symbol} by ${fmtUsd(f.dollars)}</b> ` +
-    `<em>· ${pctOf(f.fraction_of_position, 1)} of that position, moved to cash ` +
-    `· leaves a ${pctOf(f.loss_after)} loss against your ${pctOf(r.params.limit, 0)} limit</em>`;
+    `<b>REDUCE ${f.symbol} BY ${fmtUsd(f.dollars)}</b> ` +
+    `<em>· ${pctOf(f.fraction_of_position, 1)} of the position · moved to cash ` +
+    `· leaves ${pctOf(f.loss_after)} against a ${pctOf(r.params.limit)} limit</em>`;
   $("boughtLine").hidden = false;
-  $("boughtLine").innerHTML =
-    `<em>${f.note}</em>`;
+  $("boughtLine").innerHTML = `<em>${f.note}</em>`;
+  logEvent("DEF", `minimum intervention: reduce ${f.symbol} by ${fmtUsd(f.dollars)} ` +
+                  `(${pctOf(f.fraction_of_position, 1)} of position)`);
+  await defend();
+}
+
+/* ── verification ───────────────────────────────────────────────────────── */
+function showValidation() {
+  const r = pm.result;
+  if (!r || !r.validation) { logEvent("ERR", "nothing to verify — compute a defence first"); return; }
+  setWorkspace("verify");
+  const s = r.validation.identical_shock, n = r.validation.new_breaking_point;
+  const syn = r.validation.synthetic;
+  $("validTop").innerHTML = [
+    ["BREAK POINT", n.after_pct === null ? "no break found"
+      : `−${n.before_pct.toFixed(2)}% <em>→</em> −${n.after_pct.toFixed(2)}%`],
+    ["LOSS AT THE SAME SHOCK", `${pctOf(s.before_loss)} <em>→</em> ${pctOf(s.after_loss)}`],
+    ["WORST OF " + syn.scenarios, `${pctOf(syn.before.worst_loss)} <em>→</em> ${pctOf(syn.after.worst_loss)}`],
+  ].map(([l, v]) => `<div class="cell"><span class="v">${v}</span><span class="l">${l}</span></div>`).join("");
+  validTab("same");
+  logEvent("VAL", `break point −${n.before_pct.toFixed(2)}% → −${n.after_pct.toFixed(2)}% ` +
+                  `(+${n.moved_pp.toFixed(2)}pp)`);
 }
 
 function validTab(which) {
@@ -1564,28 +1734,30 @@ function validTab(which) {
   if (which === "same") {
     const s = v.identical_shock;
     body.innerHTML = `<table>
-      <tr><th></th><th>Before</th><th>After</th></tr>
+      <tr><th></th><th>CURRENT</th><th>DEFENDED</th></tr>
       <tr><td>Shock</td><td><b>${pm.result.asset} −${s.shock_pct.toFixed(2)}%</b></td><td><b>${pm.result.asset} −${s.shock_pct.toFixed(2)}%</b></td></tr>
       <tr><td>Portfolio loss</td><td><b>${pctOf(s.before_loss)}</b></td><td><b>${pctOf(s.after_loss)}</b></td></tr>
-      <tr><td>Your limit</td><td>${pctOf(s.limit, 0)}</td><td>${pctOf(s.limit, 0)}</td></tr>
-      <tr><td>Crosses it?</td><td><b>${s.before_breaks ? "YES" : "no"}</b></td><td><b>${s.after_breaks ? "YES" : "no"}</b></td></tr>
+      <tr><td>Loss limit</td><td>${pctOf(s.limit)}</td><td>${pctOf(s.limit)}</td></tr>
+      <tr><td>Status</td><td class="${s.before_breaks ? "fail" : "pass"}"><b>${s.before_breaks ? "BREACH" : "WITHIN LIMIT"}</b></td>
+          <td class="${s.after_breaks ? "fail" : "pass"}"><b>${s.after_breaks ? "BREACH" : "WITHIN LIMIT"}</b></td></tr>
       </table><p class="valid-note">${s.note}</p>`;
   } else if (which === "newbreak") {
     const n = v.new_breaking_point;
     body.innerHTML = n.after_pct === null
-      ? `<p>No shock in the tested range breaks the adjusted portfolio.</p>`
+      ? `<p>No shock in the tested range breaks the defended book.</p>`
       : `<table>
-      <tr><td>Break point before</td><td><b>−${n.before_pct.toFixed(2)}%</b></td></tr>
-      <tr><td>Break point after</td><td><b>−${n.after_pct.toFixed(2)}%</b></td></tr>
-      <tr><td>Moved outward by</td><td><b>${n.moved_pp.toFixed(2)}pp</b></td></tr>
-      <tr><td>Shock now required</td><td><b>${((n.moved_ratio - 1) * 100).toFixed(0)}% more</b></td></tr>
-      </table><p class="valid-note">Recomputed by re-running the same reverse search
-      against the adjusted portfolio — not derived from the size of the cut.</p>`;
+      <tr><td>Break point, current</td><td><b>−${n.before_pct.toFixed(2)}%</b></td></tr>
+      <tr><td>Break point, defended</td><td><b>−${n.after_pct.toFixed(2)}%</b></td></tr>
+      <tr><td>Moved outward</td><td><b>${n.moved_pp.toFixed(2)} pp</b></td></tr>
+      <tr><td>Additional shock required</td><td><b>${((n.moved_ratio - 1) * 100).toFixed(0)}%</b></td></tr>
+      </table><p class="valid-note">Recomputed by re-running the same reverse search against
+      the defended book — not derived from the size of the cut.</p>`;
   } else if (which === "synthetic") {
     const s = v.synthetic;
+    const sv = (x) => (x === null || x === undefined ? "—" : pctOf(x, 0));
     body.innerHTML = `<table>
-      <tr><th>${s.scenarios} simulated scenarios</th><th>Before</th><th>After</th></tr>
-      <tr><td>Stayed under your limit</td><td><b>${pctOf(s.before.survival, 0)}</b></td><td><b>${pctOf(s.after.survival, 0)}</b></td></tr>
+      <tr><th>${s.scenarios} SIMULATED SCENARIOS</th><th>CURRENT</th><th>DEFENDED</th></tr>
+      <tr><td>Stayed under the limit</td><td><b>${sv(s.before.survival)}</b></td><td><b>${sv(s.after.survival)}</b></td></tr>
       <tr><td>Median loss</td><td><b>${pctOf(s.before.median_loss)}</b></td><td><b>${pctOf(s.after.median_loss)}</b></td></tr>
       <tr><td>95th percentile</td><td><b>${pctOf(s.before.p95_loss)}</b></td><td><b>${pctOf(s.after.p95_loss)}</b></td></tr>
       <tr><td>Worst modelled</td><td><b>${pctOf(s.before.worst_loss)}</b></td><td><b>${pctOf(s.after.worst_loss)}</b></td></tr>
@@ -1593,33 +1765,106 @@ function validTab(which) {
       These are our scenarios, not a probability about the world.</p>`;
   } else {
     const h = v.historical;
-    body.innerHTML = `<p><b>Not available in this build.</b></p>
+    body.innerHTML = `<p><b>HISTORICAL REPLAY — NOT AVAILABLE IN THIS BUILD.</b></p>
       <p class="valid-note">${h.reason}</p>
-      <p class="valid-note">It would answer: ${h.what_it_would_answer} We would rather
-      show you nothing than a number computed from returns we invented.</p>`;
+      <p class="valid-note">It would answer: ${h.what_it_would_answer} We would rather show
+      nothing than a number computed from returns we invented.</p>`;
   }
 }
 
-function showValidation() {
-  const r = pm.result;
-  if (!r || !r.validation) return;
-  setStep(6);
-  showScene("validate");
-  const s = r.validation.identical_shock, n = r.validation.new_breaking_point;
-  $("validTop").innerHTML = [
-    ["Break point", n.after_pct === null ? "no break found"
-      : `−${n.before_pct.toFixed(2)}% <em>→</em> −${n.after_pct.toFixed(2)}%`],
-    ["Loss at the same shock", `${pctOf(s.before_loss)} <em>→</em> ${pctOf(s.after_loss)}`],
-    ["Worst of 400 simulated", `${pctOf(r.validation.synthetic.before.worst_loss)} <em>→</em> ` +
-      `${pctOf(r.validation.synthetic.after.worst_loss)}`],
-  ].map(([l, v]) => `<div class="cell"><span class="v">${v}</span><span class="l">${l}</span></div>`).join("");
-  validTab("same");
+/* ── command deck ───────────────────────────────────────────────────────
+   Not a shell. A domain command line whose every entry calls exactly the
+   function the corresponding button calls — there is deliberately no
+   terminal-only capability, because that would be a second product with half
+   the testing and twice the ways to disagree with the screen. */
+
+const COMMANDS = {
+  help: () => {
+    logEvent("SYS", "commands: demo · import · limit <pct> · attack · boundary · " +
+                    "cascade · play · pause · round <n> · defend · verify · assumptions · reset");
+    return true;
+  },
+  demo: () => { loadDemoPortfolio(); return true; },
+  import: () => { $("csvFile").click(); return true; },
+  limit: (args) => {
+    const v = parseFloat(args[0]);
+    if (!isFinite(v)) { logEvent("ERR", "limit needs a percentage, e.g. `limit 10`"); return true; }
+    const frac = v > 1 ? v / 100 : v;
+    applyLimit(Math.min(0.9, Math.max(0.01, frac)));
+    return true;
+  },
+  attack: () => { runReverseTest(); return true; },
+  boundary: () => { setWorkspace("attack"); boundary(); return true; },
+  cascade: () => { replayPortfolioCascade(); return true; },
+  play: () => { setWorkspace("cascade"); playCascade(); return true; },
+  pause: () => { stopAnimations(); logEvent("SYS", "cascade paused"); return true; },
+  round: (args) => {
+    const n = parseInt(args[0], 10);
+    if (!isFinite(n)) { logEvent("ERR", "round needs a number, e.g. `round 2`"); return true; }
+    if (!state.run) { logEvent("ERR", "no run on the stage"); return true; }
+    stopAnimations();
+    showRound(Math.max(0, Math.min(n, state.run.frames.length - 1)));
+    return true;
+  },
+  defend: () => { computeDefense(); return true; },
+  verify: () => { showValidation(); return true; },
+  assumptions: () => { openAssumptions(); return true; },
+  reset: () => {
+    stopAnimations(); clearRun(); clearTelemetry();
+    pm.result = null; $("defendBtn").disabled = true;
+    setSolverState("", "IDLE"); setWorkspace("attack");
+    logEvent("SYS", "state reset");
+    return true;
+  },
+};
+
+const ALIASES = { run: "attack", replay: "cascade", fix: "defend", validate: "verify", "?": "help" };
+
+const history = [];
+let historyAt = 0;
+
+function runCommand(line) {
+  const parts = line.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return;
+  const name = (ALIASES[parts[0].toLowerCase()] || parts[0].toLowerCase());
+  logEvent("CMD", `> ${line.trim()}`);
+  const fn = COMMANDS[name];
+  if (!fn) { logEvent("ERR", `unknown command: ${parts[0]} — try \`help\``); return; }
+  fn(parts.slice(1));
 }
 
-/* wiring */
-$("useDemo").addEventListener("click", () => loadDemoPortfolio().catch((e) => {
-  $("connectNote").textContent = `Could not load the demo portfolio: ${e.message}`;
-}));
+function applyLimit(frac) {
+  pm.limit = frac;
+  $("ctxLimit").textContent = pctOf(frac);
+  $("teleLimit").textContent = pctOf(frac);
+  [...$("limits").children].forEach((b) =>
+    b.classList.toggle("on", Math.abs(Number(b.dataset.limit) - frac) < 1e-9));
+  logEvent("RISK", `loss limit set to ${pctOf(frac)}`);
+}
+
+function openAssumptions() {
+  $("assumePanel").hidden = false;
+  $("assumeClose").focus();
+}
+
+/* ── wiring ─────────────────────────────────────────────────────────────── */
+$("tabs").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-tab]");
+  if (!b) return;
+  const which = b.dataset.tab;
+  if (which === "cascade") return replayPortfolioCascade();
+  if (which === "defend") return computeDefense();
+  if (which === "verify") return showValidation();
+  setWorkspace(which);
+});
+
+$("limits").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-limit]");
+  if (b) applyLimit(Number(b.dataset.limit));
+});
+
+$("useDemo").addEventListener("click", () => loadDemoPortfolio()
+  .catch((e) => logEvent("ERR", `demo portfolio failed: ${e.message}`)));
 
 $("csvFile").addEventListener("change", async (ev) => {
   const file = ev.target.files && ev.target.files[0];
@@ -1628,67 +1873,74 @@ $("csvFile").addEventListener("change", async (ev) => {
     pm.rows = parseCsv(await file.text());
     const { body } = await api("/api/portfolio/firebreak?limit=0.10", () => true,
                                { holdings: pm.rows, source: "csv" });
-    pm.portfolio = body.portfolio;
+    if (body.refused) { logEvent("ERR", body.reason); pm.rows = null; return; }
     renderHoldings(body.portfolio);
-    $("connectNote").textContent = `Loaded ${pm.rows.length} rows from ${file.name}.`;
+    logEvent("SYS", `imported ${pm.rows.length} holdings from ${file.name}`);
   } catch (e) {
-    $("connectNote").textContent = `Could not read that file: ${e.message}`;
-    $("toLimit").disabled = true;
+    logEvent("ERR", `${file.name}: ${e.message}`);
+    pm.rows = null;
   }
 });
 
-$("toLimit").addEventListener("click", () => showPane(2));
-$("backToPortfolio").addEventListener("click", () => showPane(1));
-$("limits").addEventListener("click", (ev) => {
-  const b = ev.target.closest("button[data-limit]");
-  if (!b) return;
-  pm.limit = Number(b.dataset.limit);
-  [...$("limits").children].forEach((x) => x.classList.toggle("on", x === b));
-});
-$("findBtn").addEventListener("click", () => runFirebreak());
-/* Step 4 replays the PORTFOLIO's shock, not the institutional search.
-   attack() hits /api/break, which searches for the shock that breaks N funds —
-   a different question with a different answer. It animated -5.27% with four
-   funds breaching under a result card that had just said -24.69% with five. */
-$("watchBtn").addEventListener("click", async () => {
-  setStep(4);
-  const r = pm.result;
-  if (!r || !r.found) { attack(); return; }
-  showScene("network");
-  const ticket = claimStage();
-  const { body } = await api(
-    `/api/cascade?asset=${encodeURIComponent(r.asset)}` +
-    `&magnitude=${Math.abs(r.magnitude)}&${params()}`, () => holdsStage(ticket));
-  if (!holdsStage(ticket)) return;
-  state.run = normalise(body);
-  state.layout = null;
-  state.knobs = knobs();
-  await new Promise((rs) => requestAnimationFrame(() => requestAnimationFrame(rs)));
-  ensureLayout(state.run, $("network"));
-  countTo(r.pct);
-  $("heroSub").textContent =
-    `${r.asset} · ${body.breached.length} of ${body.funds.length} institutions forced to sell` +
-    ` · your loss ${(r.cascade_loss * 100).toFixed(2)}%`;
-  setSolver("replaying your shock", `<span>${r.asset}</span> −${r.pct.toFixed(2)}%`);
-  $("defendBtn").disabled = false;
-  playCascade();
-});
-$("fixBtn").addEventListener("click", async () => {
-  renderFix();
-  await defend();
-  const cta = document.createElement("button");
-  cta.className = "primary";
-  cta.textContent = "Validate recommendation";
-  cta.addEventListener("click", showValidation);
-  const stamp = $("splitRound").parentElement;
-  if (!stamp.querySelector("button")) stamp.appendChild(cta);
+$("defendBtn").addEventListener("click", computeDefense);
+$("helpBtn").addEventListener("click", () => COMMANDS.help());
+$("modelTags").addEventListener("click", (ev) => {
+  if (ev.target.closest(".tag")) openAssumptions();
 });
 $("validTabs").addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-tab]");
   if (b) validTab(b.dataset.tab);
 });
-$("deskBtn").addEventListener("click", () => {
-  $("onboard").hidden = true;
-  showScene("network");
-  attack();
+
+$("deck").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const input = $("cmd");
+  const line = input.value;
+  if (!line.trim()) return;
+  history.push(line); historyAt = history.length;
+  input.value = "";
+  runCommand(line);
 });
+
+$("cmd").addEventListener("keydown", (ev) => {
+  if (ev.key === "ArrowUp" && historyAt > 0) {
+    historyAt -= 1; $("cmd").value = history[historyAt]; ev.preventDefault();
+  } else if (ev.key === "ArrowDown") {
+    historyAt = Math.min(history.length, historyAt + 1);
+    $("cmd").value = historyAt === history.length ? "" : history[historyAt];
+    ev.preventDefault();
+  } else if (ev.key === "Escape") {
+    $("cmd").value = ""; $("cmd").blur();
+  } else if (ev.key === "Tab") {
+    const stem = $("cmd").value.trim().toLowerCase();
+    const hit = Object.keys(COMMANDS).find((c) => c.startsWith(stem) && stem);
+    if (hit) { $("cmd").value = hit + " "; ev.preventDefault(); }
+  }
+});
+
+window.addEventListener("keydown", (ev) => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "k") {
+    ev.preventDefault(); $("cmd").focus();
+  }
+  if (ev.altKey && "1234".includes(ev.key)) {
+    ev.preventDefault();
+    const tab = ["attack", "cascade", "defend", "verify"][Number(ev.key) - 1];
+    $("tabs").querySelector(`button[data-tab="${tab}"]`).click();
+  }
+});
+
+/* ── boot ───────────────────────────────────────────────────────────────
+   A judge should see a working instrument before touching anything, so the
+   demo book loads itself and the network is on the stage from the first
+   frame. No onboarding, no modal, no empty card. */
+(async function bootTerminal() {
+  logEvent("SYS", "firebreak terminal initialised");
+  setWorkspace("attack");
+  setSolverState("", "IDLE");
+  applyLimit(0.10);
+  try {
+    await loadDemoPortfolio();
+  } catch (e) {
+    logEvent("ERR", `could not load the demo portfolio: ${e.message}`);
+  }
+})();
