@@ -53,19 +53,37 @@ bindKeys("assumptions");
 (async () => {
   let d = {};
   try { d = await api("/api/dataset"); } catch {}
+  /* The knobs this session actually ran with; failing that, the engine's own
+     declared defaults off /api/dataset — never a literal typed here, which is
+     how the value on a methodology page drifts from the value in the model. */
+  const P = (FB.state.result && FB.state.result.params) || d.defaults || {};
   const rows = [
     ["measured", "Holdings", `Real, and the only thing here that is. SEC 13F-HR filings, period
       ${d.quarter || "2026-06-30"}, ${(d.funds || []).length || 5} managers across
       ${(d.tickers || []).length || 10} names, $40.9B gross notional. Reproducible from EDGAR.`],
-    ["declared", "Gross leverage", "No fund discloses it. It is a model assumption, applied uniformly."],
-    ["declared", "Breach band", "How far past target a book runs before it is forced to sell. This swings the headline harder than leverage or price impact."],
-    ["declared", "Price impact", "A model, not a measurement. Δp/p = −γ · (dollars sold) / ADV, linear in participation. At γ=0 there is no contagion and amplification is exactly 1.00 — that is the control."],
+    /* The values themselves were never on this page — it described each
+       assumption at length and never said what number was used, which is the
+       one thing a page about declared inputs owes you. They come from the
+       run's own params, so they follow the scenario rather than being typed
+       here and going stale. */
+    ["declared", `Gross leverage · ${P.leverage != null ? P.leverage.toFixed(1) + "×" : "—"}`,
+      "No fund discloses it. One assumed value, applied to all five books."],
+    ["declared", `Breach band · ${P.band != null ? P.band.toFixed(2) + "× target" : "—"}`,
+      `How far past target a book runs before it is forced to sell${P.leverage != null && P.band != null
+        ? `, so a book sells above ${(P.leverage * P.band).toFixed(2)}×` : ""}. ` +
+      "This swings the headline harder than leverage or price impact."],
+    ["declared", `Price impact · γ = ${P.gamma != null ? P.gamma : "—"}`,
+      "A model, not a measurement. Δp/p = −γ · (dollars sold) / ADV, linear in participation. At γ=0 there is no contagion and amplification is exactly 1.00 — that is the control."],
     ["declared", "ADV", "Order-of-magnitude daily dollar volume. GOOGL's column sums Class A, Class C and two depositary-share lines, and its figure is Alphabet's combined volume across them."],
-    ["limit", "What 13F omits", "Long-only US equity, quarterly, filed 45 days late. Options and bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us."],
-    ["limit", "Your portfolio is an observer", "It takes the price damage; it does not join the network. A retail account does not move markets, so your fix changes how much of the cascade reaches you — not whether the cascade happens."],
-    ["limit", "Not a prediction", "A break point is the smallest shock our model says crosses your limit under these assumptions. It is not a proven threshold and not a forecast."],
+    /* "LIMIT" is the user's loss limit everywhere else in this product — in
+       the nav, in the stat tiles, in "within the limit". Reusing it here for
+       "things the model cannot see" put two unrelated meanings on one word. */
+    ["not modelled", "What 13F omits", "Long-only US equity, quarterly, filed 45 days late. Options and bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us."],
+    ["not modelled", "Your portfolio is an observer", "It takes the price damage; it does not join the network. A retail account does not move markets, so your fix changes how much of the cascade reaches you — not whether the cascade happens."],
+    ["not modelled", "Not a prediction", "A break point is the smallest shock our model says crosses your limit under these assumptions. It is not a proven threshold and not a forecast."],
   ];
-  const colour = { measured: "var(--positive)", declared: "hsl(38 92% 60%)", limit: "var(--muted-foreground)" };
+  const colour = { measured: "var(--positive)", declared: "var(--warn)",
+                   "not modelled": "var(--text-dim)" };
   document.getElementById("rows").innerHTML = rows.map(([kind, name, body]) => `
     <tr><td style="width:210px;vertical-align:top">
         <div class="stack gap-2">

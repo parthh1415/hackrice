@@ -89,7 +89,16 @@ if (r) (async () => {
   const mk = (t, a) => { const e = document.createElementNS(ns, t);
     for (const k in a) e.setAttribute(k, a[k]); return e; };
 
-  const ay = (i) => 46 + i * ((H - 92) / (T.length - 1));
+  /* Rows were in dataset order, which is arbitrary. Sorting by how much
+     institutional money sits in each name puts the crowded ones at the top —
+     which is the property the whole diagram is about, and it makes NVDA's
+     position on screen an argument rather than a coincidence. */
+  const ownership = T.map((_, i) => body.holdings.reduce((a, row) => a + row[i], 0));
+  const order = T.map((_, i) => i).sort((a, b) => ownership[b] - ownership[a]);
+  const rowOf = [];
+  order.forEach((assetIndex, row) => { rowOf[assetIndex] = row; });
+
+  const ay = (i) => 46 + rowOf[i] * ((H - 92) / (T.length - 1));
   const fy = (j) => 80 + j * ((H - 160) / (F.length - 1));
   const maxPos = Math.max(...body.holdings.flat());
   /* The busiest round, so flow widths are comparable ACROSS rounds — scaling
@@ -140,9 +149,15 @@ if (r) (async () => {
       const val = mk("text", { x: LX - 16, y: ay(i) + 18, "text-anchor": "end",
         "font-family": "var(--mono)", "font-size": 10,
         fill: hot ? "hsl(359 100% 61%)" : "hsl(0 0% 38%)" });
-      // -0.00% is what you get when you put a minus in front of a formatter
-      // and trust it. An asset that has not moved should say so.
-      val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "0.00%";
+      /* Nine of ten names read 0.00% on the shock frame, which is dead ink on
+         the densest panel in the app — and worse, it makes the frame where
+         contagion arrives look identical to the one before it. Leaving the
+         slot empty until a name actually moves turns the spread into
+         something you can watch: one number at round 0, ten by round 1.
+         (The original bug here was "−0.00%" — a minus in front of a
+         formatter, trusted. An asset that has not moved must not report a
+         loss, of either sign.) */
+      val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "";
       svg.appendChild(val);
     });
     F.forEach((name, j) => {

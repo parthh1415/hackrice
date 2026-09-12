@@ -155,9 +155,19 @@ h2{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
   font-size:11px;text-transform:uppercase;display:flex;align-items:center;
   justify-content:space-between;gap:10px;flex-shrink:0;
 }
-.card-header .sub{color:var(--text-dimmer);font-weight:400;letter-spacing:.02em;text-transform:none}
+/* These carry the integrity claims — "not derived from the size of the cut",
+   "Seed 20260912, so this reproduces exactly", "Locked shock, unchanged from
+   the analysis". --text-dimmer is #4d4d4d on the panel, about 2.2:1, which is
+   not a contrast ratio you put a claim behind. */
+.card-header .sub{color:var(--text-dim);font-weight:400;letter-spacing:.02em;text-transform:none}
 .card-title{color:inherit}
-.card-desc{display:none}
+/* `display:none` hid three disclosures that exist BECAUSE of this project's
+   own rules: the search resolution, which is the statement that licenses
+   printing two decimals on the hero; the data vintage; and "nothing is
+   interpolated". A claim made in the source and hidden from the screen is
+   worse than one never made. */
+.card-desc{color:var(--text-dim);font-weight:400;letter-spacing:.02em;
+  text-transform:none;font-size:var(--fs-0);line-height:14px}
 .card-body{padding:8px}
 .card-body.tight{padding:0}
 .card-footer{padding:6px 8px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:center}

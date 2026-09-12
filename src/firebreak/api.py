@@ -24,7 +24,13 @@ def _health(params):
 
 
 def _dataset(params):
-    return load_dataset()
+    # The model's declared inputs travel with the data they are declared about,
+    # so the methodology page can print the numbers instead of hardcoding them
+    # beside a comment promising it does not.
+    out = dict(load_dataset())
+    out["defaults"] = {name: default for name, (_, _, default) in _LIMITS.items()}
+    out["defaults"]["breaches"] = 2
+    return out
 
 
 def handle(path, body):
@@ -904,6 +910,11 @@ def _solve_portfolio(params, body):
         # make.
         out["reason"] = ("No shock within the tested range pushed this portfolio "
                          "past the limit under these assumptions.")
+        # The UI has to be able to name the range. "The tested range" is an
+        # appeal to something the reader cannot see, and the number belongs to
+        # the search, not to a literal typed into a page.
+        from .search import _MAX_DROP
+        out["search_max_drop"] = _MAX_DROP
         return out, None, None, scenario, data
 
     result = run_cascade(shock=found.shock, **scenario)

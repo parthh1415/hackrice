@@ -111,7 +111,9 @@ if (r) {
               /* the totals are the claim. Printing them is what makes "worth
                  the same afterwards" something you can check rather than
                  something you have to take on faith. */
-              return body + `<tr><td><b>Total</b></td>
+              /* ruled, because a total that shares a hairline with the row
+                 above reads as one more holding. */
+              return body + `<tr style="border-top:1px solid var(--border)"><td><b>Total</b></td>
                 <td class="r num muted"><b>${usdExact(sumBefore)}</b></td>
                 <td class="r num"><b>${usdExact(sumAfter)}</b></td>
                 <td class="r num muted">unchanged</td></tr>`;

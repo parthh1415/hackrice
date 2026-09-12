@@ -104,8 +104,10 @@ bindKeys("analysis");
     const note = document.createElement("p");
     note.className = "lede";
     note.style.color = "var(--warn)";
-    note.textContent = `You asked for a ${pct(clamp.given, 0)} limit. This build searches ` +
-      `between 1% and 90%, so it used ${pct(clamp.used, 0)}.`;
+    /* "searches between 1% and 90%" described the accepted LIMIT range using
+       the verb for the SHOCK search, which is a different range (up to 60%). */
+    note.textContent = `Limits are accepted from ${pct(0.01, 0)} to ${pct(0.90, 0)}. ` +
+      `${pct(clamp.given, 0)} was pulled in to ${pct(clamp.used, 0)}.`;
     document.getElementById("sub").after(note);
   }
 
@@ -123,7 +125,13 @@ bindKeys("analysis");
   if (!body.found) {
     document.getElementById("title").textContent = "No break point found";
     document.getElementById("sub").textContent =
-      body.reason + " That is not the same as safe — we searched a range and found nothing in it.";
+      /* The reason never named the range, so "the tested range" was an appeal
+         to something the reader could not see. It is 60% — _MAX_DROP in
+         search.py — and saying so is the difference between a hedge and a
+         disclosure. */
+      `No single-name fall of up to ${pct(body.search_max_drop || 0.60, 0)} pushes this ` +
+      `portfolio past ${pct(body.params.limit, 0)} under these assumptions. That is the ` +
+      `edge of what was tested, not a clean bill of health.`;
     return;
   }
 
@@ -177,8 +185,16 @@ bindKeys("analysis");
   document.getElementById("resultDesc").textContent =
     `Searched every modelled name. The search resolves to ±0.005 percentage points.`;
   document.getElementById("big").textContent = `${body.asset} −${body.pct.toFixed(2)}%`;
+  /* The break point is correctly the hero — a reverse stress test's OUTPUT is
+     the shock, not the limit. But the amplification was tile three of four,
+     weighted equally with "cascade rounds: 3", when it is the mechanism the
+     whole product exists to show. It belongs in the sentence under the
+     headline, not in a tile you read fourth. */
   document.getElementById("bigSub").textContent =
-    `At this shock your portfolio loses ${pct(body.cascade_loss)}, against a limit of ${pct(body.params.limit, 0)}.`;
+    `At this shock your portfolio loses ${pct(body.cascade_loss)} against a limit of ` +
+    `${pct(body.params.limit, 0)} — ${body.amplification ? num(body.amplification, 2) + "×" : ""} ` +
+    `what the fall alone would cost you, because ${body.breached.length} of the ` +
+    `${(body.funds || []).length} books we model are forced to sell into it.`;
 
   document.getElementById("stats").innerHTML = [
     ["Direct loss", pct(body.direct_loss), "the shock alone", ""],

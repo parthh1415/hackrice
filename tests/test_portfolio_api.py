@@ -319,3 +319,20 @@ def test_an_unreadable_magnitude_is_zero_and_says_so_rather_than_becoming_nan():
     out = api.handle("/api/cascade?asset=NVDA&magnitude=abc", {})
     assert out["trajectory"][0]["prices"][0] == pytest.approx(1.0)
     assert any(c["name"] == "magnitude" for c in out["params"].get("clamped", []))
+
+
+def test_the_no_break_point_answer_carries_the_range_it_searched():
+    """"The tested range" is an appeal to something the reader cannot see.
+
+    The UI has to be able to name it, and the number belongs to the search
+    rather than to a literal typed into a page — otherwise widening _MAX_DROP
+    leaves the screen quoting the old figure.
+    """
+    from firebreak.search import _MAX_DROP
+
+    out = api.handle("/api/portfolio/full?limit=0.90", {"holdings": [
+        {"symbol": "CASH", "market_value": 9000},
+        {"symbol": "NVDA", "market_value": 1000},
+    ], "source": "csv"})
+    assert out["found"] is False
+    assert out["search_max_drop"] == pytest.approx(_MAX_DROP)

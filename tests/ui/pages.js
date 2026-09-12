@@ -247,6 +247,23 @@ function visibleText(d) {
     const labels = [...c.d.querySelectorAll("#net text")].map((n) => n.textContent);
     check("no asset reports a negative zero", !labels.some((t) => t === "−0.00%"),
           labels.filter((t) => /0\.00%/.test(t)).join(" "));
+    /* A name that has not moved shows nothing rather than 0.00%: nine of ten
+       reading zero is dead ink, and it made the frame where contagion arrives
+       look identical to the one before it. */
+    check("an unmoved name shows no figure at all", !labels.some((t) => t === "0.00%"),
+          labels.filter((t) => t === "0.00%").length + " zeros drawn");
+
+    /* Rows are ordered by how much institutional money sits in each name, so
+       the crowded ones are at the top and position on screen is an argument. */
+    const own = cas.tickers.map((_, i) => cas.holdings.reduce((a, r) => a + r[i], 0));
+    const drawn = [...c.d.querySelectorAll("#net text")]
+      .filter((n) => cas.tickers.includes(n.textContent))
+      .sort((a, b) => Number(a.getAttribute("y")) - Number(b.getAttribute("y")))
+      .map((n) => n.textContent);
+    const wanted = cas.tickers.map((t, i) => [t, own[i]])
+      .sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+    eq("the most crowded name is drawn at the top", drawn[0], wanted[0]);
+    eq("and the rows are in crowding order throughout", drawn.join(","), wanted.join(","));
 
     const f0 = cas.trajectory[0];
     const shocked = cas.tickers[f0.prices.findIndex((p) => p < 1 - 1e-9)];
@@ -551,11 +568,15 @@ function visibleText(d) {
        used. If those are allowed to diverge, a clamped limit puts 95% and 90%
        on the same screen with nothing to reconcile them. */
     const c = await load("analysis.html", {}, "?demo&limit=0.95");
-    const ok = await until(() => /asked for a/.test(visibleText(c.d)));
+    /* Assert the two NUMBERS rather than a sentence — the wording of this
+       notice has already changed once, and a check pinned to prose fails on an
+       edit that improves it while missing one that drops a figure. */
+    const ok = await until(() => /\b95%/.test(visibleText(c.d)));
     check("a clamped limit says so instead of silently using another number", ok,
-          visibleText(c.d).trim().slice(0, 160));
-    has("and names both the limit asked for and the one used",
-        visibleText(c.d), "95% limit");
+          visibleText(c.d).trim().slice(0, 200));
+    const seen = visibleText(c.d);
+    check("and names both the limit asked for and the one used",
+          /\b95%/.test(seen) && /\b90%/.test(seen), seen.slice(0, 200));
     const navLimit = txt(c.d, "navLimit") || "";
     check("the nav shows the limit the engine used, not the one that was refused",
           navLimit.includes("90"), navLimit);
