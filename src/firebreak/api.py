@@ -412,13 +412,20 @@ _REF_SHOCK = -0.05
 def _boundary(params):
     """Sweep leverage against crowding and record amplification in each cell.
 
-    The reference shock is market-wide (every name down the same percent),
-    not single-name, and that matters. With a single-name shock, sharpening a
-    fund onto its biggest positions tends to *concentrate* it into the shocked
-    name — so the axis ends up measuring exposure rather than structure, and
-    the grid comes out non-monotonic. A uniform shock costs every fund the same
-    fraction of assets no matter how its weights are arranged, which leaves
-    overlap as the only thing varying along the x axis.
+    The reference shock is **single-name** — `reference_kind` in the response
+    says so, and the body sets `shock[0]`. This docstring used to claim it was
+    market-wide, which is what I tried first and then reverted; the description
+    outlived the code by several commits.
+
+    Both were tried, and the trade is real. A market-wide shock costs every
+    fund the same fraction of assets regardless of how its weights are
+    arranged, which isolates structure cleanly — but then overlap barely
+    matters and the map comes out almost flat, which is true and useless. The
+    single-name shock produces the diagonal boundary the literature describes,
+    at the cost that amplification is not monotone along the crowding axis:
+    sharpening a fund onto its biggest names tends to concentrate it into the
+    shocked one. The sharp transition to read off this map is in **leverage**
+    (1.00 at lambda~4.5 to 1.86 at lambda~5.0), not in crowding.
 
     Caccioli et al. (2014) show a critical leverage that falls as crowding
     rises. If this grid is right you should be able to see that curve.

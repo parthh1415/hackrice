@@ -173,3 +173,16 @@ def test_a_bad_matlab_file_falls_through_to_python(tmp_path, monkeypatch):
     result = mb.solve_stabilisation(SPEC)
 
     assert result is not None and result["engine"] == "python"
+
+
+def test_the_python_path_reports_the_solves_it_actually_did(tmp_path, monkeypatch):
+    """The readout sits next to MATLAB's funccount. It used to print
+    rows*cols*20 — the size of the search space, not the search."""
+    from firebreak import matlab_bridge as mb
+
+    monkeypatch.setattr(mb, "OUT_PATH", tmp_path / "nothing.json")
+    result = mb._python_fallback(SPEC)
+
+    assert result["engine"] == "python"
+    rows, cols = np.array(SPEC["holdings"]).shape
+    assert 0 < result["evaluations"] < rows * cols * 20

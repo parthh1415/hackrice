@@ -187,8 +187,21 @@ def _python_fallback(spec):
 
     started = time.perf_counter()
     holdings = np.array(spec["holdings"], dtype=float)
+
+    # the readout puts this next to MATLAB's funccount, so it has to be the
+    # number of cascades we ran, not the size of the space we could have
+    # searched. the early exit in find_cheapest_fix means those differ by a
+    # lot, and quoting the bigger one flatters the wrong solver.
+    solves = 0
+    fails = at_least_n_breaches(int(spec["breaches"]))
+
+    def condition(result):
+        nonlocal solves
+        solves += 1
+        return fails(result)
+
     fix = find_cheapest_fix(
-        condition=at_least_n_breaches(int(spec["breaches"])),
+        condition=condition,
         holdings=holdings,
         shock=np.array(spec["shock"], dtype=float),
         leverage=np.array(spec["leverage"], dtype=float),
@@ -205,7 +218,7 @@ def _python_fallback(spec):
         "reduction": fix.reduction,
         "cost": fix.cost,
         "solver": "exhaustive position scan",
-        "evaluations": holdings.shape[0] * holdings.shape[1] * 20,
+        "evaluations": solves,
         "exit_flag": 1,
         "solve_ms": round((time.perf_counter() - started) * 1000),
         "engine": "python",
