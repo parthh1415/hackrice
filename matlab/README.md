@@ -30,13 +30,21 @@ if a judge asks "why MATLAB?":
 `cascade.m` mirrors `src/firebreak/engine.py` so the optimiser has an
 objective to evaluate. `stabilise.m` is the solve.
 
+It is not decoration. The Python fallback walks the reduction up a 5% grid
+(`_STEPS = 20` in `stabilise.py`), so the smallest cut it can ever propose is
+5% of a position. `patternsearch` treats the reduction as continuous and
+routinely lands two or three orders of magnitude below that — on the checked-in
+spec it finds a fix costing **1.4e-06** of gross assets against the Python
+scan's **4.4e-04**. Same failure condition, same engine, same answer to
+"which position"; MATLAB just gets to say *how little* far more precisely.
+
 ## 3. Run it
 
 The app writes a spec every time you press **Stabilise**:
 
     data/cache/solve_spec.json
 
-(written by `write_spec` on every `/api/stabilise` call — `api.py:294`.)
+(written by `write_spec` on every `/api/stabilise` call — `api.py:345`.)
 
 In MATLAB Online:
 
@@ -60,7 +68,7 @@ The breach band reaches MATLAB baked into `spec.max_leverage` (which is
 changes the fingerprint like any other knob.
 
 `solve_out.json` is only used if it still answers the question on screen.
-Two guards, in order:
+Three guards, in order:
 
 1. **Fingerprint.** `stabilise.m` echoes the spec's `fingerprint` into its
    result. The bridge compares it to the live request and refuses a mismatch.
@@ -68,11 +76,41 @@ Two guards, in order:
    falls back to mtime: `solve_spec.json` is only rewritten when the question
    actually changes, so a `solve_out.json` older than it is stale by
    construction and is refused.
+3. **Re-simulation.** `_usable` in the bridge re-runs the proposed fix through
+   the *Python* engine and throws it away unless the patched system really does
+   stay under the breach count. This is the one that matters most: both solvers
+   can exit on an infeasible point and still hand back an `x`, and the offline
+   path is a file a human downloaded and dropped in a folder. A fix that
+   MATLAB believes in but Python cannot reproduce never reaches the screen.
 
-Either way a mismatch falls through to Python rather than being served. A
+Any of the three failing falls through to Python rather than being served. A
 stale answer presented confidently is worse than no answer.
 
-## 5. If you have MATLAB installed locally
+`stabilise.m` checks feasibility itself before reporting, so a correct MATLAB
+answer passes guard 3 rather than being caught by it.
+
+## 5. Two things about the solve that are not obvious
+
+**It starts from a grid, not from one point.** `patternsearch` halves its mesh
+on a failed poll, and `stabilise.m` rounds `x(1)`/`x(2)` into fund and asset
+indices — so once the mesh drops below 0.5 those two coordinates are frozen and
+the discrete half of the search is over while the mesh is still coarse. From a
+single `x0 = [1 1 0.25]`, a problem whose answer sits away from fund 1 / asset 1
+came back **14.7x more expensive than the optimum**. `startGrid` spreads three
+starts per dimension and keeps the cheapest feasible result; the extra polls
+cost a few thousand cascades, which on a book this size is milliseconds.
+
+**`MeshTolerance` is 1e-6, not the more usual 1e-3.** The reduction is the one
+coordinate genuinely worth refining, and at 1e-3 the search stops about a factor
+of 2.7 short of the cheapest fix.
+
+Toolboxes: `patternsearch` is Global Optimization Toolbox, `fmincon` is
+Optimization Toolbox. Neither is base MATLAB, so the `fmincon` path is a
+fallback for "no Global Optimization Toolbox", not for "no toolboxes at all" —
+which is fine, because Global Optimization Toolbox requires Optimization
+Toolbox anyway. With neither present, `stabilise.m` says so and stops.
+
+## 6. If you have MATLAB installed locally
 
     pip install matlabengine
 
