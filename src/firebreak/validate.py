@@ -67,7 +67,7 @@ def new_breaking_point(before, after, limit, holdings, **cascade_kwargs):
 
 
 def synthetic_stress(before, after, holdings, n=1000, seed=20260912,
-                     limit=None, **cascade_kwargs):
+                     limit=None, shock_range=(0.01, 0.30), **cascade_kwargs):
     """Test 3. N sampled shocks through the same engine, both portfolios scored
     on IDENTICAL draws.
 
@@ -83,7 +83,12 @@ def synthetic_stress(before, after, holdings, n=1000, seed=20260912,
     rng = np.random.default_rng(seed)
     n_assets = holdings.shape[1]
     assets = rng.integers(0, n_assets, size=n)
-    sizes = rng.uniform(0.01, 0.30, size=n)
+    # One place, so the range we report is the range we drew from. It used to
+    # be a literal [1.0, 30.0] fifteen lines below a separate 0.01/0.30 here;
+    # widening the draw left the payload describing the old one, and nothing
+    # in the suite could tell.
+    lo, hi = shock_range
+    sizes = rng.uniform(lo, hi, size=n)
 
     before_losses, after_losses, amps = [], [], []
     for asset, size in zip(assets, sizes):
@@ -97,7 +102,7 @@ def synthetic_stress(before, after, holdings, n=1000, seed=20260912,
     return {
         "scenarios": int(n),
         "seed": int(seed),
-        "shock_range_pct": [1.0, 30.0],
+        "shock_range_pct": [lo * 100.0, hi * 100.0],
         # `limit` is threaded through so the survival rate — the headline number
         # this module's own docstring advertises — actually exists. It did not:
         # survival() was called by nothing but its own test, the API never

@@ -94,6 +94,10 @@ paintNav("portfolio");
 
 function render(p) {
   FB.set({ portfolio: p });
+  /* A new book makes the old answer somebody else's. Conditional, because
+     this also runs when you simply navigate back here and the analysis you
+     already ran is still the right one. */
+  invalidateStaleResult();
   document.getElementById("pfCard").hidden = false;
   document.getElementById("limitCard").hidden = false;
   document.getElementById("pfName").textContent =
@@ -154,15 +158,30 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
   }
 });
 
+function paintLimits() {
+  const chosen = FB.state.limit;
+  [...document.getElementById("limits").children].forEach((x) =>
+    x.setAttribute("aria-pressed", String(Number(x.dataset.limit) === chosen)));
+}
+
 document.getElementById("limits").addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-limit]");
   if (!b) return;
-  [...ev.currentTarget.children].forEach(x => x.setAttribute("aria-pressed", String(x === b)));
   FB.set({ limit: Number(b.dataset.limit) });
+  paintLimits();
+  /* the old answer was computed against the old limit; the nav has to stop
+     advertising a break point that no longer belongs to the question. */
+  invalidateStaleResult();
+  paintNav("portfolio");
 });
 
 if (!FB.state.limit) FB.set({ limit: 0.10 });
+/* the pressed button is written into the HTML as a default. Without this, the
+   control shows 10% on a page whose state says 25% — two controls on one
+   screen disagreeing about the user's own risk limit. */
+paintLimits();
 if (FB.state.portfolio) render(FB.state.portfolio);
+paintNav("portfolio");
 
 /* ?demo — start with the book already loaded. Useful for a shareable link,
    and it is the only way to screenshot a loaded state from a cold browser. */

@@ -117,8 +117,27 @@ def test_the_new_break_point_is_recomputed_not_derived(solved):
             "has to sit further out"
         )
         assert out["moved_pp"] == pytest.approx(out["after_pct"] - out["before_pct"])
+
+        # moved_ratio is the only two-sided quantity here whose DIRECTION is
+        # the whole claim, and nothing asserted it. verify.html renders it as
+        # "Additional shock now required: +12%"; inverted to before/after it
+        # reads "−11%" — the evidence page saying the defended book breaks more
+        # easily — and every test in the suite stayed green.
+        assert out["moved_ratio"] == pytest.approx(out["after_pct"] / out["before_pct"])
+        assert out["moved_ratio"] > 1.0, (
+            "the defended book breaks further out, so the ratio of the new "
+            "break point to the old one is greater than one. A value below 1 "
+            "renders on the evidence page as a NEGATIVE additional shock"
+        )
+        # what the page actually prints, stated in the page's own terms
+        assert (out["moved_ratio"] - 1.0) * 100.0 > 0
     else:
         assert out["after_unbreakable"] is True
+        assert out["after_pct"] is None
+        assert "moved_pp" not in out and "moved_ratio" not in out, (
+            "verify.html branches on after_unbreakable to avoid calling "
+            ".toFixed() on these; if they start appearing, that branch is wrong"
+        )
 
 
 def test_both_portfolios_are_scored_on_identical_draws(solved):
@@ -269,3 +288,35 @@ def test_historical_replay_says_it_is_unavailable_rather_than_inventing_returns(
     assert out["available"] is False
     assert "no price history" in out["reason"].lower()
     assert "loss" not in out, "an unavailable test must not report a number"
+
+
+def test_the_reported_shock_range_is_the_one_that_was_drawn_from(solved):
+    """A literal beside the draws it describes drifts silently.
+
+    `shock_range_pct` was `[1.0, 30.0]` written out fifteen lines below a
+    `rng.uniform(0.01, 0.30)`. Widening the draw left the payload describing
+    the narrower range, and no test could see it — the summary would have been
+    labelled with a range it was not computed over. The range is one argument
+    now, which is what makes this checkable at all.
+    """
+    narrow = validate.synthetic_stress(solved["before"], solved["after"], n=60,
+                                       limit=LIMIT, shock_range=(0.01, 0.05),
+                                       **solved["kw"])
+    wide = validate.synthetic_stress(solved["before"], solved["after"], n=60,
+                                     limit=LIMIT, shock_range=(0.01, 0.30),
+                                     **solved["kw"])
+
+    assert narrow["shock_range_pct"] == [1.0, 5.0]
+    assert wide["shock_range_pct"] == [1.0, 30.0]
+
+    # the label has to move with the draw, not merely alongside it: a wider
+    # range must actually produce worse worst cases.
+    assert wide["before"]["worst_loss"] > narrow["before"]["worst_loss"], (
+        "the reported range changed but the draws did not, so the label is "
+        "decoration rather than a description"
+    )
+
+    default = validate.synthetic_stress(solved["before"], solved["after"], n=60,
+                                        limit=LIMIT, **solved["kw"])
+    assert default["shock_range_pct"] == wide["shock_range_pct"]
+    assert default["before"]["worst_loss"] == pytest.approx(wide["before"]["worst_loss"])

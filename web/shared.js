@@ -39,8 +39,15 @@ const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
    worse answer than a link that is visibly not ready. */
 function paintNav(current) {
   const s = FB.state;
+  /* A page missing from this map reads as `undefined`, and `!undefined` locks
+     it. `assumptions` was missing, so the Model link was dead on every page
+     including its own — the page was reachable only by typing its URL. Nothing
+     about the methodology depends on having run an analysis, so it is always
+     open. */
   const has = { portfolio: true, analysis: !!s.result, cascade: !!s.result,
-                defend: !!(s.result && s.result.fix), verify: !!(s.result && s.result.validation) };
+                defend: !!(s.result && s.result.fix),
+                verify: !!(s.result && s.result.validation),
+                assumptions: true };
   document.querySelectorAll(".nav-links a").forEach((a) => {
     const page = a.dataset.page;
     if (page === current) a.setAttribute("aria-current", "page");
@@ -105,6 +112,28 @@ async function seedDemoIfAsked() {
     FB.set({ result: full });
     return true;
   } catch { return false; }
+}
+
+/* What a result was computed FOR. Two of these differing means the answer on
+   the downstream pages belongs to a portfolio or a limit the user has since
+   changed, and showing it is the client-side version of the mix-up api.py
+   refuses to make on the server: somebody else's book, labelled as theirs. */
+function scenarioKey(portfolio, limit) {
+  const rows = ((portfolio && portfolio.holdings) || [])
+    .map((h) => `${h.symbol}:${h.market_value}`).sort().join(",");
+  return `${rows}@${limit}`;
+}
+
+/* Drop a result that no longer answers the current question. Returns true if
+   it dropped one, so a caller can repaint. */
+function invalidateStaleResult() {
+  const s = FB.state;
+  if (!s.result) return false;
+  const answered = scenarioKey(s.result.portfolio, s.result.params && s.result.params.limit);
+  const asking = scenarioKey(s.portfolio, s.limit);
+  if (answered === asking) return false;
+  FB.set({ result: null });
+  return true;
 }
 
 function requireResult(current) {

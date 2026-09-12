@@ -46,3 +46,37 @@ def test_the_readme_counts_the_golden_recordings_it_promises():
     assert int(m.group(1)) == actual, (
         f"README promises {m.group(1)} recordings, {actual} are committed"
     )
+
+
+def test_the_readme_is_right_about_which_routes_are_cached():
+    """It used to say "every /api/ response" comes off disk under the flag.
+
+    Four of them do not, and they are the ones the product loop is built from
+    — the path anybody following the README actually walks. The sentence read
+    as a promise about the whole app and was true of a third of it.
+    """
+    import os
+    from unittest import mock
+
+    from firebreak import api
+
+    cached_routes = ["/api/break?leverage=5"]
+    live_routes = ["/api/portfolio/demo", "/api/portfolio/full?limit=0.10",
+                   "/api/cascade?asset=NVDA&magnitude=0.2"]
+
+    with mock.patch.dict(os.environ, {"FIREBREAK_DEMO": "1"}):
+        for route in cached_routes:
+            assert api.handle(route, {}).get("cached") is True, route
+        for route in live_routes:
+            assert api.handle(route, {}).get("cached") is False, (
+                f"{route} is cached now. The README says the portfolio routes "
+                "compute live every time; update it or this."
+            )
+
+    text = README.read_text()
+    assert "Every `/api/` response then comes off disk" not in text, (
+        "that sentence is false for /api/portfolio/* and /api/cascade"
+    )
+    assert "not\nin that machinery" in text or "**not**" in text, (
+        "the README has to say somewhere that the portfolio routes are not cached"
+    )

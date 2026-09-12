@@ -217,6 +217,18 @@ MUTATIONS = {
         "src/firebreak/api.py",
         "    used = min(max(value, lo), hi)\n    if used != value:",
         "    used = min(max(value, lo), hi)\n    if False:"),
+    "pm_hero_pct_inflated": (
+        "src/firebreak/search.py",
+        "        return abs(self.magnitude) * 100.0",
+        "        return abs(self.magnitude) * 100.0 * 1.2"),
+    "pm_moved_ratio_inverted": (
+        "src/firebreak/validate.py",
+        'out["moved_ratio"] = now.pct / was.pct if was.pct else None',
+        'out["moved_ratio"] = was.pct / now.pct if now.pct else None'),
+    "pm_shock_range_is_a_literal": (
+        "src/firebreak/validate.py",
+        '        "shock_range_pct": [lo * 100.0, hi * 100.0],',
+        '        "shock_range_pct": [1.0, 30.0],'),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
@@ -255,6 +267,22 @@ MUTATIONS = {
         "web/cascade.html",
         "    const prev = new Set(t > 1 ? (frames[t - 1].breached || []) : []);",
         "    const prev = new Set();"),
+    "model_link_locked": (
+        "web/shared.js",
+        "                assumptions: true };",
+        "                assumptions: undefined };"),
+    "stale_result_survives_a_new_book": (
+        "web/index.html",
+        "  invalidateStaleResult();\n  document.getElementById(\"pfCard\").hidden = false;",
+        "  document.getElementById(\"pfCard\").hidden = false;"),
+    "unbreakable_renders_nothing": (
+        "web/verify.html",
+        "  const safe = !!n.after_unbreakable || n.after_pct === null || n.after_pct === undefined;",
+        "  const safe = false;"),
+    "proceeds_vanish_without_a_cash_row": (
+        "web/defend.html",
+        '              if (!rows.some(h => h.symbol === "CASH")) rows.push({ symbol: "CASH", market_value: 0 });',
+        '              if (false) rows.push({ symbol: "CASH", market_value: 0 });'),
     "pct_forgets_the_hundred": (
         "web/shared.js",
         "const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;",
@@ -267,7 +295,9 @@ MUTATIONS = {
 
 UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "negative_zero_returns",
                 "pct_forgets_the_hundred", "cold_page_renders_anyway",
-                "state_narrated_as_transition"}
+                "state_narrated_as_transition", "model_link_locked",
+                "stale_result_survives_a_new_book", "unbreakable_renders_nothing",
+                "proceeds_vanish_without_a_cash_row"}
 
 
 def build(name):

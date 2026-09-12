@@ -65,8 +65,14 @@ if (r) {
           </div>
         </div>
         <div class="stats">
-          <div class="stat"><div class="k">Loss before</div><div class="v bad">${pct(s.before_loss)}</div><div class="s">breaches the limit</div></div>
-          <div class="stat"><div class="k">Loss after</div><div class="v ok">${pct(s.after_loss)}</div><div class="s">within the limit</div></div>
+          <!-- the colour and the caption both used to be written in: green
+               and "within the limit" whatever the replay actually said. -->
+          <div class="stat"><div class="k">Loss before</div>
+            <div class="v ${s.before_breaks ? "bad" : "ok"}">${pct(s.before_loss)}</div>
+            <div class="s">${s.before_breaks ? "breaches the limit" : "within the limit"}</div></div>
+          <div class="stat"><div class="k">Loss after</div>
+            <div class="v ${s.after_breaks ? "bad" : "ok"}">${pct(s.after_loss)}</div>
+            <div class="s">${s.after_breaks ? "still breaches the limit" : "within the limit"}</div></div>
           <div class="stat"><div class="k">Your limit</div><div class="v">${pct(s.limit, 0)}</div><div class="s">unchanged</div></div>
           <div class="stat"><div class="k">Cost of the fix</div><div class="v">${pct(f.dollars / r.portfolio.total_value, 2)}</div><div class="s">of the whole book</div></div>
         </div>
@@ -80,16 +86,34 @@ if (r) {
         <div class="card-body tight">
           <table>
             <thead><tr><th>Holding</th><th class="r">Current</th><th class="r">Defended</th><th class="r">Change</th></tr></thead>
-            <tbody>${r.portfolio.holdings.map(h => {
-              const cut = h.symbol === f.symbol ? f.dollars : 0;
-              const after = h.symbol === "CASH" ? h.market_value + f.dollars : h.market_value - cut;
-              const d = after - h.market_value;
-              return `<tr><td><b>${h.symbol}</b></td>
-                <td class="r num muted">${usdExact(h.market_value)}</td>
-                <td class="r num">${usdExact(after)}</td>
-                <td class="r num" style="color:${d < 0 ? "var(--destructive)" : d > 0 ? "var(--positive)" : "var(--muted-foreground)"}">
-                  ${d === 0 ? "—" : (d > 0 ? "+" : "−") + usdExact(Math.abs(d))}</td></tr>`;
-            }).join("")}</tbody>
+            <tbody>${(() => {
+              /* The proceeds go to cash. A book with no CASH row had nowhere
+                 to put them, so the Defended column simply came up short by
+                 the size of the cut — $94,289 against $100,000, directly under
+                 the sentence saying the portfolio is worth the same
+                 afterwards. Give it a cash line to land in. */
+              const rows = r.portfolio.holdings.slice();
+              if (!rows.some(h => h.symbol === "CASH")) rows.push({ symbol: "CASH", market_value: 0 });
+              let sumBefore = 0, sumAfter = 0;
+              const body = rows.map(h => {
+                const cut = h.symbol === f.symbol ? f.dollars : 0;
+                const after = h.symbol === "CASH" ? h.market_value + f.dollars : h.market_value - cut;
+                const d = after - h.market_value;
+                sumBefore += h.market_value; sumAfter += after;
+                return `<tr><td><b>${h.symbol}</b></td>
+                  <td class="r num muted">${usdExact(h.market_value)}</td>
+                  <td class="r num">${usdExact(after)}</td>
+                  <td class="r num" style="color:${d < 0 ? "var(--destructive)" : d > 0 ? "var(--positive)" : "var(--muted-foreground)"}">
+                    ${d === 0 ? "—" : (d > 0 ? "+" : "−") + usdExact(Math.abs(d))}</td></tr>`;
+              }).join("");
+              /* the totals are the claim. Printing them is what makes "worth
+                 the same afterwards" something you can check rather than
+                 something you have to take on faith. */
+              return body + `<tr><td><b>Total</b></td>
+                <td class="r num muted"><b>${usdExact(sumBefore)}</b></td>
+                <td class="r num"><b>${usdExact(sumAfter)}</b></td>
+                <td class="r num muted">unchanged</td></tr>`;
+            })()}</tbody>
           </table>
         </div>
       </div>

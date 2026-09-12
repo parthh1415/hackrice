@@ -45,13 +45,35 @@ const r = requireResult("verify");
 if (r && r.validation) {
   const v = r.validation, s = v.identical_shock, n = v.new_breaking_point, syn = v.synthetic;
   const sv = (x) => (x === null || x === undefined ? "—" : pct(x, 0));
+
+  /* When the defended book has no break point in the tested range, the engine
+     sends after_pct: null and omits moved_pp and moved_ratio entirely. Four
+     .toFixed() calls on those used to throw INSIDE the template literal, so
+     root.innerHTML never got assigned and the page rendered a heading, a
+     promise of three sections, and nothing else — blank exactly when the fix
+     worked best. Say what happened instead.
+
+     "No break point in the tested range" is not "unbreakable", and the copy
+     below keeps that distinction: we searched a range and found nothing in
+     it. */
+  const verdict = (breaks) => breaks
+    ? `<span class="badge badge-bad"><i></i>Breach</span>`
+    : `<span class="badge badge-ok"><i></i>Within limit</span>`;
+  const safe = !!n.after_unbreakable || n.after_pct === null || n.after_pct === undefined;
+  const afterBreak = safe ? "none in range" : `−${n.after_pct.toFixed(2)}%`;
+  const movedBy = safe
+    ? "no shock in the tested range breaks the defended book"
+    : `+${n.moved_pp.toFixed(2)} points further away`;
+  const movedPoints = safe ? "—" : `${n.moved_pp.toFixed(2)} points`;
+  const extraShock = safe || n.moved_ratio == null
+    ? "—" : `${((n.moved_ratio - 1) * 100).toFixed(0)}%`;
   document.getElementById("root").innerHTML = `
   <div class="stack gap-6">
     <div class="card">
       <div class="stats" style="border-top:0">
         <div class="stat"><div class="k">Break point</div>
-          <div class="v">−${n.before_pct.toFixed(2)}% → <span style="color:var(--positive)">−${n.after_pct.toFixed(2)}%</span></div>
-          <div class="s">+${n.moved_pp.toFixed(2)} points further away</div></div>
+          <div class="v">−${n.before_pct.toFixed(2)}% → <span style="color:var(--positive)">${afterBreak}</span></div>
+          <div class="s">${movedBy}</div></div>
         <div class="stat"><div class="k">Loss at the same shock</div>
           <div class="v">${pct(s.before_loss)} → <span style="color:var(--positive)">${pct(s.after_loss)}</span></div>
           <div class="s">${s.before_breaks ? "breached" : "within"} → ${s.after_breaks ? "breached" : "within limit"}</div></div>
@@ -71,8 +93,13 @@ if (r && r.validation) {
           <tr><td>Shock</td><td class="r num">${r.asset} −${s.shock_pct.toFixed(2)}%</td><td class="r num">${r.asset} −${s.shock_pct.toFixed(2)}%</td></tr>
           <tr><td>Portfolio loss</td><td class="r num">${pct(s.before_loss)}</td><td class="r num">${pct(s.after_loss)}</td></tr>
           <tr><td>Outcome</td>
-            <td class="r"><span class="badge badge-bad"><i></i>Breach</span></td>
-            <td class="r"><span class="badge badge-ok"><i></i>Within limit</span></td></tr>
+            <!-- these were captions, not readings: "Breach" in red and "Within
+                 limit" in green were written into the markup, so the page whose
+                 entire job is proving the fix worked asserted that it had
+                 regardless of what the replay returned. The row above them has
+                 always derived from before_breaks/after_breaks. -->
+            <td class="r">${verdict(s.before_breaks)}</td>
+            <td class="r">${verdict(s.after_breaks)}</td></tr>
         </tbody></table></div>
     </div>
 
@@ -83,9 +110,9 @@ if (r && r.validation) {
       </div>
       <div class="card-body tight"><table><tbody>
         <tr><td>Break point, current book</td><td class="r num">−${n.before_pct.toFixed(2)}%</td></tr>
-        <tr><td>Break point, defended book</td><td class="r num">−${n.after_pct.toFixed(2)}%</td></tr>
-        <tr><td>Moved outward by</td><td class="r num">${n.moved_pp.toFixed(2)} points</td></tr>
-        <tr><td>Additional shock now required</td><td class="r num">${((n.moved_ratio - 1) * 100).toFixed(0)}%</td></tr>
+        <tr><td>Break point, defended book</td><td class="r num">${afterBreak}</td></tr>
+        <tr><td>Moved outward by</td><td class="r num">${movedPoints}</td></tr>
+        <tr><td>Additional shock now required</td><td class="r num">${extraShock}</td></tr>
       </tbody></table></div>
     </div>
 

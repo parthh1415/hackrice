@@ -351,6 +351,106 @@ function visibleText(d) {
     check("with no result, the downstream pages are locked in the nav",
           ["analysis", "cascade", "defend", "verify"].every((p) => locked.includes(p)),
           "locked: " + locked.join(","));
+    /* A page absent from paintNav's map reads as undefined and gets locked.
+       `assumptions` was missing, so ui.css's pointer-events:none killed the
+       Model link on all six pages including its own — the methodology was
+       reachable only by typing the URL. */
+    check("the Model link is never locked — it needs no analysis to be true",
+          !locked.includes("assumptions"), "locked: " + locked.join(","));
+  }
+
+  /* ---- a result must not outlive the question it answered ---- */
+  {
+    /* index.html wrote portfolio/limit and left `result` alone, so the nav kept
+       Cascade/Defend/Verify unlocked and they rendered the PREVIOUS book. The
+       server refuses this mix-up by design; it used to happen on the client. */
+    const other = { symbol: "JPM", market_value: 50000 };
+    const stale = JSON.parse(store.fb);
+    const p = await load("index.html", {
+      fb: JSON.stringify({ ...stale,
+        portfolio: { source: "csv", total_value: 100000,
+          holdings: [other, { symbol: "CASH", market_value: 50000, weight: 0.5 }] }}),
+    });
+    await sleep(200);
+    const st = JSON.parse(p.window.sessionStorage.getItem("fb") || "{}");
+    check("a new book drops the answer computed for the old one", !st.result,
+          st.result ? "result kept: " + (st.result.asset || "?") : "");
+
+    const p2 = await load("index.html", { fb: store.fb });
+    await sleep(200);
+    const kept = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
+    check("but returning to the page with the same book keeps its answer", !!kept.result);
+
+    p2.d.querySelector('#limits button[data-limit="0.25"]')
+      .dispatchEvent(new p2.window.Event("click", { bubbles: true }));
+    await sleep(200);
+    const moved = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
+    check("changing the limit drops an answer computed for the old limit", !moved.result,
+          moved.result ? "kept" : "");
+    const pressed = [...p2.d.querySelectorAll("#limits button")]
+      .filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.limit);
+    eq("and the control shows the limit that is actually set", pressed.join(","), "0.25");
+  }
+
+  /* ---- the best possible outcome must still render ---- */
+  {
+    /* When the defended book has no break point in the tested range the engine
+       sends after_pct: null and omits moved_pp. Four .toFixed calls on those
+       threw inside the template literal, so root.innerHTML never assigned and
+       verify rendered its heading over an empty page — blank exactly when the
+       fix worked best. */
+    const rows = [{ symbol: "NVDA", market_value: 25000 }, { symbol: "CASH", market_value: 75000 }];
+    const safeFull = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.15", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }),
+    })).json();
+    const nb = safeFull.validation && safeFull.validation.new_breaking_point;
+    if (safeFull.found && nb && nb.after_unbreakable) {
+      const v = await load("verify.html", { fb: JSON.stringify(
+        { portfolio: safeFull.portfolio, rows, limit: 0.15, result: safeFull }) });
+      const ok = await until(() => v.d.getElementById("root").children.length > 0);
+      check("verify renders when the defended book has no break point in range", ok,
+            v.errors.join("; "));
+      check("and it runs clean", v.errors.length === 0, v.errors.join("; "));
+      const body = visibleText(v.d);
+      check("it says there is none in range rather than printing NaN or a null",
+            /none in range/.test(body) && !/NaN|null|undefined/.test(body),
+            body.slice(0, 220));
+    } else {
+      check("the unbreakable case is still reachable to test", false,
+            "no book produced after_unbreakable; the check above is not running");
+    }
+  }
+
+  /* ---- the before/after table has to add up ---- */
+  {
+    /* The proceeds go to cash. A book with no CASH row had nowhere to put them,
+       so the Defended column came up short by the size of the cut, directly
+       under the sentence saying the portfolio is worth the same afterwards. */
+    const rows = [{ symbol: "NVDA", market_value: 50000 }, { symbol: "JPM", market_value: 50000 }];
+    const noCash = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.10", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }),
+    })).json();
+    check("a book with no cash row still gets a fix to check", !!noCash.fix, noCash.reason || "");
+    if (noCash.fix) {
+      const v = await load("defend.html", { fb: JSON.stringify(
+        { portfolio: noCash.portfolio, rows, limit: 0.10, result: noCash }) });
+      await until(() => v.d.querySelectorAll("#root tbody tr").length > 0);
+      const cells = [...v.d.querySelectorAll("#root tbody tr")].map((tr) =>
+        [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+      const money = (t) => Number(String(t).replace(/[^0-9.-]/g, "")) || 0;
+      const totalRow = cells.find((c) => /^Total$/i.test(c[0]));
+      check("the table carries a total, so 'worth the same' is checkable", !!totalRow,
+            cells.map((c) => c[0]).join(","));
+      if (totalRow) {
+        check("current and defended totals agree",
+              Math.abs(money(totalRow[1]) - money(totalRow[2])) <= 1,
+              `${totalRow[1]} vs ${totalRow[2]}`);
+        eq("and the total is the portfolio's own value",
+           money(totalRow[1]), Math.round(noCash.portfolio.total_value));
+      }
+    }
   }
 
   console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
