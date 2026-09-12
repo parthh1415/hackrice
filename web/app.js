@@ -450,6 +450,7 @@ function paintBand(run, t) {
    disowned. Two contradictory answers on screen at once. */
 function clearRun() {
   stopAnimations();
+  cancelCount();
   state.run = null;
   state.layout = null;
   state.frame = 0;
@@ -462,15 +463,48 @@ function clearRun() {
 
 /* ────────────────────────────── hero number ───────────────────────────── */
 
+/* The count-up runs on requestAnimationFrame, which no queue owns and
+   stopAnimations() cannot reach. Click Find weakest shock twice in under half
+   a second — which a nervous presenter does — and the first run's count-up
+   was still ticking when the second answer landed. If the second answer is
+   "nothing breaks this system", clearRun() blanks the hero and the older
+   count-up writes its number straight back over the blank and STOPS there:
+   the biggest number on screen ends up belonging to a run we have just
+   disowned, above a blank band, an empty timeline, and a sub-line saying
+   nothing broke. Generation counter; the run that supersedes it decides what
+   the hero says instead. */
+let countGen = 0;
+let countTarget = null;
+
+/* Leaving a finished run on screen — pressing Map the boundary mid-count —
+   must land on the true number, not freeze part-way up. */
+function settleCount() {
+  countGen++;
+  if (countTarget === null) return;
+  $("heroVal").textContent = `${countTarget.toFixed(2)}%`;
+  countTarget = null;
+}
+
+/* The run it belonged to is gone; whoever cancelled it owns the hero now. */
+function cancelCount() {
+  countGen++;
+  countTarget = null;
+}
+
 function countTo(target) {
+  settleCount();
   const node = $("heroVal");
   node.removeAttribute("data-idle");
+  const mine = ++countGen;
+  countTarget = target;
   const started = performance.now();
   const dur = 520;
   function tick(now) {
+    if (mine !== countGen) return;
     const k = Math.min(1, (now - started) / dur);
     node.textContent = `${(target * k).toFixed(2)}%`;
     if (k < 1) requestAnimationFrame(tick);
+    else countTarget = null;
   }
   requestAnimationFrame(tick);
 }
@@ -568,6 +602,7 @@ async function boundary() {
   const btn = $("boundaryBtn");
   btn.disabled = true;
   stopAnimations();
+  settleCount();   // a half-finished count-up must not freeze part-way up
   const stop = startElapsed("boundary sweep");
   try {
     const { body, ms } = await api(`/api/boundary?${params()}`);
@@ -591,6 +626,7 @@ async function defend() {
   const btn = $("defendBtn");
   btn.disabled = true;
   stopAnimations();
+  settleCount();   // a half-finished count-up must not freeze part-way up
   const stop = startElapsed("minimum-cost stabilisation");
   try {
     const { body, ms } = await api(`/api/stabilise?${params()}`);
