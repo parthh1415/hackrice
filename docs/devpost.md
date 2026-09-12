@@ -100,10 +100,10 @@ With a relative tolerance the cheapest cuts across our ten recorded scenarios ru
 
 **And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
 against the patched books and reports it as `bought`. The measured delta is +0.0039pp against a
-search resolution of 0.005pp — *inside its own error bar* — so the payload sets `measurable: false`
+search resolution of 0.01pp — *inside its own error bar* — so the payload sets `measurable: false`
 and the note reads **"no measurable change in break point — a targeted patch, not structural
 repair"**. We deliberately do not quote the delta as though it meant something; that would be the
-same fake-precision mistake as the hero number, one level up. $3.7M of Citadel's NVDA — under a
+same fake-precision mistake as the hero number, one level up. $1.73M of Citadel's NVDA — under a
 basis point of gross assets — clears *this* failure condition against *this* shock and buys nothing
 we can measure against the next one.
 That is the honest reading of a one-position, one-shock optimiser, and we would rather be the ones

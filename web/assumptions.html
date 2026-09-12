@@ -39,7 +39,8 @@
     </div>
 
     <div class="card" id="engineCard" hidden>
-      <div class="card-header">What computed the fix<span class="dim" id="engineNote"></span></div>
+      <div class="card-header"><span class="card-title">What computed the institutional patch</span>
+        <span class="sub" id="engineNote"></span></div>
       <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
     </div>
   </div>
@@ -88,7 +89,15 @@ bindKeys("assumptions");
 
   const ms = e.solve_ms == null ? "not recorded" : `${e.solve_ms} ms`;
   const b = st.bought || {};
+  /* This card describes the INSTITUTIONAL patch — the fund-book cut solved by
+     MATLAB or the Python fallback. It is not the "Sell $478 of NVDA" on
+     Defend, which comes from cheapest_portfolio_fix and is a different
+     calculation on a different book. Saying "the fix" made the card read as a
+     contradiction: a break point of 4.60% sitting two clicks after Analysis
+     said 24.69%. */
   const erows = [
+    ["Applies to", "the five institutional books",
+      "not your portfolio — your own fix is on Defend, solved by an exhaustive Python scan"],
     ["Engine", e.name, e.note || ""],
     ["Solver", e.solver, e.kind === "matlab"
       ? "pattern search over (fund, asset, reduction) — no gradient, piecewise-constant feasible set"
@@ -105,11 +114,11 @@ bindKeys("assumptions");
        this did, is the same shape as the bug that blanked verify.html: the
        throw lands inside the template literal and takes the whole row with it. */
     const after = b.after_pct == null
-      ? "none in range" : `${b.after_pct.toFixed(2)}%`;
-    erows.push(["What it bought",
+      ? "none in range" : `−${b.after_pct.toFixed(2)}%`;
+    erows.push(["What it bought the funds",
       b.measurable || b.after_pct == null
-        ? `break point ${b.before_pct.toFixed(2)}% → ${after}`
-        : `break point ${b.before_pct.toFixed(2)}% → ${after} · no measurable change`,
+        ? `fund-book break point −${b.before_pct.toFixed(2)}% → ${after}`
+        : `fund-book break point −${b.before_pct.toFixed(2)}% → ${after} · no measurable change`,
       /* resolution_pct is deliberately TWICE the search tolerance: the delta is
          the difference of two independently bisected searches, so each one's
          error lands in it. Quoting the single-search figure alone here would
@@ -120,7 +129,7 @@ bindKeys("assumptions");
       `so a difference of two has to clear ${num(b.resolution_pct, 3)}pp to mean anything.`]);
   }
   document.getElementById("engineNote").textContent =
-    e.kind === "matlab" ? "MATLAB" : "fallback";
+    e.kind === "matlab" ? "MATLAB · patternsearch" : "Python fallback · MATLAB not found";
   document.getElementById("engineRows").innerHTML = erows.map(([k, v, note]) => `
     <tr><td style="width:150px"><b>${k}</b></td>
         <td class="num t" style="width:320px">${v}</td>

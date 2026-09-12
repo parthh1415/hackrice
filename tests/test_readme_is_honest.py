@@ -80,3 +80,55 @@ def test_the_readme_is_right_about_which_routes_are_cached():
     assert "not\nin that machinery" in text or "**not**" in text, (
         "the README has to say somewhere that the portfolio routes are not cached"
     )
+
+
+def test_the_docs_quote_the_resolution_the_api_actually_reports():
+    """`resolution_pct` is TWICE the search tolerance, on purpose.
+
+    `bought` is the difference of two independently bisected searches, so each
+    carries its own error and the bar the difference must clear is 2x. The
+    pitch, the video script and the design spec all quoted the single-search
+    figure of 0.005pp against that two-search quantity. The conclusion survived
+    — 0.0039pp is inside 0.01pp just as it was inside 0.005pp — but a judge
+    checking the arithmetic finds the stated bar is half the real one.
+    """
+    import pathlib
+
+    from firebreak import api
+
+    out = api.handle("/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3", {})
+    reported = out["bought"]["resolution_pct"]
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    devpost = (root / "docs" / "devpost.md").read_text()
+    assert f"resolution of {reported}pp" in devpost, (
+        f"devpost quotes a resolution other than the {reported}pp the API reports"
+    )
+
+    # and the half-figure must not reappear anywhere it is describing `bought`
+    half = f"{reported / 2:g}pp"
+    for name in ["docs/devpost.md", "docs/video-script.md"]:
+        text = (root / name).read_text()
+        assert f"resolves to ±{half}" not in text, (
+            f"{name} still quotes the single-search {half} for a quantity that is "
+            "the difference of two searches"
+        )
+
+
+def test_the_pitch_quotes_the_fix_size_the_engine_returns():
+    """devpost said $1.7M in one paragraph and $3.7M four paragraphs later.
+
+    The second figure was also the spoken line of a video shot the script says
+    not to cut.
+    """
+    import pathlib
+
+    from firebreak import api
+
+    out = api.handle("/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3", {})
+    sell = out["fix"]["sell_usd"]
+    millions = f"${sell / 1e6:.2f}M"
+
+    devpost = (pathlib.Path(__file__).resolve().parents[1] / "docs" / "devpost.md").read_text()
+    assert millions in devpost, f"devpost does not quote {millions}; the fix is ${sell:,.2f}"
+    assert "$3.7M" not in devpost, "the contradictory figure is back"

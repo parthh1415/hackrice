@@ -175,7 +175,7 @@ bindKeys("analysis");
     document.getElementById("attrCard").hidden = false;
   }
   document.getElementById("resultDesc").textContent =
-    `Searched every modelled name. Resolution 0.005 percentage points.`;
+    `Searched every modelled name. The search resolves to ±0.005 percentage points.`;
   document.getElementById("big").textContent = `${body.asset} −${body.pct.toFixed(2)}%`;
   document.getElementById("bigSub").textContent =
     `At this shock your portfolio loses ${pct(body.cascade_loss)}, against a limit of ${pct(body.params.limit, 0)}.`;

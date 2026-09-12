@@ -462,7 +462,7 @@ def _stabilise(params):
     repeat = find_weakest_shock(condition=condition, **patched)
     delta = (repeat.pct - found.pct) if repeat else None
     # The search bisects to a tolerance; a delta finer than that is a claim the
-    # method cannot support. Today it is +0.0039pp against a 0.005pp
+    # method cannot support. Today it is +0.0039pp against a 0.01pp
     # resolution — inside its own error bar, so it is reported as no measurable
     # change rather than as a number. Tightening the tolerance does not rescue
     # it: at 0.05pp the delta was +0.03pp, and it stayed inside. Same

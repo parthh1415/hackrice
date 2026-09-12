@@ -318,7 +318,13 @@ though it meant something.
 
 `showBought` in `web/app.js` renders this under the fix line, and it follows the same rule: when
 `measurable` is false it draws the arrow without a delta and says *"no measurable change (search
-resolves to ±0.005pp)"* rather than printing a number the search cannot support.
+has to clear 0.01pp)"* rather than printing a number the search cannot support.
+
+(Corrected: `resolution_pct` is deliberately TWICE the 5e-5 search tolerance, because
+`bought` is the difference of two independently bisected searches and each carries its
+own error. The spec and the pitch both quoted the single-search 0.005pp figure against a
+two-search quantity. The conclusion is unchanged — 0.0039pp is inside 0.01pp just as it
+was inside 0.005pp — but the bar being quoted was the wrong one.)
 
 One thing not to say alongside it: the patched system does **not** "survive" the shock. Millennium
 and Renaissance still breach; the fix clears a condition that asks for *three or more*.

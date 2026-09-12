@@ -50,7 +50,7 @@
   | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0% · <n>ms` | — |
   | solver, after boundary | `parameter sweep` · `cells 256 · <n>ms` | — |
   | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `124 evals · <n>ms · exit 1` | — |
-  | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one` | 2 dp / 3 dp |
+  | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (difference of two searches has to clear 0.01pp) — defends this shock, not the next one` | 2 dp / 3 dp |
   | sliders | `5.0`, `0.20` and `1.05` | 1 dp / 2 dp / 2 dp |
 
   ✅ **The `0%` bug flagged here last pass is fixed.** The fix line used fixed-decimal formatters,
@@ -356,7 +356,7 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 #### Shot 2.12 · 2:30 – 2:42  — **NEW. Do not cut this one.**
 **On screen:** No slide. Stay on the split and push in on the `bought` line sitting above it, which
 has been on screen since the fix line landed. It reads, verbatim:
-`critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one`
+`critical distance 5.27% → 5.28% · no measurable change (difference of two searches has to clear 0.01pp) — defends this shock, not the next one`
 
 > "And here's the part we'd rather say than have you find. The stabiliser re-runs the search against
 > the patched books. The smallest shock that breaks us doesn't measurably move. Three point seven
@@ -376,7 +376,7 @@ has been on screen since the fix line landed. It reads, verbatim:
 > renders it; it is live, and it is on screen from the moment Stabilise returns.*
 >
 > **Do not read the arrow out loud.** The screen prints `5.27% → 5.28%`, but the delta behind it is
-> +0.0039pp against a search that resolves 0.005pp — inside its own error bar. The line's own second
+> +0.0039pp against the 0.01pp a difference of two searches has to clear — inside its own error bar. The line's own second
 > half is the claim that survives: **"no measurable change"**. Say that, and if the cursor is
 > anywhere near the arrow, say why it doesn't mean anything. *(Flagged to the team: the app printing
 > `5.28%` at all is the same fake-precision mistake the hero number was fixed for, one level up. If

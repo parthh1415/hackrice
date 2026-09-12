@@ -72,9 +72,15 @@ function paintNav(current) {
   const lim = document.getElementById("navLimit");
   if (lim) lim.innerHTML = `LIMIT <b>${s.limit ? pct(s.limit, 2) : "—"}</b>`;
   const sh = document.getElementById("navShock");
-  if (sh) sh.innerHTML = s.result && s.result.found
-    ? `SHOCK <b class="down">${s.result.asset} −${s.result.pct.toFixed(2)}%</b>`
-    : `SHOCK <b>NOT RUN</b>`;
+  /* Three states, not two. A search that ran and found nothing is not the same
+     as a search that never ran, and calling it "NOT RUN" is simply false — the
+     user pressed the button and waited. It is also the more interesting
+     result: no single-name fall inside the tested range crosses the limit. */
+  if (sh) sh.innerHTML = !s.result
+    ? `SHOCK <b>NOT RUN</b>`
+    : s.result.found
+      ? `SHOCK <b class="down">${s.result.asset} −${s.result.pct.toFixed(2)}%</b>`
+      : `SHOCK <b>NONE FOUND</b>`;
 
   // clock and engine status, the way a terminal wears them
   const tick = () => {
@@ -149,13 +155,28 @@ function invalidateStaleResult() {
 function requireResult(current) {
   const s = FB.state;
   if (!s.result || !s.result.found) {
-    document.querySelector("main").innerHTML =
-      `<div class="wrap page"><div class="card"><div class="empty">
-         <h2>No analysis yet</h2>
-         <p class="lede" style="margin:0 auto">Run a reverse stress test first — this page
-         shows what that produced.</p>
-         <div style="margin-top:20px"><a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
-       </div></div></div>`;
+    /* "Run a reverse stress test first" is wrong when they already did and it
+       came back empty. That is not an error and not a missing step — it is the
+       answer, and it has an action attached: lower the limit. */
+    const ran = !!s.result;
+    const limit = s.limit ? pct(s.limit, 0) : "your limit";
+    document.querySelector("main").innerHTML = ran
+      ? `<div class="wrap page"><div class="card"><div class="empty">
+           <h2>No break point to ${current === "defend" ? "defend" : "verify"}</h2>
+           <p class="lede" style="margin:0 auto">At a ${limit} limit, no single-name fall
+           inside the tested range crossed it — so there is nothing here to
+           ${current === "defend" ? "defend against" : "check"}. That is the edge of what was
+           tested, not a clean bill of health.</p>
+           <div style="margin-top:20px" class="row gap-4" style="justify-content:center">
+             <a class="btn btn-primary" href="index.html">Lower the limit</a>
+             <a class="btn btn-outline" href="analysis.html">Back to the analysis</a></div>
+         </div></div></div>`
+      : `<div class="wrap page"><div class="card"><div class="empty">
+           <h2>No analysis yet</h2>
+           <p class="lede" style="margin:0 auto">Run a reverse stress test first — this page
+           shows what that produced.</p>
+           <div style="margin-top:20px"><a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
+         </div></div></div>`;
     paintNav(current);
     return null;
   }
