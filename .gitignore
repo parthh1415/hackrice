@@ -1,5 +1,12 @@
 __pycache__/
-data/cache/
 *.xml
 .env
 tests/ui/node_modules/
+
+# Cache is machine-local EXCEPT the golden recordings — those are the demo's
+# insurance and insurance that lives in one uncommitted directory is not
+# insurance. Note the parent must stay unexcluded: git cannot re-include a
+# file whose parent directory is excluded, so `data/cache/` + `!.../golden/`
+# silently does nothing.
+data/cache/*
+!data/cache/golden/
