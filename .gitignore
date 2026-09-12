@@ -10,3 +10,10 @@ tests/ui/node_modules/
 # silently does nothing.
 data/cache/*
 !data/cache/golden/
+
+# dataset.json is "cache" only in the sense that we don't want to refetch it.
+# It's 4KB of one frozen quarter's 13F holdings, and it is what every test and
+# the whole demo actually runs on. Leaving it untracked meant a fresh clone had
+# to reach EDGAR before a single test could pass — so the suite was green here
+# and red everywhere else. Refresh it deliberately with scripts/refresh_dataset.py.
+!data/cache/dataset.json

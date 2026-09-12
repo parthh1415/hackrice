@@ -1,8 +1,13 @@
 """The offline path. If the wifi dies at 2pm the demo still has to run.
 
-These tests record the golden path into data/cache/golden once per session,
-then hammer the two ways we serve it: ?demo=1 on purpose, and a dead engine
-by accident.
+These tests record the golden path once per module and then hammer the two
+ways we serve it: ?demo=1 on purpose, and a dead engine by accident.
+
+The recording goes to a scratch directory, not to data/cache/golden. Writing
+to the real one meant every `pytest` run rewrote the committed recordings —
+`solve_ms` is a wall clock, so the file came back with a one-millisecond diff
+and the working tree was dirty for no reason anyone could see. The committed
+set is the demo's insurance; tests read it, they don't overwrite it.
 """
 
 import os
@@ -11,13 +16,42 @@ import pytest
 
 from firebreak import api
 
+# grabbed at import time, before the fixture below points api.GOLDEN elsewhere
+SHIPPED_GOLDEN = api.GOLDEN
+
 
 @pytest.fixture(scope="module", autouse=True)
-def golden():
+def golden(tmp_path_factory):
     """Record the golden path once, so the tests below have something to serve."""
-    api.record_golden()
-    yield
-    os.environ.pop("FIREBREAK_DEMO", None)
+    shipped = api.GOLDEN
+    api.GOLDEN = tmp_path_factory.mktemp("golden")
+    try:
+        api.record_golden()
+        yield
+    finally:
+        api.GOLDEN = shipped
+        os.environ.pop("FIREBREAK_DEMO", None)
+
+
+def test_the_committed_recordings_still_load_and_cover_the_demo_spots():
+    """The insurance itself, not the copy this run just made.
+
+    Everything else here records first and then serves what it recorded, which
+    passes just as happily against an empty repo. This is the one that notices
+    if data/cache/golden ever stops being shipped.
+    """
+    scratch, api.GOLDEN = api.GOLDEN, SHIPPED_GOLDEN
+    try:
+        for route in ["/api/health", "/api/dataset", "/api/break",
+                      "/api/stabilise", "/api/boundary"]:
+            for spot in api.GOLDEN_SPOTS:
+                params = {k: str(v) for k, v in spot.items()}
+                cached = api.load_golden(route, params)
+                assert cached is not None, f"nothing recorded for {route}"
+                assert cached["cached"] is True
+                assert cached["cached_near"], f"{route} at {spot} is not covered"
+    finally:
+        api.GOLDEN = scratch
 
 
 def key_shape(value):

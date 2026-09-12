@@ -1,0 +1,11 @@
+{
+  "name": "firebreak-ui-tests",
+  "private": true,
+  "description": "jsdom harnesses for web/app.js. node_modules is gitignored, so run `npm install` here once after cloning.",
+  "scripts": {
+    "test": "node smoke.js && node provenance.js"
+  },
+  "dependencies": {
+    "jsdom": "^29.0.0"
+  }
+}

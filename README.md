@@ -1,0 +1,91 @@
+# Firebreak
+
+**Reverse stress testing for overlapping portfolios.** Not "what if NVDA drops 20%", but
+"what is the smallest drop that breaks this system, and what is the cheapest change that
+prevents it". Built on the actual Q2 2026 13F filings of Citadel, Millennium, Point72,
+Two Sigma and Renaissance.
+
+HackRice 16 — Finance track, plus the Capital One and MathWorks challenges.
+Full write-up in [`docs/devpost.md`](docs/devpost.md).
+
+## Run it
+
+```sh
+git clone <this repo> && cd firebreak
+python3 -m pip install numpy pytest      # the only dependencies
+python3 -m pytest tests/ -q              # 140 passing
+PYTHONPATH=src python3 -m firebreak.server
+```
+
+Then open <http://localhost:8765>.
+
+`scripts/setup.sh` does all four of those in one go.
+
+Python 3.9+. numpy is the only runtime dependency — the server is stdlib
+(`http.server`), because nothing should need a pip install at 3am.
+
+## Run it with no network
+
+The holdings matrix (`data/cache/dataset.json`, 4KB, one frozen quarter) is committed, and
+so is a set of recorded answers in `data/cache/golden/`. Nothing here reaches the internet
+unless you explicitly ask it to.
+
+```sh
+FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server
+```
+
+Every `/api/` response then comes off disk, labelled `cached: true`, including for slider
+positions that were never recorded — it serves the nearest recording and says which
+settings it is actually of. `?demo=1` on any single request does the same thing for that
+request.
+
+You do not need the flag for this to save you. In live mode, an endpoint that throws —
+EDGAR down, wifi gone — falls back to the recording on its own and puts the reason in
+`fallback_reason`. The flag just skips the doomed attempt.
+
+## Refreshing the data
+
+The committed dataset is deliberately frozen. To move to a new quarter:
+
+```sh
+PYTHONPATH=src python3 scripts/refresh_dataset.py   # refetch from EDGAR, ~6s
+PYTHONPATH=src python3 scripts/record_golden.py     # re-record, or the recordings lie
+```
+
+Do both or neither. The golden recordings are of specific numbers, and nothing will warn
+you if the dataset moves out from under them.
+
+## Tests
+
+```sh
+python3 -m pytest tests/ -q      # 140, no network required
+```
+
+The frontend has its own jsdom harnesses, which need one extra install because
+`tests/ui/node_modules/` is gitignored:
+
+```sh
+npm --prefix tests/ui install
+node tests/ui/smoke.js           # the four beats render
+node tests/ui/provenance.js      # every number on screen traces to the payload
+```
+
+These drive `web/app.js` against a real payload, so they catch the failure mode that
+matters most in a demo: a panel that renders empty instead of throwing.
+
+## Layout
+
+| | |
+|---|---|
+| `src/firebreak/engine.py` | the cascade — leverage breach, forced selling, price impact, repeat |
+| `src/firebreak/search.py` | bisection for the smallest shock meeting a breach condition |
+| `src/firebreak/stabilise.py` | the cheapest single position change that pushes the break point out |
+| `src/firebreak/thirteenf.py` | EDGAR 13F-HR fetch, amendment handling, multi-CIK managers |
+| `src/firebreak/api.py` | JSON endpoints and the golden-recording fallback |
+| `src/firebreak/server.py` | stdlib dev server on 8765 |
+| `web/` | the frontend, no build step |
+| `matlab/` | optional `patternsearch` solver — see [`matlab/README.md`](matlab/README.md) |
+
+MATLAB is optional. Without it the solver strip reads "SciPy-free Python · exhaustive
+position scan" and everything still works; `matlab/README.md` covers wiring up the real
+one.
