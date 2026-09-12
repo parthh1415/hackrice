@@ -54,10 +54,31 @@ async function api(path) {
   if (!res.ok) throw new Error(`${path} → ${res.status}`);
   const body = await res.json();
   // a recorded answer must never pass for a live one
-  if (body && body.cached) {
-    setEngine("cached", body.fallback_reason ? "cached · engine failed" : "cached run");
-  }
+  if (body && body.cached) setEngine("cached", cachedLabel(body));
   return { body, ms };
+}
+
+/* "cached" was doing two very different jobs with one word. A recording OF
+   these slider positions is a replay. A recording of the NEAREST positions we
+   happen to have on disk is an answer to a different question — and every
+   number downstream of it is then confident and wrong: the hero, the band,
+   the fix cost, the "you are here" dot. api.py computes `cached_exact` and
+   `cached_for` for precisely this and we were dropping both, so leverage 6.4
+   quietly showed the leverage-6 run under the same "cached run" label.
+   Kept to the width of the longest live string; the badge sits next to the
+   hero and must not push it around. */
+function cachedLabel(body) {
+  if (body.cached_exact === false) return `recording of ${knobLabel(body.cached_for)}`;
+  return body.fallback_reason ? "cached · engine failed" : "cached run";
+}
+
+function knobLabel(at) {
+  if (!at) return "other settings";
+  const bits = [];
+  if (at.leverage !== undefined) bits.push(`L ${Number(at.leverage).toFixed(1)}`);
+  if (at.gamma !== undefined) bits.push(`γ ${Number(at.gamma).toFixed(2)}`);
+  if (at.breaches !== undefined) bits.push(`≥${Number(at.breaches).toFixed(0)}`);
+  return bits.length ? bits.join(" ") : "other settings";
 }
 
 function clearTimers() {

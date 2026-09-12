@@ -202,6 +202,34 @@ const QS = "leverage=5&gamma=0.2&breaches=3";
   check("hero is not double-scaled", Math.abs(parseFloat(text("heroVal")) - run.pct) < 0.005);
   check("adv is in dollars, not millions", run.adv.every((a) => a > 1e6), String(run.adv[0]));
 
+  /* A recording of the nearest settings we have on disk is an answer to a
+     different question. The badge has to say which question, or the hero
+     number reads as an answer to the sliders the judge is looking at. */
+  console.log("\nPROVENANCE — a near-match recording must name its own settings");
+  const realFetch = window.fetch;
+  const stub = (extra) => {
+    window.fetch = async (u, o) => {
+      const r = await realFetch(u, o);
+      const j = await r.json();
+      return { ok: r.ok, status: r.status, json: async () => ({ ...j, ...extra }) };
+    };
+  };
+  const badge = () => [d.getElementById("badge").dataset.mode, text("badgeText")];
+
+  stub({ cached: true, cached_exact: true });
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  await sleep(4000);
+  eq("an exact recording still reads as a plain replay", badge().join("/"), "cached/cached run");
+
+  stub({ cached: true, cached_exact: false, cached_for: { leverage: 6, gamma: 0.2, breaches: 3 } });
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  await sleep(4000);
+  eq("a near-match recording names the settings it was recorded at",
+     badge().join("/"), "cached/recording of L 6.0 γ 0.20 ≥3");
+  check("the cached label stays inside the live label's width",
+        text("badgeText").length <= 30, `${text("badgeText").length}ch`);
+  window.fetch = realFetch;
+
   check("no runtime errors", errors.length === 0, errors.join("; "));
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
