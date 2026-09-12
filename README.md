@@ -35,7 +35,7 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ```sh
 git clone <this repo> && cd firebreak
 python3 -m pip install numpy pytest      # the only dependencies
-python3 -m pytest tests/ -q              # 299 passing
+python3 -m pytest tests/ -q              # 301 passing
 PYTHONPATH=src python3 -m firebreak.server
 ```
 
@@ -134,23 +134,24 @@ you if the dataset moves out from under them.
 ## Tests
 
 ```sh
-python3 -m pytest tests/ -q      # 299, no network required
+python3 -m pytest tests/ -q      # 301, no network required
 ```
 
-The frontend has its own jsdom harnesses. They need one extra install, because
-`tests/ui/node_modules/` is gitignored, **and a running server** — they drive the real
-`web/app.js` against the real endpoints:
+The frontend has its own jsdom harness. It needs one extra install, because
+`tests/ui/node_modules/` is gitignored, **and a running server** — it walks all six
+pages against the real endpoints, carrying sessionStorage forward the way a browser
+does, and compares every number on screen against the payload that produced it:
 
 ```sh
 npm --prefix tests/ui install                     # once
 FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server &
-node tests/ui/smoke.js           # the beats render
-node tests/ui/provenance.js      # every number on screen traces to the payload
+node tests/ui/pages.js
 ```
 
-They catch the failure mode that matters most in a demo: a panel that renders empty
-instead of throwing. With no server on 8765 every fetch fails and the output is noise,
-so check the server is up before believing a red run.
+It catches the failure mode that matters most in a demo: a panel that renders a
+plausible wrong number, or renders empty instead of throwing. With no server on 8765
+every fetch fails and the output is noise, so check the server is up before believing
+a red run.
 
 ## Layout
 

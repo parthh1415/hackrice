@@ -20,24 +20,46 @@ stay tied to each other.
 
 import json
 import pathlib
+import re
 
 import numpy as np
 import pytest
 
 from firebreak.search import DEFAULT_TOLERANCE, at_least_n_breaches, find_weakest_shock
 
-WEB = pathlib.Path(__file__).resolve().parents[1] / "web" / "app.js"
-REAL = pathlib.Path(__file__).resolve().parents[1] / "data" / "cache" / "dataset.json"
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+SHARED = ROOT / "web" / "shared.js"
+PAGES = sorted((ROOT / "web").glob("*.html"))
+REAL = ROOT / "data" / "cache" / "dataset.json"
 
-# `pct2` in web/app.js — the hero, and every percentage beside it.
+# `pct` in web/shared.js — the break point, and every percentage beside it.
 DISPLAYED_DECIMALS = 2
+
+
+def test_the_formatter_this_file_guards_is_one_the_pages_actually_load():
+    """A guard aimed at a file nobody serves measures nothing.
+
+    This test used to read `pct2` out of web/app.js. When the single-page app
+    became six pages, app.js stopped being loaded by any of them and the
+    assertion went on passing against dead code — while the formatter that
+    actually reached the screen was unguarded. So the guard now checks that
+    the file it reads is still on the pages.
+    """
+    loaded = [p.name for p in PAGES if "shared.js" in p.read_text()]
+    assert loaded, (
+        "no page in web/ loads shared.js, so the formatter checked below is not "
+        "the one on screen. Point this file at whatever replaced it."
+    )
 
 
 def test_the_ui_still_prints_the_number_of_decimals_this_file_assumes():
     """If the UI's precision changes, the bound below has to be revisited."""
-    assert f"toFixed({DISPLAYED_DECIMALS})" in WEB.read_text(), (
-        f"web/app.js no longer formats percentages to {DISPLAYED_DECIMALS} decimals; "
-        "the tolerance bound in this file was derived from that and needs redoing"
+    m = re.search(r"const pct\s*=\s*\(\s*x\s*,\s*dp\s*=\s*(\d+)\s*\)", SHARED.read_text())
+    assert m, "web/shared.js no longer defines pct(x, dp = N); this guard cannot read it"
+    assert int(m.group(1)) == DISPLAYED_DECIMALS, (
+        f"web/shared.js now formats percentages to {m.group(1)} decimals, not "
+        f"{DISPLAYED_DECIMALS}; the tolerance bound in this file was derived from "
+        "that and needs redoing"
     )
 
 

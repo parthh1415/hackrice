@@ -1,0 +1,291 @@
+/* The six-page product loop, driven end to end against the real server.
+ *
+ * This replaces smoke.js and provenance.js, which drove web/app.js — the
+ * single-page app. No page in web/ loads app.js any more, so those harnesses
+ * were exercising a file that never reaches a user: 612 lines and eight
+ * mutation entries scoring green against dead code. A suite that reports
+ * frontend coverage it does not have is worse than one that reports none.
+ *
+ * The pages are real separate documents that pass state through
+ * sessionStorage, so this walks them the way a browser does — render a page,
+ * carry its sessionStorage forward, render the next. Every assertion compares
+ * what is ON SCREEN against the payload the server actually sent. That is the
+ * lesson provenance.js learned the hard way: it scored 47/47 on five visibly
+ * wrong numbers because it checked that sentences existed, not that they were
+ * right.
+ *
+ *   npm --prefix tests/ui install                     # once
+ *   PYTHONPATH=src python3 -m firebreak.server &
+ *   node tests/ui/pages.js
+ */
+const { JSDOM } = require("jsdom");
+const fs = require("fs");
+const path = require("path");
+
+const WEB = path.resolve(__dirname, "..", "..", "web");
+const ORIGIN = "http://localhost:8765";
+
+let failures = 0;
+/* detail is printed only on failure. Hanging "X not in Y" off a [pass] line
+   reads as a contradiction and trains you to skim the output. */
+const check = (name, cond, detail = "") => {
+  if (!cond) failures++;
+  console.log(`  [${cond ? "pass" : "FAIL"}] ${name}${!cond && detail ? "  — " + detail : ""}`);
+};
+const eq = (name, got, want) =>
+  check(name, got === want, got === want ? "" : `got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+const has = (name, hay, needle) =>
+  check(name, String(hay).includes(needle), String(hay).includes(needle) ? "" : `${JSON.stringify(needle)} not in ${JSON.stringify(String(hay).slice(0, 200))}`);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Wait for a condition, not for a duration. A fixed sleep between a fetch and
+   a DOM read is a bet on the server's latency, and it is the bet that made the
+   old harnesses collapse to 2 passes when the fetch was delayed by 3s. */
+async function until(cond, ms = 8000, step = 20) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (cond()) return true;
+    await sleep(step);
+  }
+  return false;
+}
+
+/* Load one page the way a browser would: parse it, seed the sessionStorage a
+   previous page left behind, then run shared.js and the page's own inline
+   script in document order. Returns the window plus whatever navigation the
+   page asked for, so a redirect is observable instead of silent. */
+async function load(file, store) {
+  const html = fs.readFileSync(path.join(WEB, file), "utf8")
+    .replace(/<link[^>]*fonts\.googleapis[^>]*>/g, "");
+  const dom = new JSDOM(html, {
+    runScripts: "outside-only", pretendToBeVisual: true,
+    url: ORIGIN + "/" + file,
+  });
+  const { window } = dom;
+
+  for (const k in store) window.sessionStorage.setItem(k, store[k]);
+
+  window.fetch = async (u, o) => {
+    const r = await fetch(u.startsWith("http") ? u : ORIGIN + u, o);
+    return { ok: r.ok, status: r.status, json: () => r.json() };
+  };
+  window.Element.prototype.animate = () => ({ finished: Promise.resolve() });
+  window.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  window.matchMedia = window.matchMedia ||
+    (() => ({ matches: false, addListener() {}, removeListener() {} }));
+  /* rAF hands its callback a performance.now() timestamp. Feeding it Date.now()
+     makes every (now - started) elapsed-time easing land at k=1 on frame one,
+     which is how a count-up that outlived its own run stayed invisible here. */
+  window.requestAnimationFrame = (cb) => setTimeout(() => cb(window.performance.now()), 16);
+
+  const navigated = [];
+  window.location.replace = (u) => navigated.push(String(u));
+  window.location.assign = (u) => navigated.push(String(u));
+
+  const errors = [];
+  window.addEventListener("error", (e) => errors.push("error: " + e.message));
+  window.onerror = (m) => errors.push("onerror: " + m);
+
+  /* Classic scripts share one global lexical environment, so `const FB` in
+     shared.js is visible to the page's own script. An indirect window.eval()
+     per script does NOT reproduce that — each eval gets a fresh lexical scope
+     that is thrown away, and every page died on "FB is not defined". Joining
+     them in document order is what the browser actually gives them. */
+  const code = [...window.document.querySelectorAll("script")].map((s) => {
+    const src = s.getAttribute("src");
+    return src ? fs.readFileSync(path.join(WEB, src), "utf8") : s.textContent;
+  }).join("\n;\n");
+  try { window.eval(code); }
+  catch (e) { errors.push("throw: " + e.message); }
+  return { window, d: window.document, errors, navigated,
+           dump: () => ({ fb: window.sessionStorage.getItem("fb") }) };
+}
+
+const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textContent.trim() : null; };
+
+(async () => {
+  console.log("PAGES");
+
+  /* ---- what the server says, so every screen below has something to be
+     wrong against. The pages call these same endpoints. ---- */
+  const demo = await (await fetch(ORIGIN + "/api/portfolio/demo")).json();
+  const full = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.10", {
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+  })).json();
+  check("server returned a break point to check the screens against",
+        full.found === true, full.reason || "");
+  if (!full.found) { process.exit(1); }
+
+  /* ---- 1. portfolio ---- */
+  {
+    const p = await load("index.html", {});
+    check("index.html runs clean", p.errors.length === 0, p.errors.join("; "));
+    p.d.getElementById("useDemo").dispatchEvent(new p.window.Event("click"));
+    const ok = await until(() => p.d.getElementById("pfCard") &&
+                                 !p.d.getElementById("pfCard").hidden);
+    check("the demo portfolio renders", ok);
+
+    eq("holdings count on screen matches the payload",
+       p.d.querySelectorAll("#pfRows tr").length, demo.portfolio.holdings.length);
+    const wantTotal = "$" + Math.round(demo.portfolio.total_value).toLocaleString("en-US");
+    eq("total value matches the payload", txt(p.d, "pfTotal"), wantTotal);
+
+    /* weights are a fraction server-side and a percent on screen. A page that
+       forgets the ×100 still renders a plausible-looking number. */
+    const firstW = demo.portfolio.holdings[0].weight;
+    const cells = [...p.d.querySelectorAll("#pfRows tr")][0].querySelectorAll("td");
+    eq("first holding's weight is scaled to a percent",
+       cells[2].textContent.trim(), `${(firstW * 100).toFixed(1)}%`);
+    check("weights are not printed as raw fractions",
+          Math.abs(firstW - 1) > 1e-9 ? cells[2].textContent.trim() !== `${firstW.toFixed(1)}%` : true);
+
+    var store = p.dump();
+  }
+
+  /* ---- 2. analysis ---- */
+  {
+    const a = await load("analysis.html", store);
+    check("analysis.html runs clean", a.errors.length === 0, a.errors.join("; "));
+    const ok = await until(() => a.d.getElementById("resultCard") &&
+                                 !a.d.getElementById("resultCard").hidden);
+    check("the break point renders", ok, a.navigated.join(",") || txt(a.d, "sub") || "");
+
+    eq("the headline shock matches the payload",
+       txt(a.d, "big"), `${full.asset} −${full.pct.toFixed(2)}%`);
+    has("the sub-line quotes the cascade loss the engine returned",
+        txt(a.d, "bigSub"), `${(full.cascade_loss * 100).toFixed(2)}%`);
+
+    const stats = [...a.d.querySelectorAll("#stats .v")].map((n) => n.textContent.trim());
+    eq("direct loss tile", stats[0], `${(full.direct_loss * 100).toFixed(2)}%`);
+    eq("after-cascade tile", stats[1], `${(full.cascade_loss * 100).toFixed(2)}%`);
+    eq("amplification tile", stats[2], `${full.amplification.toFixed(2)}×`);
+    eq("rounds tile", stats[3], String(full.rounds));
+
+    /* amplification is reported by the engine, not divided out on screen. If a
+       page ever recomputes it from the two losses it will drift from the
+       engine's own number the moment the engine changes how it is defined. */
+    check("after-cascade loss is worse than the direct loss",
+          full.cascade_loss > full.direct_loss,
+          `${full.cascade_loss} vs ${full.direct_loss}`);
+
+    store = a.dump();
+  }
+
+  /* ---- 3. cascade ---- */
+  {
+    const c = await load("cascade.html", store);
+    check("cascade.html runs clean", c.errors.length === 0, c.errors.join("; "));
+    const ok = await until(() => c.d.querySelectorAll("#net circle").length > 0);
+    check("the network draws", ok, c.navigated.join(",") || "");
+
+    const cas = await (await fetch(ORIGIN + `/api/cascade?asset=${encodeURIComponent(full.asset)}` +
+      `&magnitude=${Math.abs(full.magnitude)}&leverage=${full.params.leverage}` +
+      `&gamma=${full.params.gamma}&band=${full.params.band}`)).json();
+
+    eq("one node per modelled ticker", c.d.querySelectorAll("#net circle").length, cas.tickers.length);
+    eq("one box per modelled fund", c.d.querySelectorAll("#net rect").length, cas.funds.length);
+
+    /* An asset nobody shocked must read 0.00%, not -0.00%. The minus sign is
+       written by hand in front of the formatter, so a price of exactly 1.0
+       used to render as a loss of negative zero. */
+    const labels = [...c.d.querySelectorAll("#net text")].map((n) => n.textContent);
+    check("no asset reports a negative zero", !labels.some((t) => t === "−0.00%"),
+          labels.filter((t) => /0\.00%/.test(t)).join(" "));
+
+    const f0 = cas.trajectory[0];
+    const shocked = cas.tickers[f0.prices.findIndex((p) => p < 1 - 1e-9)];
+    eq("the shocked name on screen is the one the search found", shocked, full.asset);
+    const wantDrop = `−${((1 - Math.min(...f0.prices)) * 100).toFixed(2)}%`;
+    check("the shocked name's drop matches the trajectory", labels.includes(wantDrop),
+          `${wantDrop} not among ${labels.filter((t) => /%/.test(t)).join(" ")}`);
+
+    store = c.dump();
+  }
+
+  /* ---- 4. defend ---- */
+  {
+    const v = await load("defend.html", store);
+    check("defend.html runs clean", v.errors.length === 0, v.errors.join("; "));
+    const ok = await until(() => v.d.getElementById("root").textContent.trim().length > 40);
+    check("the fix renders", ok, v.navigated.join(",") || "");
+    const body = v.d.getElementById("root").textContent;
+
+    if (full.fix) {
+      has("the fix names the position the solver picked", body, full.fix.symbol);
+      has("the dollar size of the cut matches the solver",
+          body, "$" + Math.round(full.fix.dollars).toLocaleString("en-US"));
+      has("the loss before the fix is the one that breached", body,
+          `${(full.validation.identical_shock.before_loss * 100).toFixed(2)}%`);
+      has("the loss after the fix is the one the replay scored", body,
+          `${(full.validation.identical_shock.after_loss * 100).toFixed(2)}%`);
+      /* the whole promise of the product: after < limit <= before */
+      check("the fix actually lands the portfolio under its own limit",
+            full.validation.identical_shock.after_loss < full.params.limit + 1e-12,
+            `${full.validation.identical_shock.after_loss} vs ${full.params.limit}`);
+    } else {
+      has("a refusal says so instead of printing a fix", body, "No single-position change");
+    }
+    store = v.dump();
+  }
+
+  /* ---- 5. verify ---- */
+  {
+    const v = await load("verify.html", store);
+    check("verify.html runs clean", v.errors.length === 0, v.errors.join("; "));
+    const ok = await until(() => v.d.body.textContent.includes("%"));
+    check("the evidence renders", ok, v.navigated.join(",") || "");
+    const body = v.d.body.textContent;
+    const val = full.validation;
+
+    has("the replayed shock is the same shock", body, `${full.pct.toFixed(2)}%`);
+    has("the new break point is on screen", body, `${val.new_breaking_point.after_pct.toFixed(2)}%`);
+    check("the new break point is further out than the old one",
+          val.new_breaking_point.after_pct > val.new_breaking_point.before_pct,
+          `${val.new_breaking_point.after_pct} vs ${val.new_breaking_point.before_pct}`);
+
+    /* historical replay ships no data, and the page must say so rather than
+       print a number computed from returns nobody has. */
+    if (val.historical && val.historical.available === false) {
+      check("historical replay is declared unavailable, not faked",
+            /not available|No price history/i.test(body));
+      check("and prints no percentage of its own",
+            !/historical[^%]{0,400}\d+\.\d+%/i.test(body));
+    }
+    store = v.dump();
+  }
+
+  /* ---- 6. assumptions ---- */
+  {
+    const a = await load("assumptions.html", store);
+    check("assumptions.html runs clean", a.errors.length === 0, a.errors.join("; "));
+    check("the model page has content", a.d.body.textContent.trim().length > 200);
+  }
+
+  /* ---- the nav must not offer a page the state cannot answer ---- */
+  {
+    /* Arriving here with no analysis must produce the explicit "nothing to
+       show yet" state — never an empty network, which reads as "no contagion"
+       rather than "no answer". */
+    const cold = await load("cascade.html", {});
+    await sleep(300);
+    check("a cold visit to cascade.html says there is no analysis yet",
+          /No analysis yet/i.test(cold.d.body.textContent),
+          cold.d.body.textContent.trim().slice(0, 120));
+    check("and draws no network, which would read as an all-clear",
+          cold.d.querySelectorAll("#net circle").length === 0,
+          cold.d.querySelectorAll("#net circle").length + " nodes drawn");
+
+    const nav = await load("index.html", {});
+    const locked = [...nav.d.querySelectorAll('.nav-links a[data-locked]')].map((n) => n.dataset.page);
+    check("with no result, the downstream pages are locked in the nav",
+          ["analysis", "cascade", "defend", "verify"].every((p) => locked.includes(p)),
+          "locked: " + locked.join(","));
+  }
+
+  console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
+  process.exit(failures ? 1 : 0);
+})().catch((e) => {
+  console.log("HARNESS ABORTED: " + (e && e.stack || e));
+  process.exit(1);
+});

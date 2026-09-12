@@ -196,57 +196,65 @@ MUTATIONS = {
         "src/firebreak/portfolio.py",
         "    if unknown:\n        raise UnknownSymbol(unknown, tickers)",
         "    if False:\n        raise UnknownSymbol(unknown, tickers)"),
+    # The anchor here used to be bare "    if total <= 0:", which str.replace
+    # matched inside the eight-space copy of that line in Portfolio.weights()
+    # — so for its whole life this mutation removed a different guard from the
+    # one it is named after, found nothing, and reported GREEN as if the
+    # weight_vector check were untested. Anchor on the line above it.
     "pm_zero_value_scored": (
         "src/firebreak/portfolio.py",
-        "    if total <= 0:",
-        "    if False:"),
+        "    total = portfolio.total_value\n    if total <= 0:",
+        "    total = portfolio.total_value\n    if False:"),
+    "pm_zero_weights_divide": (
+        "src/firebreak/portfolio.py",
+        "        total = self.total_value\n        if total <= 0:\n            return {}",
+        "        total = self.total_value\n        if False:\n            return {}"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
         '            "found": False,\n            "refused": False,'),
 
-    # Frontend mutations. These need the UI harnesses, not pytest — run them
-    # with --ui, which drives tests/ui/provenance.js against the mutated web/
-    # and the real server. All five of these once scored 47/47 green while
-    # rendering a visibly wrong number on screen.
-    "amp_derived": (
-        "web/app.js",
-        "mult(m.amplification)",
-        "mult(m.final_loss / m.shock_loss)"),
-    "ring_always_zero": (
-        "web/app.js",
-        "shock: { assetIndex: body.asset_index ?? 0,",
-        "shock: { assetIndex: 0,"),
-    "split_round_off_by_one": (
-        "web/app.js",
-        "`round ${t} of ${longest - 1}`",
-        "`round ${t} of ${longest}`"),
-    "solver_evals_hardcoded": (
-        "web/app.js",
-        "${e.evaluations || 0} evals",
-        "${999} evals"),
-    "solver_exit_hardcoded": (
-        "web/app.js",
-        '` · <span>exit</span> ${e.exit_flag}`',
-        '` · <span>exit</span> 0`'),
-    "engine_name_literal": (
-        "web/app.js",
-        "$(\"solverName\").textContent = name;",
-        "$(\"solverName\").textContent = \"MATLAB · patternsearch\";"),
-    "bought_resolution_literal": (
-        "web/app.js",
-        "(search resolves to ±${b.resolution_pct.toFixed(3)}pp)",
-        "(search resolves to ±0.005pp)"),
-    "bought_before_is_after": (
-        "web/app.js",
-        "`critical distance <b>${b.before_pct.toFixed(2)}%</b> · <b>no measurable change</b>`",
-        "`critical distance <b>${b.after_pct.toFixed(2)}%</b> · <b>no measurable change</b>`"),
+    # Frontend mutations. These need the UI harness, not pytest — run them with
+    # --ui, which drives tests/ui/pages.js against the mutated web/ and the real
+    # server.
+    #
+    # There used to be eight of these, all anchored in web/app.js. When the
+    # single-page app became six pages nothing loaded app.js any more, so all
+    # eight went on scoring CAUGHT against a file no user could reach — the
+    # suite reporting frontend coverage it did not have. Five of them described
+    # UI that the redesign dropped outright (the MATLAB solver's evaluation
+    # count, its exit flag, the engine name, the bought-side resolution). Those
+    # are gone rather than moved; a mutation cannot guard a screen that no
+    # longer exists.
+    # The obvious mutation here — deriving amplification on screen instead of
+    # reading the engine's field — is INERT: server-side `amplification` is
+    # defined as cascade_loss / direct_loss, so the page prints the same digits
+    # either way. This one is the real hazard: the after-cascade loss presented
+    # as the direct loss, which understates nothing and overstates the shock.
+    "direct_loss_is_really_the_cascade": (
+        "web/analysis.html",
+        '["Direct loss", pct(body.direct_loss), "the shock alone", ""],',
+        '["Direct loss", pct(body.cascade_loss), "the shock alone", ""],'),
+    "weight_as_fraction": (
+        "web/index.html",
+        "${pct(h.weight, 1)}",
+        "${h.weight.toFixed(1)}%"),
+    "negative_zero_returns": (
+        "web/cascade.html",
+        'val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "0.00%";',
+        'val.textContent = `−${(drop * 100).toFixed(2)}%`;'),
+    "pct_forgets_the_hundred": (
+        "web/shared.js",
+        "const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;",
+        "const pct = (x, dp = 2) => `${x.toFixed(dp)}%`;"),
+    "cold_page_renders_anyway": (
+        "web/shared.js",
+        "  if (!s.result || !s.result.found) {",
+        "  if (false) {"),
 }
 
-UI_MUTATIONS = {"amp_derived", "ring_always_zero", "split_round_off_by_one",
-                "solver_evals_hardcoded", "bought_before_is_after",
-                "solver_exit_hardcoded", "engine_name_literal",
-                "bought_resolution_literal"}
+UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "negative_zero_returns",
+                "pct_forgets_the_hundred", "cold_page_renders_anyway"}
 
 
 def build(name):
@@ -304,10 +312,10 @@ def main():
     for name in names:
         scratch = build(name)
         if name in UI_MUTATIONS:
-            # Drives the real provenance harness against the mutated web/ and
+            # Drives the real page harness against the mutated web/ and
             # the live server, so every payload is genuine and any failure is
             # the DOM disagreeing with it. Needs a server on 8765.
-            run = subprocess.run(["node", "provenance.js"],
+            run = subprocess.run(["node", "pages.js"],
                                  cwd=scratch / "tests" / "ui", text=True, capture_output=True,
                                  env={"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"})
             tail = [l for l in run.stdout.splitlines() if "[FAIL]" in l]

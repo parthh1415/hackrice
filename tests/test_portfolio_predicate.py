@@ -116,3 +116,56 @@ def test_an_all_cash_portfolio_cannot_break():
 
     assert cash == pytest.approx(1.0)
     assert portfolio_loss_above(vector, cash, 0.01)(Result(np.zeros(len(TICKERS)))) is False
+
+
+def test_a_portfolio_worth_nothing_is_refused_not_scored_as_a_total_loss():
+    """The failure this guards is not a crash — it is a confident 0.00%.
+
+    Without the guard, weights() returns {} for a worthless book, weight_vector
+    hands back zeros with zero cash, and the vector no longer sums to 1. Then
+    portfolio_loss computes 1 - 0 = 1.0, which clears every limit, the search's
+    zero-shock check fires, and the screen reads "your portfolio breaks at a
+    shock of 0.00%" — the app's single most alarming number, produced by a book
+    that does not exist.
+
+    test_portfolio_api.py already covered this through the endpoint. This adds
+    the unit-level statement of it, plus the invariant the guard exists to
+    protect — that the vector and the cash weight still sum to 1.
+
+    Worth recording why it was written: pm_zero_value_scored was reporting
+    GREEN, which looked like a hole. It was not. Its anchor, bare
+    "    if total <= 0:", matched inside the eight-space copy of that line in
+    weights(), so the mutation had never touched this guard at all. The anchor
+    is fixed; the API test catches it now.
+    """
+    from firebreak.portfolio import Holding, Portfolio, weight_vector
+
+    tickers = ["NVDA", "AAPL"]
+    empty = Portfolio(holdings=[Holding(symbol="NVDA", market_value=0.0)])
+
+    with pytest.raises(ValueError) as excinfo:
+        weight_vector(empty, tickers)
+    assert "no value" in str(excinfo.value)
+
+    # and the same for a book whose values cancel out to nothing
+    cancelled = Portfolio(holdings=[
+        Holding(symbol="NVDA", market_value=1000.0),
+        Holding(symbol="AAPL", market_value=-1000.0),
+    ])
+    with pytest.raises(ValueError):
+        weight_vector(cancelled, tickers)
+
+    # a real book still resolves, and still sums to 1
+    real = Portfolio(holdings=[
+        Holding(symbol="NVDA", market_value=3600.0),
+        Holding(symbol="AAPL", market_value=2400.0),
+    ])
+    vector, cash = weight_vector(real, tickers)
+    assert sum(vector) + cash == pytest.approx(1.0)
+
+    # weights() carries its own copy of the guard. It is only ever called from
+    # weight_vector, which raises first, so nothing else can reach this branch
+    # — but it is a public method and the division is right there.
+    assert empty.weights() == {}
+    assert cancelled.weights() == {}
+    assert real.weights()["NVDA"] == pytest.approx(0.6)
