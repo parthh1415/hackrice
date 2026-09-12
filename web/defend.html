@@ -39,6 +39,7 @@
 <script src="shared.js"></script>
 <script>
 paintNav("defend");
+(async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("defend");
 if (r) {
   const root = document.getElementById("root");

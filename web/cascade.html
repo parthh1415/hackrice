@@ -67,6 +67,7 @@
 <script src="shared.js"></script>
 <script>
 paintNav("cascade");
+(async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("cascade");
 if (r) (async () => {
   document.getElementById("lede").textContent =
@@ -109,7 +110,10 @@ if (r) (async () => {
       const val = mk("text", { x: LX - 16, y: ay(i) + 18, "text-anchor": "end",
         "font-family": "var(--mono)", "font-size": 10,
         fill: hot ? "hsl(359 100% 61%)" : "hsl(0 0% 38%)" });
-      val.textContent = `−${(drop * 100).toFixed(2)}%`; svg.appendChild(val);
+      // -0.00% is what you get when you put a minus in front of a formatter
+      // and trust it. An asset that has not moved should say so.
+      val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "0.00%";
+      svg.appendChild(val);
     });
     F.forEach((name, j) => {
       const breached = (f.breached || []).includes(j);
@@ -141,13 +145,13 @@ if (r) (async () => {
   function weightOf(sym) { return wmap[sym] || 0; }
 
   document.getElementById("log").innerHTML = frames.map((f, t) => {
-    if (t === 0) return `<tr><td class="num muted" style="width:90px">R00</td>
-      <td>${r.asset} marked down ${r.pct.toFixed(2)}%</td></tr>`;
+    if (t === 0) return `<tr><td class="num dim" style="width:70px">R00</td>
+      <td style="text-align:left">${r.asset} marked down ${r.pct.toFixed(2)}%</td></tr>`;
     const who = (f.breached || []).map(j => F[j]);
     const msg = who.length
       ? `<b>${who.join(", ")}</b> crossed ${who.length > 1 ? "their limits" : "its limit"} and ${who.length > 1 ? "are" : "is"} forced to sell`
       : "no new breaches — the cascade settles";
-    return `<tr><td class="num muted" style="width:90px">R${String(t).padStart(2, "0")}</td><td>${msg}</td></tr>`;
+    return `<tr><td class="num dim" style="width:70px">R${String(t).padStart(2, "0")}</td><td style="text-align:left">${msg}</td></tr>`;
   }).join("");
 
   document.getElementById("prevBtn").onclick = () => { at = Math.max(0, at - 1); draw(at); };

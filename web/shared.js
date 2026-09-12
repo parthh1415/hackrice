@@ -83,6 +83,23 @@ function paintNav(current) {
     });
 }
 
+/* ?demo on ANY page: seed the demo book and run the analysis if state is
+   empty. Makes every page a shareable link that opens ready — and it is the
+   only way to screenshot a downstream page from a cold browser, which is how
+   the last three rendering bugs were found. */
+async function seedDemoIfAsked() {
+  if (!new URLSearchParams(location.search).has("demo")) return false;
+  const s = FB.state;
+  if (s.result && s.result.found) return false;
+  try {
+    const demo = await api("/api/portfolio/demo");
+    FB.set({ portfolio: demo.portfolio, rows: null, limit: s.limit || 0.10 });
+    const full = await api(`/api/portfolio/full?limit=${s.limit || 0.10}`, {});
+    FB.set({ result: full });
+    return true;
+  } catch { return false; }
+}
+
 function requireResult(current) {
   const s = FB.state;
   if (!s.result || !s.result.found) {

@@ -40,6 +40,7 @@
 <script src="shared.js"></script>
 <script>
 paintNav("verify");
+(async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("verify");
 if (r && r.validation) {
   const v = r.validation, s = v.identical_shock, n = v.new_breaking_point, syn = v.synthetic;
