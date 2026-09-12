@@ -203,14 +203,12 @@ def run_cascade(
     trajectory = [
         _snapshot(book, 0, book.over_limit(max_leverage), np.zeros((n_funds, n_assets)))
     ]
-    rounds, converged = 0, True
+    rounds = 0
 
     for step in range(1, max_rounds + 1):
         hit = book.over_limit(max_leverage)
         if not hit:
             break
-        if step == max_rounds:
-            converged = False
         rounds = step
         breached.update(hit)
 
@@ -232,6 +230,12 @@ def run_cascade(
             defaulted.add(j)
 
         trajectory.append(_snapshot(book, step, hit, sold_value))
+
+    # a run that spent its last permitted round selling may or may not have
+    # finished; the only way to know is to look afterwards. deciding on the way
+    # in — "this is the last round and somebody is selling" — marked every run
+    # that settled on the final round as divergent, and the UI prints that.
+    converged = not book.over_limit(max_leverage)
 
     equity_end = book.equity().sum()
     shock_loss = (equity_start - equity_after_shock) / equity_start

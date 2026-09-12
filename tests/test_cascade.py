@@ -83,3 +83,33 @@ def test_a_disjoint_book_is_not_contagion():
     result = cascade(gamma=0.9, leverage=6.0, holdings=disjoint)
 
     assert 1 not in result.breached
+
+
+def test_a_cascade_that_settles_on_the_last_round_is_not_called_divergent():
+    """`converged` was false whenever the final permitted round had sellers in
+    it, even when that round was the one that settled the system. The UI prints
+    "did not converge" off this, so it was libelling runs that finished.
+    """
+    from firebreak.engine import run_cascade
+
+    holdings = np.array([[60.0, 40.0], [30.0, 70.0]])
+    kwargs = dict(
+        leverage=np.array([6.0, 6.0]),
+        max_leverage=np.array([6.3, 6.3]),
+        target_leverage=np.array([5.7, 5.7]),
+        gamma=0.4,
+        adv=np.array([200.0, 200.0]),
+        shock=np.array([-0.05, 0.0]),
+    )
+
+    unhurried = run_cascade(holdings=holdings, max_rounds=24, **kwargs)
+    assert unhurried.converged and unhurried.rounds >= 2
+
+    # exactly enough budget: it finishes, so it converged
+    tight = run_cascade(holdings=holdings, max_rounds=unhurried.rounds, **kwargs)
+    assert tight.rounds == unhurried.rounds
+    assert tight.converged is True
+
+    # one round short: it genuinely didn't finish
+    cut = run_cascade(holdings=holdings, max_rounds=unhurried.rounds - 1, **kwargs)
+    assert cut.converged is False
