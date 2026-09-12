@@ -21,7 +21,7 @@ def cascade(gamma, leverage=5.0, shock0=-0.10, holdings=OVERLAPPING, adv=ADV):
         holdings=holdings,
         leverage=np.full(m, leverage),
         max_leverage=np.full(m, leverage * 1.05),
-        target_leverage=np.full(m, leverage * 0.95),
+        target_leverage=np.full(m, max(1.0, leverage * 0.95)),
         gamma=gamma,
         adv=adv,
         shock=shock,

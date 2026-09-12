@@ -49,7 +49,7 @@ def _scenario(data, params):
         holdings=np.array(data["holdings"]),
         leverage=np.full(m, lev),
         max_leverage=np.full(m, lev * 1.05),
-        target_leverage=np.full(m, lev * 0.95),
+        target_leverage=np.full(m, max(1.0, lev * 0.95)),
         gamma=float(params.get("gamma", 0.2)),
         adv=np.array(data["adv"]),
     )
@@ -191,7 +191,7 @@ def _boundary(params):
                 holdings=holdings,
                 leverage=np.full(m, lev),
                 max_leverage=np.full(m, lev * 1.05),
-                target_leverage=np.full(m, lev * 0.95),
+                target_leverage=np.full(m, max(1.0, lev * 0.95)),
                 gamma=gamma,
                 adv=adv,
                 shock=shock,

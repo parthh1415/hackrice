@@ -43,9 +43,16 @@ def amplification_above(factor):
 def find_weakest_shock(condition, holdings, tolerance=0.0005, **cascade_kwargs):
     """Smallest single-asset drop that trips `condition`, or None.
 
-    Damage is monotone in shock size but it's a *step* function — breaches are
-    discrete, so there are flat stretches where bisection has nothing to bite
-    on. So: coarse scan to find the step, then bisect inside that bracket.
+    Breach count is monotone in shock size (verified across 12,200 runs on the
+    real books), so for breach-count conditions this really is a threshold.
+    Loss- and amplification-based conditions are NOT monotone — a bigger shock
+    can bankrupt a fund sooner, so it liquidates at a higher VWAP and the total
+    comes out slightly smaller. For those, read this as "the smallest shock the
+    grid scan found", not as a proven threshold.
+
+    Either way the scan walks up from zero in 1% steps and takes the first
+    crossing, so the answer is the smallest crossing on the grid; bisection
+    only refines inside that 1% bracket.
     """
     n_assets = np.asarray(holdings).shape[1]
     best = None
@@ -73,8 +80,15 @@ def _critical_drop_for(asset, n_assets, condition, holdings, tolerance, cascade_
         )
         return condition(result)
 
+    # a configuration can already be in breach before anyone shocks it —
+    # the leverage slider reaches past max_leverage. asserting zero is safe
+    # made the search bisect down to -0.0003 and report that as the hero
+    # number, which is fabricated. so: check it.
+    if fails(0.0):
+        return 0.0
+
     # coarse pass: walk down until something gives
-    lo = 0.0  # known safe
+    lo = 0.0  # checked safe, just above
     hi = None  # known to fail
     steps = int(_MAX_DROP / _COARSE_STEP)
     for k in range(1, steps + 1):

@@ -2,6 +2,22 @@
 
 Prices are normalised to 1.0 at t0, so the holdings matrix you pass in can be
 straight dollar values off a 13F and the units work out.
+
+Two things in here are subtle enough to be worth stating up front.
+
+**Insolvency.** A fund with negative equity has A/E negative, so a naive
+`L > L_max` test is false and the most distressed fund in the system silently
+stops breaching and stops selling. That made damage non-monotone in shock size
+— bigger shock, fewer sellers, less damage — which makes "the smallest shock
+that breaks the system" meaningless, because it isn't a threshold at all.
+Insolvent funds are treated as infinitely levered, liquidate the whole book,
+and get marked defaulted.
+
+**Execution price.** Selling is equity-neutral only if you get book prices for
+the entire block, which is exactly what a fire sale doesn't give you. Settled
+at book prices, a fund liquidating 100% of its holdings takes *zero* fire-sale
+loss — the funds causing the crash come out immune to it. Sales settle at the
+round's VWAP instead: midway between the pre- and post-impact price.
 """
 
 from dataclasses import dataclass
@@ -9,7 +25,7 @@ from dataclasses import dataclass
 import numpy as np
 
 _TINY = 1e-12
-_FLOOR = 1e-6  # prices can sag but never go negative
+_FLOOR = 1e-6  # prices can sag but never reach zero or go negative
 
 
 class Book:
@@ -24,6 +40,7 @@ class Book:
         self.units = np.asarray(holdings, dtype=float).copy()
         self.prices = np.ones(self.units.shape[1])
         self.debt = self.assets() * (1.0 - 1.0 / np.asarray(leverage, dtype=float))
+        self.defaulted = np.zeros(self.units.shape[0], dtype=bool)
 
     def assets(self):
         return self.units @ self.prices
@@ -32,54 +49,85 @@ class Book:
         return self.assets() - self.debt
 
     def leverage(self):
-        return list(self.assets() / self.equity())
+        """A/E, with insolvency reported as +inf instead of a negative number.
+
+        The sign flip is the entire reason the first version of this was wrong,
+        so it gets handled once, here, rather than at every call site.
+        """
+        assets, equity = self.assets(), self.equity()
+        return [
+            float(np.inf) if equity[j] <= _TINY else float(assets[j] / equity[j])
+            for j in range(len(assets))
+        ]
 
     def shock(self, returns):
         """Move prices. Debt doesn't care, so the whole hit lands on equity."""
         self.prices = self.prices * (1.0 + np.asarray(returns, dtype=float))
 
-    def deleverage(self, max_leverage, target_leverage):
-        """Anyone over their limit raises cash and pays down debt.
+    def over_limit(self, max_leverage):
+        """Who has to sell this round. Insolvent counts — it's the worst case."""
+        max_leverage = np.asarray(max_leverage, dtype=float)
+        equity = self.equity()
+        lev = self.leverage()
+        return [
+            j
+            for j in range(len(equity))
+            if not self.defaulted[j]
+            and self.units[j].sum() > _TINY
+            and (equity[j] <= _TINY or lev[j] > max_leverage[j] + _TINY)
+        ]
 
-        The sale itself is equity-neutral: assets and debt fall by the same
-        dollar amount. What actually costs you money is the price move it
-        causes for everyone else holding the same names.
+    def plan_sales(self, hit, target_leverage):
+        """Units each breached fund intends to sell. Doesn't move anything yet.
 
         Solving (A - q)/E = target for q, and using E = A/L:
             q = A - target*E = A*(L - target)/L
 
-        Returns dollars sold per asset, summed across funds.
+        An insolvent fund has no target it can reach, so it sells the lot.
         """
-        max_leverage = np.asarray(max_leverage, dtype=float)
         target_leverage = np.asarray(target_leverage, dtype=float)
+        assets, equity = self.assets(), self.equity()
+        units_out = np.zeros_like(self.units)
+        wiped = []
 
-        assets = self.assets()
-        equity = self.equity()
-        solvent = equity > _TINY
-        lev = np.divide(assets, equity, out=np.full_like(assets, np.inf), where=solvent)
+        for j in hit:
+            if equity[j] <= _TINY:
+                units_out[j] = self.units[j]
+                wiped.append(j)
+                continue
+            if assets[j] <= _TINY:
+                continue
+            raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j], 0.0, assets[j]))
+            if raise_ <= _TINY:
+                continue
+            units_out[j] = self.units[j] * (raise_ / assets[j])
 
-        breached = solvent & (lev > max_leverage + _TINY)
-        if not breached.any():
+        return units_out, wiped
+
+    def settle(self, units_sold, execution_prices):
+        """Hand over the units, take the cash, pay down debt.
+
+        Proceeds at `execution_prices`, not book. That's the difference between
+        a model where fire-sellers are immune to their own fire sale and one
+        where they aren't.
+        """
+        proceeds = (units_sold * execution_prices).sum(axis=1)
+        self.units = np.maximum(self.units - units_sold, 0.0)
+        self.debt = self.debt - proceeds
+        return proceeds
+
+    def deleverage(self, max_leverage, target_leverage):
+        """Plan and settle at book prices. Returns dollars sold per asset.
+
+        Equity-neutral precisely because execution is at book prices.
+        run_cascade deliberately does not use this path.
+        """
+        hit = self.over_limit(max_leverage)
+        if not hit:
             return np.zeros_like(self.prices)
-
-        raise_ = np.zeros_like(assets)
-        raise_[breached] = assets[breached] * (
-            (lev[breached] - target_leverage[breached]) / lev[breached]
-        )
-        # can't sell more than you own
-        raise_ = np.minimum(raise_, assets)
-
-        value = self.units * self.prices
-        weights = np.divide(
-            value, assets[:, None], out=np.zeros_like(value), where=assets[:, None] > _TINY
-        )
-        sold = raise_[:, None] * weights
-
-        self.units -= np.divide(
-            sold, self.prices, out=np.zeros_like(sold), where=self.prices > _TINY
-        )
-        self.debt -= raise_
-        return sold.sum(axis=0)
+        units_sold, _ = self.plan_sales(hit, target_leverage)
+        self.settle(units_sold, self.prices)
+        return (units_sold * self.prices).sum(axis=0)
 
 
 @dataclass
@@ -88,6 +136,8 @@ class CascadeResult:
 
     rounds: int
     breached: list
+    defaulted: list
+    converged: bool
     prices: np.ndarray
     shock_loss: float
     final_loss: float
@@ -98,6 +148,8 @@ class CascadeResult:
         return {
             "rounds": self.rounds,
             "breached": self.breached,
+            "defaulted": self.defaulted,
+            "converged": self.converged,
             "prices": self.prices.tolist(),
             "metrics": {
                 "shock_loss": self.shock_loss,
@@ -116,37 +168,56 @@ def run_cascade(
     gamma,
     adv,
     shock,
-    max_rounds=12,
+    max_rounds=24,
 ):
     """Shock the prices, then let forced selling chase itself until it settles.
 
-    Every round: work out who's over their limit, make them sell, push the
-    prices of whatever they sold, go again. Usually dies out in two or three
-    rounds. If it doesn't, that's the interesting case.
+    Each round: find who's over their limit, plan the sales, price the impact
+    those sales cause, settle at the resulting VWAP, go again.
     """
+    max_leverage = np.asarray(max_leverage, dtype=float)
+    target_leverage = np.asarray(target_leverage, dtype=float)
+    if np.any(target_leverage < 1.0) or np.any(target_leverage > max_leverage):
+        raise ValueError(
+            "need 1 <= target_leverage <= max_leverage; outside that range the "
+            "'sale' has negative size and forced selling pushes prices up"
+        )
+
     book = Book(holdings, leverage)
     equity_start = book.equity().sum()
 
     book.shock(shock)
-    # baseline for amplification: the damage before anyone is forced to act.
-    # has to be equity-denominated, same as final_loss, or the ratio just
-    # reports the leverage ratio back at you.
+    # baseline for amplification: damage before anyone is forced to act.
+    # equity-denominated, same as final_loss, or the ratio just reports the
+    # leverage ratio back at you.
     equity_after_shock = book.equity().sum()
 
     adv = np.asarray(adv, dtype=float)
-    breached = set()
+    breached, defaulted = set(), set()
     trajectory = [_snapshot(book, 0, [])]
-    rounds = 0
+    rounds, converged = 0, True
 
     for step in range(1, max_rounds + 1):
-        hit = _over_limit(book, max_leverage)
+        hit = book.over_limit(max_leverage)
         if not hit:
             break
+        if step == max_rounds:
+            converged = False
         rounds = step
         breached.update(hit)
 
-        sold = book.deleverage(max_leverage, target_leverage)
-        book.prices = book.prices * np.maximum(1.0 - gamma * sold / adv, _FLOOR)
+        units_sold, wiped = book.plan_sales(hit, target_leverage)
+        volume = (units_sold * book.prices).sum(axis=0)
+
+        before = book.prices
+        after = before * np.maximum(1.0 - gamma * volume / adv, _FLOOR)
+        book.settle(units_sold, (before + after) / 2.0)  # round VWAP
+        book.prices = after
+
+        for j in wiped:
+            book.defaulted[j] = True
+            defaulted.add(j)
+
         trajectory.append(_snapshot(book, step, hit))
 
     equity_end = book.equity().sum()
@@ -157,6 +228,8 @@ def run_cascade(
     return CascadeResult(
         rounds=rounds,
         breached=sorted(breached),
+        defaulted=sorted(defaulted),
+        converged=converged,
         prices=book.prices.copy(),
         shock_loss=float(shock_loss),
         final_loss=float(final_loss),
@@ -165,23 +238,14 @@ def run_cascade(
     )
 
 
-def _over_limit(book, max_leverage):
-    equity = book.equity()
-    assets = book.assets()
-    solvent = equity > _TINY
-    lev = np.divide(assets, equity, out=np.full_like(assets, np.inf), where=solvent)
-    return [
-        j
-        for j in range(len(assets))
-        if solvent[j] and lev[j] > np.asarray(max_leverage, dtype=float)[j] + _TINY
-    ]
-
-
 def _snapshot(book, step, hit):
+    lev = book.leverage()
     return {
         "t": step,
         "prices": book.prices.tolist(),
-        "leverage": book.leverage(),
+        "leverage": [None if np.isinf(x) else x for x in lev],
+        "insolvent": [bool(np.isinf(x)) for x in lev],
         "equity": book.equity().tolist(),
         "breached": list(hit),
+        "defaulted": [int(j) for j in np.flatnonzero(book.defaulted)],
     }

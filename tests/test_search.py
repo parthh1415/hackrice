@@ -25,7 +25,7 @@ def system(leverage=6.0):
         holdings=OVERLAPPING,
         leverage=np.full(m, leverage),
         max_leverage=np.full(m, leverage * 1.05),
-        target_leverage=np.full(m, leverage * 0.95),
+        target_leverage=np.full(m, max(1.0, leverage * 0.95)),
         gamma=0.5,
         adv=ADV,
     )
