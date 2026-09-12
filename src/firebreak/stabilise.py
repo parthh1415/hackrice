@@ -23,7 +23,15 @@ from .engine import run_cascade
 # is named after. The old comment here said finer steps were "slow for no
 # gain". The gain is the answer.
 _STEPS = 20
-_DEPTH_TOLERANCE = 0.002   # 0.2% of a position; ~9 extra cascade runs
+
+# Relative, not absolute. _DEPTH_TOLERANCE used to be a flat 0.002, which reads
+# like precision until the answer is smaller than the tolerance: on the demo
+# scenario the true minimum is 0.000725, so the bisection halted still holding
+# the bracket (0, 0.0015625] and printed the top of it. 2.15x the cheapest cut,
+# reported as the cheapest cut. An absolute tolerance can only be right at one
+# order of magnitude, and nothing pins the answer to that one.
+_DEPTH_RTOL = 0.02         # land within 2% of the true minimum
+_DEPTH_FLOOR = 1e-7        # and stop chasing below a ten-millionth of a position
 
 
 @dataclass
@@ -52,10 +60,12 @@ class Fix:
 def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
     """Least-cost single-position cut that survives `shock`, or None.
 
-    For each position we walk the reduction up from 5% and stop at the first
-    level that clears the condition — anything smaller already failed, so
-    there's no point checking further. Then we keep whichever position's
-    successful cut was cheapest overall.
+    Two passes per position. The coarse one walks the reduction up in 5% steps
+    and stops at the first level that clears the condition — anything smaller
+    already failed, so there's no point going further. That step is only a
+    bracket, though: the true minimum is somewhere inside it, so a bisection
+    then narrows it to _DEPTH_TOLERANCE before we price it. We keep whichever
+    position's cut came out cheapest overall.
     """
     holdings = np.asarray(holdings, dtype=float)
     total = holdings.sum()
@@ -76,12 +86,20 @@ def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
 
             for step in range(1, _STEPS + 1):
                 reduction = step / _STEPS
-                cost = position * reduction / total
-                if best is not None and cost >= best.cost:
-                    break  # already more expensive than what we have
+                # Everything strictly below the previous step has already failed
+                # for this position, so that is the floor on what a fix here can
+                # possibly cost — and at step 1 the floor is zero, so step 1 can
+                # never be pruned. The old test priced the step it was about to
+                # TRY, which meant a position got discarded on the strength of a
+                # 5% cut it might have cleared with 0.07%. That is unsound in
+                # exactly the direction that hides cheap answers, and it got
+                # worse every time the bisection made `best.cost` smaller.
+                floor_cost = position * (step - 1) / _STEPS / total
+                if best is not None and floor_cost >= best.cost:
+                    break  # cannot beat what we have, however shallow the cut
 
                 works = not condition(run_cascade(
-                    holdings=Fix(fund, asset, reduction, cost).apply(holdings),
+                    holdings=Fix(fund, asset, reduction, 0.0).apply(holdings),
                     shock=shock, **cascade_kwargs))
                 if not works:
                     continue
@@ -90,7 +108,7 @@ def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
                 # minimum is inside that step. Bisect for it rather than
                 # reporting the grid point and calling it the answer.
                 lo, hi = reduction - 1.0 / _STEPS, reduction
-                while hi - lo > _DEPTH_TOLERANCE:
+                while hi - lo > max(_DEPTH_FLOOR, _DEPTH_RTOL * hi):
                     mid = (lo + hi) / 2.0
                     if condition(run_cascade(
                         holdings=Fix(fund, asset, mid, 0.0).apply(holdings),

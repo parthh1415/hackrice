@@ -16,11 +16,12 @@ import json
 import pathlib
 
 import numpy as np
+import pytest
 
 from firebreak import api
 from firebreak.engine import run_cascade
 from firebreak.search import at_least_n_breaches
-from firebreak.stabilise import find_cheapest_fix
+from firebreak.stabilise import Fix, find_cheapest_fix
 
 REAL = pathlib.Path(__file__).resolve().parents[1] / "data" / "cache" / "dataset.json"
 
@@ -49,8 +50,43 @@ def test_the_reduction_is_not_pinned_to_the_grid_floor():
     )
 
 
-def test_a_smaller_cut_at_the_same_position_does_not_work():
-    """Minimality, proven rather than asserted."""
+def true_minimum_at(condition, kw, shock, fund, asset):
+    """Bisect the same position to far past display precision."""
+    holdings = kw["holdings"]
+    other = {k: v for k, v in kw.items() if k != "holdings"}
+
+    def still_fails(r):
+        patched = Fix(fund, asset, r, 0.0).apply(holdings)
+        return condition(run_cascade(holdings=patched, shock=shock, **other))
+
+    lo, hi = 0.0, 1.0
+    if still_fails(hi):
+        return None  # selling the whole position doesn't save it
+    for _ in range(45):
+        mid = (lo + hi) / 2.0
+        if still_fails(mid):
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def test_the_reported_cut_is_close_to_the_true_minimum():
+    """The previous version of this test clamped to zero and proved nothing.
+
+    It took `slack = 0.004` absolute and checked `fix.reduction - 2 * slack`.
+    Once the bisection landed the answer at 0.0015625 that expression went
+    negative, `max(0.0, ...)` turned it into a zero-reduction run, and the
+    assertion became "the system we have not fixed yet still fails" — true by
+    construction, for any code, forever. It stayed green exactly as long as it
+    was meaningless.
+
+    What it should have caught: `_DEPTH_TOLERANCE` was absolute at 0.002 while
+    the answer had shrunk to 0.0007, so the bisection halted holding a bracket
+    wider than the number it was about to report, and printed the top of it.
+    Measured 0.15625% against a true minimum of 0.07252% — 2.15x too much, on
+    the single number this product exists to produce.
+    """
     _, kw = scenario()
     condition = at_least_n_breaches(3)
     from firebreak.search import find_weakest_shock
@@ -59,14 +95,40 @@ def test_a_smaller_cut_at_the_same_position_does_not_work():
     fix = find_cheapest_fix(condition=condition, shock=found.shock, **kw)
     assert fix is not None
 
-    holdings = kw["holdings"]
-    slack = 0.004  # the search's own resolution on reduction
-    smaller = max(0.0, fix.reduction - 2 * slack)
-    patched = dict(kw, holdings=fix.__class__(
-        fix.fund, fix.asset, smaller, 0.0).apply(holdings))
+    truth = true_minimum_at(condition, kw, found.shock, fix.fund, fix.asset)
+    assert truth is not None
+    assert fix.reduction >= truth, (
+        f"reported {fix.reduction:.6f} is BELOW the true minimum {truth:.6f} — "
+        "it does not actually clear the condition"
+    )
+    assert fix.reduction <= truth * 1.05, (
+        f"reported cut {fix.reduction:.6f} against a true minimum of {truth:.6f} "
+        f"({fix.reduction / truth:.2f}x too large). The search resolved the "
+        "position but not the depth."
+    )
 
-    assert condition(run_cascade(shock=found.shock, **patched)), (
-        f"cutting only {smaller:.4f} already clears it — {fix.reduction:.4f} is not minimal"
+
+def test_the_cost_is_priced_from_the_cut_it_reports():
+    """cost and reduction have to describe the same trade.
+
+    An earlier revision passed 0.0 as the cost while bisecting and rebuilt the
+    Fix afterwards; if those two ever drift, the UI quotes a price for a cut
+    nobody made.
+    """
+    data, kw = scenario()
+    condition = at_least_n_breaches(3)
+    from firebreak.search import find_weakest_shock
+
+    found = find_weakest_shock(condition=condition, **kw)
+    fix = find_cheapest_fix(condition=condition, shock=found.shock, **kw)
+    assert fix is not None
+
+    holdings = kw["holdings"]
+    expected = holdings[fix.fund, fix.asset] * fix.reduction / holdings.sum()
+    assert fix.cost == pytest.approx(expected, rel=1e-12), (
+        f"cost {fix.cost} prices a reduction of "
+        f"{fix.cost * holdings.sum() / holdings[fix.fund, fix.asset]:.6f}, "
+        f"but the reported reduction is {fix.reduction:.6f}"
     )
 
 
