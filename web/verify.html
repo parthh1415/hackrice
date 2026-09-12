@@ -65,10 +65,18 @@ if (r && r.validation) {
   const afterBreak = safe ? "none in range" : `−${n.after_pct.toFixed(2)}%`;
   const movedBy = safe
     ? "no shock in the tested range breaks the defended book"
-    : `+${n.moved_pp.toFixed(2)} points further away`;
-  const movedPoints = safe ? "—" : `${n.moved_pp.toFixed(2)} points`;
+    /* "points" here and "pp" on the Model page for the same unit. And the
+       break point moved from −24.69% to −27.76%, which is more negative, while
+       the delta is shown positive — both are true (the SHOCK is bigger, the
+       price is lower) and printing a bare "+3.07" beside two negatives invites
+       the reader to do the wrong subtraction. Say which direction it moved. */
+    : `${n.moved_pp.toFixed(2)} pp further from breaking`;
+  const movedPoints = safe ? "—" : `${n.moved_pp.toFixed(2)} pp`;
+  /* moved_ratio is a ratio, and "12%" at 0dp in a table where everything else
+     carries two decimals reads as a measured percentage rather than a
+     rounding of 1.1242. */
   const extraShock = safe || n.moved_ratio == null
-    ? "—" : `${((n.moved_ratio - 1) * 100).toFixed(0)}%`;
+    ? "—" : `×${n.moved_ratio.toFixed(2)}`;
   document.getElementById("root").innerHTML = `
   <div class="stack gap-6">
     <div class="card">
@@ -114,19 +122,25 @@ if (r && r.validation) {
         <tr><td>Break point, current book</td><td class="r num">−${n.before_pct.toFixed(2)}%</td></tr>
         <tr><td>Break point, defended book</td><td class="r num">${afterBreak}</td></tr>
         <tr><td>Moved outward by</td><td class="r num">${movedPoints}</td></tr>
-        <tr><td>Additional shock now required</td><td class="r num">${extraShock}</td></tr>
+        <tr><td>Shock needed, relative to before</td><td class="r num">${extraShock}</td></tr>
       </tbody></table></div>
     </div>
 
     <div class="card">
       <div class="card-header">
-        <span class="card-title">3 — ${syn.scenarios} simulated stresses</span><span class="sub">Both books scored on identical draws. Seed ${syn.seed}, so this
+        <span class="card-title">3 — ${syn.scenarios} simulated stresses</span><span class="sub">${syn.shock_range_pct ? syn.shock_range_pct[0] + "–" + syn.shock_range_pct[1] + "% single-name shocks, " : ""}identical draws for both books. Seed ${syn.seed}, so this
           reproduces exactly.</span>
       </div>
       <div class="card-body tight"><table>
         <thead><tr><th></th><th class="r">Current</th><th class="r">Defended</th></tr></thead>
         <tbody>
-          <tr><td>Stayed under the limit</td><td class="r num">${sv(syn.before.survival)}</td><td class="r num">${sv(syn.after.survival)}</td></tr>
+          <!-- 98% and 99% are 392/400 and 396/400. At a 5% limit they round
+               to 80% and 81% and hide 80.25 against 80.75 — a difference of
+               two scenarios, invisible. The denominator is already in the
+               card title, so print the count. -->
+          <tr><td>Stayed under the limit</td>
+            <td class="r num">${Math.round(syn.before.survival * syn.scenarios)} / ${syn.scenarios}</td>
+            <td class="r num">${Math.round(syn.after.survival * syn.scenarios)} / ${syn.scenarios}</td></tr>
           <tr><td>Median loss</td><td class="r num">${pct(syn.before.median_loss)}</td><td class="r num">${pct(syn.after.median_loss)}</td></tr>
           <tr><td>95th percentile</td><td class="r num">${pct(syn.before.p95_loss)}</td><td class="r num">${pct(syn.after.p95_loss)}</td></tr>
           <tr><td>Worst modelled</td><td class="r num">${pct(syn.before.worst_loss)}</td><td class="r num">${pct(syn.after.worst_loss)}</td></tr>

@@ -462,6 +462,22 @@ function visibleText(d) {
           val.new_breaking_point.after_pct > val.new_breaking_point.before_pct,
           `${val.new_breaking_point.after_pct} vs ${val.new_breaking_point.before_pct}`);
 
+    /* Survival is printed as a count out of the scenarios, not a rounded
+       percentage: 98% and 99% are 392/400 and 396/400, and at a 5% limit the
+       same rounding turns 80.25 and 80.75 into 80% and 81% — a difference of
+       two scenarios, invisible. */
+    const syn = val.synthetic;
+    has("survival is a count of scenarios, not a rounded percentage", body,
+        `${Math.round(syn.before.survival * syn.scenarios)} / ${syn.scenarios}`);
+    has("and the defended count too", body,
+        `${Math.round(syn.after.survival * syn.scenarios)} / ${syn.scenarios}`);
+    /* the draws have a range and it is reported; the page must quote it
+       rather than leave "400 simulated stresses" unqualified. */
+    if (syn.shock_range_pct) {
+      has("the range the shocks were drawn from is on screen", body,
+          `${syn.shock_range_pct[0]}–${syn.shock_range_pct[1]}%`);
+    }
+
     /* historical replay ships no data, and the page must say so rather than
        print a number computed from returns nobody has. */
     if (val.historical && val.historical.available === false) {
