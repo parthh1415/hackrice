@@ -33,14 +33,15 @@ Firebreak loads the real books, then runs two searches around a forced-deleverag
 
 **The attack.** Given a failure condition you choose (default: three or more funds breach their
 leverage limit), it searches every asset for the smallest single-name price drop that trips it. On the
-real filings at gross leverage 5.0 and impact coefficient γ = 0.2, the answer is **NVDA −5.28%**. Not a
-crash. A bad Tuesday.
+real filings at gross leverage 5.0, impact coefficient γ = 0.2 and a breach band of 1.05, the answer
+is **NVDA −5.27%**. Not a crash. A bad Tuesday.
 
-**The cascade.** That 5.28% drop costs the system 4.88% of equity directly. Then the forced selling
+**The cascade.** That 5.27% drop costs the system 4.88% of equity directly. Then the forced selling
 starts. Millennium and Renaissance breach first, sell pro rata across their whole books to get back
 under their limits, and push down the price of everything they own. That moves Citadel over the line
-in round 2, and Two Sigma in round 3. Final equity loss: **9.13%**. Amplification **1.87×**, three
-rounds, four of five funds breached.
+in round 2, and Two Sigma in round 3. Final equity loss: **9.12%**. Amplification **1.87×**, three
+rounds, four of five funds breached. (The metrics band rounds to one decimal on screen — 4.9% and
+9.1% — so quote those if you are reading off the display.)
 
 The clearest thing in the whole demo is Point72. It holds 2.8% NVDA, the smallest position in the
 system. The direct hit costs it 0.75% of equity. It ends the cascade down **5.70%**, roughly seven and
@@ -51,21 +52,34 @@ arrives through other people's liquidations of names it happens to share with th
 (sweeping both ways from the books as filed — sharpened away from the system mean on one side,
 blended toward it on the other, so measured overlap runs 0.00 to 1.00), with amplification computed
 in every cell rather than sketched.
-It puts a marker on the configuration you are currently looking at: leverage 5.0, overlap 0.712 —
+It puts a marker on the configuration you are currently looking at: leverage 5.0, overlap 0.71 —
 just past the leverage boundary, where amplification jumps from 1.00 to 1.86 between λ≈4.5 and
 λ≈5.0. The question it answers is whether you got unlucky or whether you are standing somewhere
-structurally bad.
+structurally bad. Worth saying plainly: *where* that boundary sits is a function of the breach band
+we declared. At the same −5% reference, a band of 1.02 would put it near λ 2.4 and a band of 1.10
+near λ 6.7. The shape of the map is the finding; the location of the marker on it is a consequence of
+parameters we chose and show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position for the smallest reduction
 that survives the *same* shock. The answer at these settings: **Millennium cuts its GOOGL position by
-15%**, which is 0.13% of the system's gross assets. Re-run NVDA −5.28% against the patched books and
-the outcome goes from four breaches over three rounds to two breaches in one round, final loss 9.13%
-down to **6.49%**, amplification 1.87 down to **1.33**.
+5%**, which is 0.04% of the system's gross assets — four basis points. Re-run NVDA −5.27% against the
+patched books and the outcome goes from four breaches over three rounds to two breaches in one round,
+final loss 9.12% down to **6.48%**, amplification 1.87 down to **1.33**.
+
+**And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
+against the patched books and reports it. The critical shock moves from **−5.27% to −5.27%** — a
+delta of **+0.00pp**. Four basis points of GOOGL survives *this* shock and buys essentially nothing
+in structural terms. That is not a flaw we are hiding; it is the honest reading of a one-position,
+one-shock optimiser, it is on the payload as `bought`, and a judge who clicks Find-weakest-shock
+straight after Stabilise finds it in ten seconds. We would rather say it first. The genuine next
+version minimises over a *family* of shocks rather than one, and that is a real piece of work, not a
+slider.
 
 The intervention is in GOOGL, not NVDA. That is the point of solving it rather than guessing. GOOGL is
 the third most crowded name in the system, behind NVDA and AMZN, and Millennium is one of the two
 funds whose round-one breach starts the chain. Cutting the shocked name would have been the obvious
-move and it is not the cheapest one.
+move and it is not the cheapest one. Read it as a targeted patch for a named scenario, not as
+structural repair.
 
 ## How we built it
 
@@ -119,6 +133,24 @@ insolvent, which is a VWAP and round-ordering effect rather than the original ho
 non-monotone by design and we have a test that asserts it stays that way, so nobody later "fixes" it
 into a claim we cannot support.
 
+**The most important parameter was invisible.** The breach band — how far over its target leverage a
+fund runs before it is forced to sell — was hardcoded at 1.05 while leverage and γ sat on sliders. It
+moves the hero harder than either of them: band 1.02 gives NVDA −1.73% and amplification 3.10, band
+1.30 gives NVDA −27.33% and 1.43. A five-fold swing in the headline number, controlled by a constant
+nobody could see and nobody was declaring. It is a declared parameter now (`band`, default 1.05,
+range 1.0–1.5), it comes back in the `params` block on every response, and it belongs in the
+what-we-do-not-claim list next to leverage and γ.
+
+**The hero was printing precision the search could not resolve.** The bisection tolerance was 5e-4
+while the hero renders two decimals, so the last digit was decoration. It was not imprecise, it was
+wrong: what we had been showing as −5.28% is −5.27%. Tolerance is 5e-5 now, which actually resolves
+the digit we print.
+
+**The after-panel was drawing the unpatched book.** The before/after split re-ran the cascade on the
+patched holdings but rendered the original matrix, so the two halves showed the same network with
+different numbers underneath. The whole point of that scene is that one position is smaller on the
+right.
+
 **Fire-sellers were immune to their own fire sale.** Sales were settling at book prices. A fund
 liquidating 100% of its book therefore took exactly zero fire-sale loss, while every bystander ate the
 price impact it caused. The funds driving the crash were the only ones untouched by it. Sales now
@@ -160,8 +192,9 @@ exponential impact. The actual ancestor is Greenwood, Landier & Thesmar (2015), 
 `b_n = d/e` gives `q = (λ−1)·loss`, identical to ours. Caccioli is cited for overlapping-portfolio
 contagion and the critical-leverage boundary, which is what it is actually about.
 
-Five of these eight came out of handing the project to independent reviewers who had no stake in it
-being right.
+Eight of these eleven came out of handing the project to independent reviewers who had no stake in it
+being right. Not one of them was found by a failing test — every single one produced a plausible
+number and shipped.
 
 ## Accomplishments that we're proud of
 
@@ -172,12 +205,14 @@ everything turning red at once.
 Point72's number. 2.8% exposure, 0.75% direct loss, 5.70% total. That single line is the whole thesis
 about overlapping portfolios, and it came out of real filings rather than a constructed example.
 
-The fix is non-obvious and it is *priced*. 0.13% of gross assets, in a name nobody shocked. Output is a
-sentence a PM could act on, not a risk score.
+The fix is non-obvious and it is *priced*. 0.04% of gross assets, in a name nobody shocked. Output is
+a sentence a PM could act on, not a risk score — and we report what it does not buy in the same
+breath.
 
-Every number on screen is derivable, and the model states what it does not claim before a judge has to
-ask. We shipped honest magnitudes: amplification 1.87, not the 11.8 we could have had by leaving the
-broken metric in.
+Every number on screen is derivable, and we shipped honest magnitudes: amplification 1.87, not the
+11.8 we could have had by leaving the broken metric in; a hero that prints only the digits the search
+resolves; and a `bought` figure of +0.00pp on our own headline intervention, said out loud rather
+than left for a judge to find.
 
 ## What we learned
 
@@ -211,7 +246,11 @@ A bystander view. 13F holders are participants; a retail investor with no levera
 cannot be forced to sell, but still eats the price impact. Import a broker CSV, get an exposure
 measurement. Exposure, never a prediction.
 
-Robust defence: the cheapest intervention that survives not one shock but a whole family of them.
+Robust defence, and this is the one that matters most. Our stabiliser minimises cost subject to
+surviving *one named shock*, which is why the fix it finds buys +0.00pp of critical-shock headroom.
+The right objective is to maximise the critical shock itself, or to minimise cost subject to
+surviving a whole family of shocks. That turns a targeted patch into structural repair, and it is the
+first thing we would build next.
 
 ## Built With
 
@@ -221,12 +260,18 @@ frontend, no framework and no build step. SEC EDGAR 13F-HR filings for holdings.
 
 ## What this does not claim
 
-Stated on the assumptions panel in the app, and worth repeating here.
+These are stated here and said out loud in the demo. *(The in-app assumptions panel is not built —
+the declared parameters are visible on the control strip and echoed in the `params` block of every
+API response, but there is no panel in the UI rendering the bullets below. It is on the list.)*
 
 We do not predict market moves. Firebreak computes a stability property of a declared configuration.
 
-Leverage is not disclosed in 13F. `λ` is our parameter. It is visible and adjustable in the UI, and it
-is the single most important thing on the screen.
+Leverage is not disclosed in 13F. `λ` is our parameter. It is visible and adjustable in the UI.
+
+Neither is the breach band. `band` — how far over target leverage a fund runs before it is forced to
+sell — is our parameter too, it defaults to 1.05, and it swings the headline number harder than
+leverage or γ. Today it is set by URL rather than by a slider, which is the least visible place for
+the most influential knob; every response declares the value it used.
 
 13F is long-only US equity, filed quarterly with a 45-day lag. It excludes shorts and derivatives.
 Options rows are filtered out, rows are aggregated by CUSIP across internal managers, and our universe
@@ -234,6 +279,11 @@ is ten names. The books are real; they are not complete.
 
 Price impact is not observable. `γ` is a slider with a stated functional form and ADV figures that are
 order-of-magnitude public volumes. The finding is that the stability boundary exists and moves
-predictably with leverage and crowding, not any single point estimate on it.
+predictably with leverage, not any single point estimate on it. Where that boundary sits in leverage
+depends on the band as much as on anything we measured, so "you are here, right on the edge" is a
+statement about a configuration we declared, not a discovery about the funds.
+
+The fix solves one shock. `bought` reports what it buys against a re-run of the search, and at the
+demo settings that is +0.00pp. A targeted patch, not structural repair.
 
 No number is shown to more precision than the model supports.

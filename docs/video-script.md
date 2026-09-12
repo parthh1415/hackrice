@@ -1,13 +1,20 @@
 # Firebreak — demo video script
 
-**Target length:** 3:30. Hard ceiling 4:00.
+**Target length:** 3:42. Hard ceiling 4:00. *(Was 3:30 before Shot 2.12 was added. If you are
+running over, the twelve seconds come out of Shot 2.7's grid pause and Shot 4.2's list — not out of
+2.12, and not out of either silence.)*
 **Required HackRice structure:** 30s intro · 2min demo · 30s technical design · 30s impact and future.
 
 **Before you record**
 
 - Sliders at the golden path: gross leverage **5.0**, price impact **γ = 0.20**, failure condition
-  **3 or more funds breach**. Every number below is the live output at those settings. If you move a
-  slider, the numbers change and this script is wrong.
+  **3 or more funds breach**, and the breach band at its default **1.05**. Every number below is the
+  live output at those settings. If you move a slider, the numbers change and this script is wrong.
+- **The band has no slider** — it is a URL parameter (`&band=`) that defaults to 1.05. Leave it
+  alone and don't put it in the URL bar on camera. It swings the hero harder than either slider
+  (1.02 → −1.73%, 1.30 → −27.33%), which is exactly why Act 3 has to name it as a declared parameter.
+- **Read numbers off the screen, not off this script's underlying floats.** The metrics band renders
+  losses to one decimal and amplification to two, the hero and the shock stamp to two.
 - Run the loop once to warm the cache. Serve with the cached demo path so wifi cannot kill you.
 - Browser at 1280×800, zoom 100%, no tab bar clutter, no notifications.
 - Speak at roughly 150 words per minute. The lines below are timed for that.
@@ -42,13 +49,16 @@ solver strip legible at the bottom.
 
 ---
 
-## ACT 2 — DEMO (0:30 – 2:30)
+## ACT 2 — DEMO (0:30 – 2:42)
 
 ### Beat 1 — ATTACK (0:30 – 0:57)
 
 #### Shot 2.1 · 0:30 – 0:44
-**On screen:** Cursor traces across the bipartite network, then rests on the assumptions strip
-showing quarter 2026-06-30 and source SEC 13F-HR.
+**On screen:** Cursor traces across the bipartite network, then rests on the control strip.
+
+> *There is **no** assumptions strip in the app — no quarter, no source line, no panel. If you want
+> 2026-06-30 and "SEC 13F-HR" on screen for this beat you have to put them on a slide. Do not point
+> the cursor at something that isn't there.*
 
 > "Citadel, Millennium, Point72, Two Sigma, Renaissance. Ten mega-cap names. These are their real
 > filed books, second quarter twenty twenty-six. Mean pairwise overlap between these five portfolios
@@ -58,17 +68,21 @@ showing quarter 2026-06-30 and source SEC 13F-HR.
 **On screen:** Cursor on the sliders. Leverage 5.0, γ 0.20 highlighted briefly.
 
 > "Leverage and price impact aren't in a 13F, so they're ours. Five times gross, impact coefficient
-> zero point two, both adjustable, both on screen the whole time."
+> zero point two, both adjustable, both on screen the whole time. There's a third one — how far over
+> its limit a fund runs before it's forced to sell. We hold that at one point oh five and I'll come
+> back to it, because it moves this number more than either slider does."
+
 
 #### Shot 2.3 · 0:50 – 0:57
 **On screen:** Click **Find weakest shock**. Solver strip ticks over. The hero number lands:
-**NVDA −5.28%**.
+**NVDA −5.27%**.
 
 > "Failure means three or more funds breach. Find me the smallest single-name drop that does it."
 >
 > ⏸ *(let the number land, ~1.5s)*
 >
-> "NVIDIA, down five point three percent. That's not a crash. That's a bad Tuesday."
+> "NVIDIA, down five point two seven percent. That's not a crash. That's a bad Tuesday."
+
 
 ### Beat 2 — CASCADE (0:57 – 1:32)
 
@@ -107,7 +121,10 @@ numbers: `NVDA weight 2.8% · direct loss 0.75% · total loss 5.70%`.
 > sold a share. That damage is entirely other people liquidating names it happens to share with them.
 > That's the part a single-fund stress test cannot see."
 
-**On screen at 1:30:** Metrics panel: `shock loss 4.88% → final loss 9.13% · amplification 1.87×`.
+**On screen at 1:30:** Metrics panel reads `Shock loss 4.9% · After cascade 9.1% · Amplification
+1.87× · Breaches 4 · Rounds 3 / 3`. The underlying floats are 4.88% and 9.12%; the band rounds to one
+decimal. Say "nearly five percent" and "just over nine", or read the screen — do not say "four point
+eight eight" over a display that reads 4.9%.
 
 ### Beat 3 — BOUNDARY (1:32 – 1:57)
 
@@ -139,21 +156,32 @@ close to the line.
 > reference shock is single-name, so amplification is not monotone in crowding. If a judge points at
 > the right-hand columns and asks why they're cooler, that's why: blending toward the mean dilutes
 > the shocked name. Don't claim a crowding threshold on camera.*
+>
+> *And don't oversell "right on the edge". Where the leverage boundary sits is set by the breach
+> band we chose: at the same −5% reference, band 1.02 would put it near λ 2.4 and band 1.10 near
+> λ 6.7. The map's shape is the finding; the marker sitting near the line at band 1.05 is partly a
+> consequence of picking 1.05. If a judge presses, concede it immediately — "that's a parameter we
+> declared, and here's how much it moves" is a much better answer than defending the coincidence.*
+>
+> *Known limitation worth not walking into: `/api/boundary` currently reads `band` and echoes it back
+> in `params` but **does not apply it** to the sweep, so the grid looks identical at every band. Do
+> not demonstrate band-vs-boundary live until that is fixed.*
 
 
-### Beat 4 — DEFEND (1:57 – 2:30)
+### Beat 4 — DEFEND (1:57 – 2:42)
 
 #### Shot 2.9 · 1:57 – 2:08
 **On screen:** Click **Stabilise**. Solver strip shows the pattern search running, evaluation count
 climbing. The instruction line resolves:
-`Millennium: cut GOOGL exposure 15%. Cost: 0.13% of gross assets.`
+`Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets`
 
 > "Now run it backwards again. Same failure condition, same shock. What is the smallest change
 > anywhere in this system that survives it?"
 >
 > ⏸ *(let the instruction render)*
 >
-> "Millennium cuts Alphabet by fifteen percent. Thirteen basis points of the system's gross assets."
+> "Millennium cuts Alphabet by five percent. Four basis points of the system's gross assets."
+
 
 #### Shot 2.10 · 2:08 – 2:18
 **On screen:** Cursor underlines the word GOOGL in the instruction, then flicks to the NVDA node.
@@ -167,8 +195,9 @@ climbing. The instruction line resolves:
 
 
 #### Shot 2.11 · 2:18 – 2:30
-**On screen:** Split screen. Both sides run **NVDA −5.28%**, the identical shock stamped underneath
-both panels. Left: 4 breaches, 3 rounds, 9.13% loss. Right: 2 breaches, 1 round, 6.49% loss.
+**On screen:** Split screen. Both sides run **NVDA −5.27%**, the identical shock stamped underneath
+both panels (`identical shock · 5.27% NVDA`). Left foot: `9.1% loss · 4 breaches · amp 1.87×`.
+Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 
 > "Same shock, both sides. Before: four funds, three rounds, nine point one percent of system equity
 > gone."
@@ -176,13 +205,38 @@ both panels. Left: 4 breaches, 3 rounds, 9.13% loss. Right: 2 breaches, 1 round,
 > ⏸ *(hold on the split, ~2s)*
 >
 > "After: two funds, one round, six point five. Amplification one point eight seven down to one point
-> three three. For thirteen basis points."
+> three three. For four basis points."
+
+#### Shot 2.12 · 2:30 – 2:42  — **NEW. Do not cut this one.**
+**On screen:** Hold on the split and cut to a slide reading
+`critical shock before fix −5.27%  ·  after fix −5.28%  ·  bought +0.00pp`.
+
+> "And here's the part we'd rather say than have you find. The stabiliser re-runs the search against
+> the patched books. The smallest shock that breaks us goes from five point two seven to five point
+> two eight. One hundredth of a percent. Four basis points of Alphabet survives *this* shock and buys
+> us essentially nothing against the next one."
+>
+> ⏸ *(beat)*
+>
+> "That's a targeted patch, not structural repair, and it's what a one-position, one-scenario
+> optimiser is honestly capable of. The fix for that isn't a slider. It's a different objective —
+> maximise the smallest shock that breaks you, instead of minimising the cost of surviving one you
+> already named. That's the next build."
+
+> *Where the numbers come from: the `bought` object on `/api/stabilise` — `before_pct` 5.2734,
+> `after_pct` 5.2773, `delta_pct` +0.0039, `note: "a targeted patch, not structural repair"`.*
+>
+> **Do not demonstrate this by clicking Find weakest shock after Stabilise.** `/api/break` reloads
+> the dataset from disk, so it re-searches the **unpatched** books — it would print −5.27% again for
+> the wrong reason and you'd be showing the right conclusion off a broken mechanism. Nothing in the
+> UI renders `bought` today. Until it does, this beat is a slide, or you show the JSON.*
+
 
 ---
 
-## ACT 3 — TECHNICAL DESIGN (2:30 – 3:00)
+## ACT 3 — TECHNICAL DESIGN (2:42 – 3:12)
 
-### Shot 3.1 · 2:30 – 2:40
+### Shot 3.1 · 2:42 – 2:52
 **On screen:** Architecture diagram, four boxes left to right: `ingest → engine → search → ui`, with
 `engine` labelled "pure function (H, λ, γ, s) → trajectory".
 
@@ -192,7 +246,7 @@ both panels. Left: 4 breaches, 3 rounds, 9.13% loss. Right: 2 breaches, 1 round,
 > else treats it as a black box, which is what let us build the optimiser and the front end at the
 > same time."
 
-### Shot 3.2 · 2:40 – 2:50
+### Shot 3.2 · 2:52 – 3:02
 **On screen:** `matlab/stabilise.m` open, `patternsearch` call highlighted. Cut to the solver strip
 in the app showing the live solver name, evaluation count and exit flag.
 
@@ -201,19 +255,22 @@ in the app showing the live solver name, evaluation count and exit flag.
 > piecewise-constant landscape, discrete feasible set. That's MATLAB pattern search, and the app tells
 > you which solver actually produced the number on screen."
 
-### Shot 3.3 · 2:50 – 3:00
-**On screen:** The assumptions panel, "what we do not claim" bullets visible.
+### Shot 3.3 · 3:02 – 3:12
+**On screen:** A slide with the "what we do not claim" bullets. *(The in-app assumptions panel is
+not built — do not cut to the app for this shot expecting to find one.)*
 
-> "And the honesty panel is not an afterthought. We do not predict market moves. Leverage is not in a
-> 13F, it's our parameter. 13F is long-only, quarterly, forty-five days late. Price impact is a stated
-> functional form with a coefficient you can move. The claim is that the boundary exists and moves
-> predictably, not that any one point on it is the truth."
+> "And the honesty is not an afterthought. We do not predict market moves. Leverage is not in a 13F,
+> it's our parameter. Neither is the breach band, the one I flagged earlier — that's ours too, it
+> defaults to one point oh five, and it moves the headline number more than leverage or impact do.
+> Thirteen-F is long-only, quarterly, forty-five days late. The claim is that the boundary exists and
+> moves predictably, not that any one point on it is the truth."
+
 
 ---
 
-## ACT 4 — IMPACT AND FUTURE (3:00 – 3:30)
+## ACT 4 — IMPACT AND FUTURE (3:12 – 3:42)
 
-### Shot 4.1 · 3:00 – 3:12
+### Shot 4.1 · 3:12 – 3:24
 **On screen:** Back to the phase diagram with the marker on it.
 
 > "Reverse stress testing is already mandatory. UK PRA, EBA guidelines: firms have to find the
@@ -221,20 +278,22 @@ in the app showing the live solver name, evaluation count and exit flag.
 > it interactively across portfolios that overlap, and overlap is exactly where the 2007 quant quake
 > and every crowded-trade unwind since actually happened."
 
-### Shot 4.2 · 3:12 – 3:24
+### Shot 4.2 · 3:24 – 3:36
 **On screen:** Short list appears: multi-asset shocks · systemic-importance ranking · square-root
 impact · bystander exposure view.
 
-> "Next: shocks across several names at once, ranking which single asset is most dangerous to the
-> whole configuration, a second impact model to prove the boundary isn't an artefact of the first one,
-> and a view for people who hold these names with no leverage. They can't be forced to sell. They
-> still pay for it."
+> "Next, and first: a stabiliser that maximises the smallest shock that breaks you, instead of
+> minimising the cost of surviving one you already named. Then shocks across several names at once,
+> ranking which single asset is most dangerous to the whole configuration, and a view for people who
+> hold these names with no leverage. They can't be forced to sell. They still pay for it."
 
-### Shot 4.3 · 3:24 – 3:30
-**On screen:** Back to the hero number, NVDA −5.28%, then the title card.
 
-> "Five point three percent on one name, and four of five funds breach. The point isn't that number.
-> The point is that you can go looking for it. Firebreak."
+### Shot 4.3 · 3:36 – 3:42
+**On screen:** Back to the hero number, NVDA −5.27%, then the title card.
+
+> "Five point two seven percent on one name, and four of five funds breach. The point isn't that
+> number. The point is that you can go looking for it. Firebreak."
+
 
 ---
 
@@ -242,15 +301,21 @@ impact · bystander exposure view.
 
 - **Do not** talk during Shot 2.4's first two rounds or during the Shot 2.11 split-screen hold. Those
   two silences are what make the demo land.
+- **Shot 2.12 is not optional and not a caveat to mumble.** Being the first to say what the fix
+  doesn't buy is worth more than the fix. If you are cutting for time, cut Act 4's list instead.
 - If a run is slow on the day, use the cached demo path. Do not fill the gap with narration.
 - If asked live where leverage comes from, the answer is one sentence: it is not in the filing, it is a
   declared parameter, and it is the slider on screen.
-- Numbers verified live 2026-09-12 at leverage 5.0, γ 0.20, breaches ≥ 3, against
+- Numbers verified live 2026-09-12 at leverage 5.0, γ 0.20, band 1.05, breaches ≥ 3, against
   `/api/break` and `/api/stabilise`. Re-run before recording and correct any drift rather than
-  reading these from the page. Verified this pass: NVDA −5.28%, shock loss 4.88%, final loss 9.13%,
-  amplification 1.87, 3 rounds, breaches Millennium+Renaissance → Citadel → Two Sigma (4 of 5,
-  Point72 never); Point72 2.8% / 0.75% / 5.70%; fix Millennium GOOGL −15% at 0.13% of gross assets;
-  after 6.49% and 1.33 with 2 breaches in 1 round; marker at leverage 5.0, overlap 0.7117.
+  reading these from the page. Verified this pass — **screen value first, float in brackets**:
+  hero NVDA −5.27% (5.2734); shock loss 4.9% (4.876%); after cascade 9.1% (9.122%); amplification
+  1.87× (1.8710); 4 breaches, 3 rounds; order Millennium+Renaissance → Citadel → Two Sigma, Point72
+  never; Point72 2.8% / 0.75% / 5.70%; fix `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross
+  assets` (reduction 0.05, cost 0.000441); after 6.5% (6.482%) and 1.33× (1.3289), 2 breaches in
+  1 round; shock stamp `5.27% NVDA`; boundary marker `L 5.0 · overlap 0.71` (0.7117).
+- `bought` on `/api/stabilise`: before 5.2734%, after 5.2773%, delta **+0.0039pp**. Shot 2.12 is the
+  only place this reaches the audience, because nothing renders it.
 - The solver strip will read **"SciPy-free Python · exhaustive position scan"** unless someone has
   run `matlab/stabilise.m` and dropped `solve_out.json` into `data/cache/` first — see
   `matlab/README.md`. Shot 3.2's line about MATLAB pattern search is only true if you do that step.

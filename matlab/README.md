@@ -55,6 +55,10 @@ actually ran.)
 
 ## 4. Why it can't lie
 
+The breach band reaches MATLAB baked into `spec.max_leverage` (which is
+`leverage * band`), so `cascade.m` needs no extra argument and moving the band
+changes the fingerprint like any other knob.
+
 `solve_out.json` is only used if it still answers the question on screen.
 Two guards, in order:
 

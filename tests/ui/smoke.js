@@ -29,7 +29,13 @@ window.Element.prototype.getBoundingClientRect = function () {
 window.Element.prototype.animate = () => ({ finished: Promise.resolve() });
 let reflow = () => {};
 window.ResizeObserver = class { constructor(cb) { reflow = cb; } observe() {} disconnect() {} };
-window.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0);
+/* rAF hands its callback a DOMHighResTimeStamp — the same clock as
+   performance.now(). Feeding it Date.now() instead makes (now - started) a
+   number in the trillions, so every performance.now()-based easing reaches
+   k=1 on its first frame. countTo() finished instantly under this shim, which
+   is why the check below never saw an intermediate step and why a count-up
+   that outlived its own run was invisible here for so long. */
+window.requestAnimationFrame = (cb) => setTimeout(() => cb(window.performance.now()), 16);
 window.fetch = async (u, o) => {
   const r = await fetch(ORIGIN + u, o);
   return { ok: r.ok, status: r.status, json: () => r.json() };
@@ -252,6 +258,100 @@ const svg = (id) => d.getElementById(id);
   await sleep(1200);
   check("boundary button is usable again", !d.getElementById("boundaryBtn").disabled);
   check("a dead engine raises no unhandled rejection", errors.length === 0, errors.join("; "));
+  window.fetch = realFetch;
+
+  /* ── impatience: the presenter clicks faster than the animations ─────── */
+
+  /* countTo() runs on requestAnimationFrame, which neither timer queue owns.
+     Two attacks inside half a second used to leave the first run's count-up
+     ticking, and if the second answer is "nothing breaks this system" it
+     wrote its number back over the blanked hero and stopped there — the
+     biggest number on screen belonging to a run the band, the timeline and
+     the sub-line had all just disowned. */
+  console.log("\nIMPATIENCE — a superseded run must let go of the hero");
+  window.fetch = realFetch;
+  set("leverage", "1.5"); set("gamma", "0.2");
+  d.getElementById("breaches").value = "2";
+  click("attackBtn");
+  await sleep(70);                        // the count-up is mid-flight
+  window.fetch = async (u, o) => {        // a recording comes off disk this fast
+    const r = await realFetch(u, o);
+    const j = await r.json();
+    return { ok: r.ok, status: r.status, json: async () => ({ ...j, found: false }) };
+  };
+  click("attackBtn");
+  await sleep(200);
+  check("a disowned count-up does not write over the idle hero",
+        !(d.getElementById("heroVal").hasAttribute("data-idle") && text("heroVal") !== "—"),
+        `hero="${text("heroVal")}" idle=${d.getElementById("heroVal").hasAttribute("data-idle")}`);
+  await sleep(700);
+  check("hero settles idle", text("heroVal") === "—", text("heroVal"));
+  window.fetch = realFetch;
+
+  /* stopAnimations() cannot stop a request already in the air. Hold the sweep
+     and the answer to the beat the presenter moved ON from lands last. */
+  console.log("\nIMPATIENCE — the last button pressed owns the stage");
+  const slow = (ms) => async (u, o) => {
+    if (u.startsWith("/api/boundary")) await sleep(ms);
+    return realFetch(u, o);
+  };
+  window.fetch = slow(2600);
+  click("boundaryBtn");
+  await sleep(80);
+  click("attackBtn");                     // cascade starts while the sweep flies
+  await sleep(2800);                      // the sweep has now landed
+  const stageAt = d.getElementById("sceneBoundary").hasAttribute("hidden") ? "network" : "boundary";
+  const labelAt = text("roundLabel");
+  await sleep(1400);
+  check("a late sweep does not take a stage the presenter left",
+        stageAt === "network", stageAt);
+  check("and nothing narrates a scene that is not on screen",
+        text("roundLabel") === labelAt || stageAt === "network",
+        `${labelAt} → ${text("roundLabel")} on ${stageAt}`);
+  window.fetch = realFetch;
+  await sleep(4200);
+
+  /* The split owns a SECOND timer queue. The timeline handler used to clear
+     only the cascade's, so scrubbing away left the comparison advancing
+     inside a hidden scene and sitting on its ending when you came back. */
+  console.log("\nIMPATIENCE — leaving the split stops the split");
+  click("attackBtn");
+  await sleep(4200);
+  click("defendBtn");
+  await sleep(1200);
+  const splitAt = text("splitRound");
+  d.getElementById("track").children[0].dispatchEvent(new window.Event("click"));
+  await sleep(1800);
+  check("the split's clock stops when the timeline takes the stage",
+        text("splitRound") === splitAt, `${splitAt} → ${text("splitRound")}`);
+
+  /* The knobs are free to move; the numbers are not free to pretend they
+     moved with them. */
+  console.log("\nSTALE — the knobs move, the numbers do not");
+  click("attackBtn");
+  await sleep(4200);
+  const heroWas = text("heroVal");
+  set("leverage", "8");
+  await sleep(120);
+  check("moving a knob marks the run it disowns",
+        !d.getElementById("heroNote").hidden &&
+        d.getElementById("heroVal").hasAttribute("data-stale"),
+        `hero ${heroWas} → ${text("heroVal")}, note "${text("heroNote")}"`);
+  set("leverage", "1.5");
+  await sleep(120);
+  check("putting it back clears the mark", d.getElementById("heroNote").hidden,
+        text("heroNote"));
+
+  /* A beat that did not run must say so where the eye already is. */
+  console.log("\nERROR PATH — a beat that failed says which beat");
+  window.fetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  click("boundaryBtn");
+  await sleep(1200);
+  check("a failed sweep names itself on screen", /did not run/.test(text("heroNote")),
+        `note "${text("heroNote")}"`);
+  check("and its progress readout stops counting",
+        !/elapsed/.test(d.getElementById("solverStats").textContent),
+        d.getElementById("solverStats").textContent);
   window.fetch = realFetch;
 
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);

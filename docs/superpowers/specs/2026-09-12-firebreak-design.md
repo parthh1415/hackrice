@@ -78,7 +78,7 @@ Period of report **2026-06-30** for all five (checked, not assumed).
 
 Pairwise overlap (cosine similarity of weight vectors):
 
-- **Mean off-diagonal: 0.712** (0.7117 live)
+- **Mean off-diagonal: 0.712** (0.7117 live; the Scene 2 marker renders it as `0.71`)
 - **Max: 0.92** (Citadel ↔ Two Sigma — near-identical books; 0.9187 live)
 - **Min: 0.44** (Millennium ↔ Point72; 0.4433 live)
 
@@ -113,7 +113,22 @@ Three reviewers went at this independently. Findings that changed the code:
    quarter and we were reading only Investments (1179392), dropping Advisers
    (1478735). A manager now maps to a list of CIKs and the books are summed.
    The total book moved $38.4B → $40.9B.
-7. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
+7. **The breach band was hardcoded, and it was the most influential parameter
+   in the model.** `max_leverage = λ · 1.05` — how far over target a fund runs
+   before it is forced to sell — sat as a constant while λ and γ had sliders.
+   It moves the hero number harder than either: at λ=5.0, γ=0.2, band 1.02
+   gives NVDA −1.73% and amplification 3.10; band 1.30 gives NVDA −27.33% and
+   1.43. Now a declared parameter `band` (default 1.05, clamped to 1.0–1.5),
+   echoed in the `params` block of every response, and it belongs in §9.
+8. **The hero printed two decimals the search could not resolve.** Bisection
+   tolerance was 5e-4 against a display of 2 dp, so the last digit was
+   decoration — and not merely imprecise: −5.28% was really −5.27%. Tolerance
+   is 5e-5 now.
+9. **The after-panel drew the unpatched book.** The before/after split re-ran
+   the cascade on patched holdings but rendered the original matrix, so both
+   halves showed an identical network under different numbers — in the one
+   scene whose entire claim is that a position got smaller.
+10. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
    — portfolios are fixed until default, then fully liquidated — and uses
    exponential impact. **Greenwood, Landier & Thesmar (2015), JFE 115(3) 471–485**
    is the actual ancestor of our deleveraging rule; their `b_n = d/e` gives
@@ -162,7 +177,11 @@ Check: `E = A − A(1 − 1/λ) = A/λ`, so `L = A/(A/λ) = λ`. ✔
 
 ### 3.4 Breach and forced sale
 
-Fund `j` is breached when `L_j(t) > L_j^max`. It sells `q_j` dollars of assets and uses the proceeds
+Fund `j` is breached when `L_j(t) > L_j^max`, where `L_j^max = λ_j · band`. Like `λ`, the **band is
+a declared scenario parameter, not data** — nothing in a 13F says how much covenant headroom a fund
+runs. It defaults to 1.05, is clamped to 1.0–1.5, and every API response declares the value it used
+in `params`. It is the single most influential knob in the model (§2.4 item 7); treat it with at
+least the visibility given to `λ`. Target leverage after selling is `min(λ·0.95, λ·band)`. It sells `q_j` dollars of assets and uses the proceeds
 to repay debt. Because assets and debt fall by the same amount, **equity is unchanged by the sale itself**:
 
 ```
@@ -192,7 +211,8 @@ V_i = Σ_j Q[j,i]                          total dollar selling in asset i
 Δp_i / p_i = − γ_i · V_i / ADV_i          volume-normalised linear
 ```
 
-`ADV_i` = average daily dollar volume (hardcoded from public data, shown in the assumptions panel).
+`ADV_i` = average daily dollar volume (hardcoded from public data; returned on every dataset
+response — the assumptions panel that was meant to display it is **not built**, see §9).
 `γ_i` = impact coefficient, **a slider, not a constant**. Square-root impact
 (`−Y_i σ_i √(V_i/ADV_i)`) is a stretch alternative, not MVP.
 
@@ -227,7 +247,7 @@ record per-round state for animation
 | **Amplification** | **final loss / shock loss** — must equal **exactly 1.0** when `γ = 0` |
 | Breaches | count of distinct funds that breached at any round |
 | Rounds | rounds until stabilisation |
-| **Critical shock distance** | `min ‖s‖` such that the failure condition is met — **the hero number** |
+| **Critical shock distance** | `min ‖s‖` such that the failure condition is met — **the hero number**. At λ=5.0, γ=0.2, band 1.05, ≥3 breaches: **NVDA −5.27%** (5.2734, printed to 2 dp) |
 
 GLT report an "aggregate vulnerability" instead — spillover loss as a *share of
 total equity*, excluding the direct shock. The two map as `amp − 1 = AV / shock
@@ -255,7 +275,9 @@ fewer breaches — so a threshold exists in practice. It is **not** provably mon
 (λ, γ); see §2.4. `find_weakest_shock` therefore reports the smallest crossing the grid scan
 found, not a proven threshold. But pure bisection can stall on flat regions. **Use a coarse grid scan
 to bracket, then bisect inside the bracket.** Robust and still fast. As built
-(`search.py`): 1% steps out to `_MAX_DROP = 0.60`, then bisection to a tolerance of 5e-4.
+(`search.py`): 1% steps out to `_MAX_DROP = 0.60`, then bisection to a tolerance of **5e-5**. The
+tolerance has to resolve the precision the hero prints — at 5e-4 against a 2 dp display the last
+digit was decoration and, worse, wrong (§2.4 item 8).
 
 Stretch: sparse multi-asset search minimising `‖s‖₁` (encourages few assets shocked) or `‖s‖₂`.
 
@@ -264,6 +286,19 @@ Stretch: sparse multi-asset search minimising `‖s‖₁` (encourages few asset
 Find the minimum intervention `δ` such that the *same* shock no longer triggers failure. MVP is
 one-dimensional: reduce one fund's exposure to one asset, or reduce one fund's `λ_j`. Report the
 intervention **and its cost** in expected-return terms.
+
+**And report what it does not buy.** Minimising cost subject to surviving *one named shock* produces
+a targeted patch, and the patch can leave the system's critical shock essentially where it was. The
+`/api/stabilise` response carries a `bought` object — `{before_pct, after_pct, delta_pct,
+after_asset, note}` — from re-running `find_weakest_shock` against the patched books. At the demo
+settings it reads **5.2734% → 5.2773%, delta +0.0039pp**: four basis points of GOOGL survives this
+shock and buys ~nothing structurally. Say that before a judge finds it. Nothing in the UI renders
+`bought` yet, and `/api/break` reloads the dataset from disk, so clicking *Find weakest shock* after
+*Stabilise* re-searches the **unpatched** books — it cannot be used to demonstrate this.
+
+The honest fix is a different objective: **maximise the critical shock**, or minimise cost subject to
+surviving a *family* of shocks, rather than the one already named. That is the top "what's next"
+item, not a slider.
 
 ---
 
@@ -297,9 +332,14 @@ As shipped (`CascadeResult.as_dict()` in `engine.py`, merged with the dataset by
   ],
   "metrics": {"shock_loss": 0.0, "final_loss": 0.0, "amplification": 0.0},
   "rounds": 0, "breached": [0, 1, 3, 4], "defaulted": [], "converged": true,
+  "params": {"leverage": 5.0, "gamma": 0.2, "band": 1.05, "breaches": 3, "clamped": []},
   "adv": [...], "adv_units": "USD", "quarter": "06-30-2026", "source": "SEC 13F-HR"
 }
 ```
+
+`params` is the scenario the numbers actually answer, after clamping — `clamped` lists any knob a
+URL pushed out of range, because a confident answer to a different question is the worst failure
+mode here. `/api/stabilise` adds `before`, `after`, `fix`, `engine` and `bought` (§3.10).
 
 Two things to hold onto: `breached` is a list of fund **indices**, not a boolean mask — both at the
 top level (anyone who breached at any round) and per trajectory frame (who breached in that round).
@@ -354,7 +394,7 @@ Devpost "what's next" bullets.
 
 All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
 (`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite was
-**107 tests, all passing** when this was last reconciled; it is still growing, so read the count off
+**138 tests, all passing** when this was last reconciled; it is still growing, so read the count off
 `python3 -m pytest tests/ -q | tail -1` rather than quoting this line.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
@@ -386,19 +426,37 @@ Tests 2 and 6 protect the headline claim. Test 7 protects the demo.
 | Scope overrun | Scene 4 cut first, then heatmap, then stabilisation. Scenes 1 + cascade animation are the irreducible core. |
 | Non-monotone damage breaks bisection | Grid-bracket then bisect (§3.9). Test 6. |
 
+**Open bug, 2026-09-12.** `_boundary` in `api.py` reads `band` off the guarded knobs and echoes it
+back in both `band` and `params`, but the cascade call inside the sweep still hardcodes
+`max_leverage = lev * 1.05`. The phase diagram is therefore byte-identical at band 1.02, 1.05 and
+1.10 while the payload claims the band was applied — the exact "confident answer to a different
+question" the clamping code exists to prevent. Wired through, the as-filed critical leverage would
+move from λ≈2.4 (band 1.02) to λ≈4.1 (1.05) to λ≈6.7 (1.10), and nothing cascades at 1.30. Do not
+demonstrate band-vs-boundary until it is fixed.
+
 ---
 
 ## 9. What we do not claim
 
-State these on the assumptions panel, out loud, before a judge asks:
+Say these out loud before a judge asks. **The assumptions panel is not built** — the declared
+parameters are on the control strip and in every response's `params` block, but nothing in the UI
+renders the list below. Until it is, these live in the script and in `docs/devpost.md`.
 
 - We do **not** predict market moves. We compute a stability property of a declared configuration.
 - Leverage is **not** in 13F. It is our parameter, visible and adjustable.
+- **Neither is the breach band.** `band` defaults to 1.05 and moves the headline number more than
+  leverage or γ do (§2.4 item 7). It is a URL parameter today, not a slider — the least visible
+  place for the most influential knob. Every response declares the value used.
+- Where the leverage boundary sits in Scene 2 is a consequence of the band we chose, not a
+  measurement. "You are here, right on the edge" is a statement about a declared configuration.
 - 13F is long-only US equity, quarterly, 45-day lag, and excludes shorts and derivatives.
   Our universe is the 10 names above; options rows are filtered out.
 - Price impact is unknowable. `γ` is a slider with a stated functional form. The finding is that the
   boundary *exists and moves predictably*, not any single point estimate.
-- No number in the UI is presented to more precision than the model supports.
+- The stabiliser solves **one** shock. What it buys against a re-search is reported (`bought`), and
+  at the demo settings that is +0.00pp.
+- No number in the UI is presented to more precision than the model supports — which means the
+  search tolerance has to resolve the digits the display prints (§2.4 item 8).
 
 ---
 
