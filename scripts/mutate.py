@@ -283,6 +283,14 @@ MUTATIONS = {
         "web/defend.html",
         '              if (!rows.some(h => h.symbol === "CASH")) rows.push({ symbol: "CASH", market_value: 0 });',
         '              if (false) rows.push({ symbol: "CASH", market_value: 0 });'),
+    "next_skips_a_round": (
+        "web/cascade.html",
+        'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };',
+        'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 2); draw(at); };'),
+    "loss_tile_is_the_final_loss": (
+        "web/cascade.html",
+        '      ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],',
+        '      ["Your loss so far", pct(r.cascade_loss), cum >= (r.params.limit) ? "bad" : ""],'),
     "pct_forgets_the_hundred": (
         "web/shared.js",
         "const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;",
@@ -297,7 +305,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "pct_forgets_the_hundred", "cold_page_renders_anyway",
                 "state_narrated_as_transition", "model_link_locked",
                 "stale_result_survives_a_new_book", "unbreakable_renders_nothing",
-                "proceeds_vanish_without_a_cash_row"}
+                "proceeds_vanish_without_a_cash_row", "next_skips_a_round",
+                "loss_tile_is_the_final_loss"}
 
 
 def build(name):

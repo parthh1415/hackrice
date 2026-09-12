@@ -231,6 +231,55 @@ function visibleText(d) {
             wrong.length === 0, `${wrong.join(", ")} in: ${said}`);
     }
 
+    /* The animation had never been driven in a test — only screenshotted at
+       rest, which proves the idle state and nothing else. Step it with Next
+       rather than Play so the assertions are not racing a 900ms interval, and
+       check the loss tile against a loss computed here from the trajectory's
+       own prices rather than against the number the page derived. */
+    {
+      const w = {}; full.portfolio.holdings.forEach((h) => { w[h.symbol] = h.weight; });
+      const vec = cas.tickers.map((t) => w[t] || 0);
+      const cashW = w.CASH || 0;
+      const lossAt = (prices) =>
+        1 - (vec.reduce((a, v, i) => a + v * prices[i], 0) + cashW);
+      const round = () => c.d.querySelector(".card-header").textContent;
+      const tile = (k) => [...c.d.querySelectorAll(".stat")]
+        .find((n) => n.querySelector(".k").textContent.toLowerCase().includes(k))
+        .querySelector(".v").textContent.trim();
+
+      eq("it opens on the shock, before any selling", tile("round"),
+         `0 / ${cas.trajectory.length - 1}`);
+      for (let t = 0; t < cas.trajectory.length; t++) {
+        if (t > 0) {
+          c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
+          await sleep(30);
+        }
+        eq(`round ${t}: the counter matches the frame shown`, tile("round"),
+           `${t} / ${cas.trajectory.length - 1}`);
+        eq(`round ${t}: books over limit matches the trajectory`,
+           tile("over limit"), String((cas.trajectory[t].breached || []).length));
+        eq(`round ${t}: the loss shown is the loss at that frame's prices`,
+           tile("loss so far"), `${(lossAt(cas.trajectory[t].prices) * 100).toFixed(2)}%`);
+      }
+      /* the last frame has to be the answer the rest of the app reports, or the
+         animation is telling a different story from every other page. */
+      check("the final round's loss is the cascade loss the engine returned",
+            Math.abs(lossAt(cas.trajectory[cas.trajectory.length - 1].prices) - full.cascade_loss) < 5e-5,
+            `${lossAt(cas.trajectory[cas.trajectory.length - 1].prices)} vs ${full.cascade_loss}`);
+
+      for (let i = 0; i < 3; i++)
+        c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
+      await sleep(30);
+      eq("Next past the end stays on the last frame", tile("round"),
+         `${cas.trajectory.length - 1} / ${cas.trajectory.length - 1}`);
+
+      c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));
+      await sleep(60);
+      eq("Play from the end restarts at the shock", tile("round"),
+         `0 / ${cas.trajectory.length - 1}`);
+      c.d.getElementById("playBtn").dispatchEvent(new c.window.Event("click"));  // stop the timer
+    }
+
     store = c.dump();
   }
 
