@@ -1,0 +1,27 @@
+{
+  "_note": "ADV figures are order-of-magnitude daily dollar volumes in USD millions. They are a declared scenario parameter, not measured data, and are shown as such in the assumptions panel.",
+  "managers": {
+    "Citadel": 1423053,
+    "Millennium": 1273087,
+    "Point72": 1603466,
+    "Two Sigma": 1179392,
+    "Renaissance": 1037389
+  },
+  "cusips": {
+    "67066G10": "NVDA",
+    "03783310": "AAPL",
+    "59491810": "MSFT",
+    "02313510": "AMZN",
+    "02079K30": "GOOGL",
+    "30303M10": "META",
+    "11135F10": "AVGO",
+    "00790310": "AMD",
+    "88160R10": "TSLA",
+    "46625H10": "JPM"
+  },
+  "adv_usd_millions": {
+    "NVDA": 28000, "AAPL": 11000, "MSFT": 8500, "AMZN": 9500,
+    "GOOGL": 6000, "META": 7500, "AVGO": 6500, "AMD": 7000,
+    "TSLA": 22000, "JPM": 3000
+  }
+}
