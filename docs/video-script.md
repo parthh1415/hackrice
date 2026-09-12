@@ -37,11 +37,6 @@
   | asset label, NVDA, at round 3 / 3 | `−5.76%` | 2 dp |
   | fund labels at t0 | `L 5.18` `L 5.36` `L 5.03` `L 5.15` `L 5.25` | 2 dp |
   | fix line | `Citadel: cut NVDA exposure 0% · costs 0.01% of gross assets` | reduction 0 dp ⚠, cost 2 dp |
-
-  ⚠ **That `0%` is a live bug, not a typo.** The stabiliser used to be pinned to a 5% grid; it
-  bisects now, so the cheapest cut is 0.156% and `toFixed(0)` rounds the headline instruction to
-  zero. Eight of the ten recorded scenarios read `0%`. **Do not record Scene 3 until this is
-  fixed** — the one sentence the scene exists to produce currently tells a PM to cut nothing.
   | split feet | `9.1% loss · 4 breaches · amp 1.87×` / `6.5% loss · 2 breaches · amp 1.33×` | loss 1 dp, amp 2 dp |
   | shock stamp | `identical shock · 5.27% NVDA` | 2 dp |
   | boundary marker | `L 5.0 · overlap 0.71` | 1 dp / 2 dp |
@@ -49,9 +44,20 @@
   | boundary title | `amplification · contour at 1.5× · single-name 5% reference · band 1.05` | 1 dp / 2 dp |
   | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0% · <n>ms` | — |
   | solver, after boundary | `parameter sweep` · `cells 256 · <n>ms` | — |
-  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `79 evals · <n>ms · exit 1` | — |
+  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `33 evals · <n>ms · exit 1` | — |
   | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one` | 2 dp / 3 dp |
   | sliders | `5.0`, `0.20` and `1.05` | 1 dp / 2 dp / 2 dp |
+
+  ⚠ **That `0%` on the fix line is a live bug, not a typo.** The stabiliser used to be pinned to a 5%
+  grid; it bisects on depth now, so the cheapest cut is 0.15625% and `web/app.js`'s `toFixed(0)`
+  rounds the headline instruction to zero. Eight of the ten recorded scenarios read `0%`. **Do not
+  record Beat 4 until this is fixed** — the one sentence the whole beat exists to produce currently
+  tells a PM to cut nothing.
+
+  **The hero has no minus sign.** It renders `5.27%` under the label *Critical shock distance*, and
+  the split stamp reads `identical shock · 5.27% NVDA`. Where this script writes "NVDA −5.27%" that
+  is shorthand for the shock, not a quotation of the screen. The minus only appears on the NVDA
+  *asset node* label (`−5.27%` at t0). Don't point at the hero and read a sign that isn't on it.
 
   Nothing else in this script is a screen value. Two things you still have to make: the Point72
   overlay in Shot 2.6 and the architecture diagram in Shot 3.1. The other two are in the product
@@ -135,7 +141,9 @@ all three highlighted briefly.
 
 > "Failure means three or more funds breach. Find me the smallest single-name drop that does it."
 >
-> ⏸ *(let the number land, ~1.5s)*
+> ⏸ *(let the number land. The count-up is **0.52s**, not 1.5 — `countTo` runs a 520ms ease from
+> 0.00% up to 5.27%, two decimals the whole way. Hold longer than that if you want the pause, but
+> know you are holding on a settled number, and know the cascade has already started behind it.)*
 >
 > "NVIDIA, down five point two seven percent. That's not a crash. That's a bad Tuesday."
 
@@ -145,6 +153,13 @@ all three highlighted briefly.
 #### Shot 2.4 · 0:57 – 1:10
 **On screen:** Cascade plays. Round counter visible. Millennium and Renaissance turn red in round 1.
 **Presenter is silent for the first two rounds.**
+
+> *⚠ **This needs a click the script never mentions.** The cascade starts by itself 260ms after the
+> attack returns and is over 3.2s later — which is *during* Shot 2.3's spoken line, not after it. By
+> the time you say "that's a bad Tuesday" the network has been sitting on its final frame for about
+> nine seconds. To have anything to be silent over here you must press **Replay cascade** (second
+> button on the rail) at the top of this shot. Either put that click in, or move the whole of 2.3's
+> narration before the click and let 2.4 be the first thing the cascade hears.*
 
 > *The UI is monochrome plus exactly one red (`--alert #FF383B`). Healthy nodes are dim white,
 > stressed nodes are full white, breached nodes are red. There is no amber or ember in the product —
@@ -195,11 +210,12 @@ eight eight" over a display that reads 4.9%.
 #### Shot 2.7 · 1:32 – 1:42
 **On screen:** Click **Map the boundary**. The sweep runs server-side, then the whole 16×16 grid
 appears at once. Axis labels read `1.5` to `8.0` up the side and `0.00 · 0.72 · 1.00` along the
-bottom, with `amplification · single-name 5% reference` in the top right.
+bottom, with `amplification · contour at 1.5× · single-name 5% reference · band 1.05` in the top
+right, and a white contour line traced across the plot.
 
-> *It does **not** fill in cell by cell — `drawBoundary` paints every rect in one synchronous pass,
-> so the grid pops. The pause below is the server computing 256 cascades, not an animation. Don't
-> promise a fill-in in the edit.*
+> *It does **not** fill in cell by cell — `drawBoundary` paints all 256 rects, the contour and the
+> marker in one synchronous pass, so the grid pops. Don't promise a fill-in in the edit, and don't
+> promise a wait either (see below).*
 
 > "Fair question: did we get unlucky, or is the structure the problem? So sweep it. Leverage from one
 > and a half to eight. Crowding from every fund holding something different, through the books
@@ -212,8 +228,10 @@ bottom, with `amplification · single-name 5% reference` in the top right.
 > is already up.)*
 
 #### Shot 2.8 · 1:42 – 1:57
-**On screen:** The marker — a white ring and dot — lands at leverage 5.0, overlap 0.71, just above
-the band where the shading flips from white to red.
+**On screen:** The marker — a white ring and dot, captioned `YOU ARE HERE` over `L 5.0 · overlap
+0.71` on a dark plate — lands just above the white 1.5× contour, near the middle of the horizontal
+axis (which is nonlinear: the middle column is overlap 0.72, not 0.50 — that's what the third axis
+tick is for).
 
 > *There **is** a contour now. `drawBoundary` shades each cell into one of five bands (amplification
 > < 1.05, < 1.30, < 1.80, < 3.00, above) **and then runs marching squares at 1.5× and strokes the
@@ -250,15 +268,18 @@ the band where the shading flips from white to red.
 >
 > *Demonstrating it live is now a drag, not a URL: pull the **Breach band** slider and press **Map
 > the boundary** again. Nothing to type on camera. The sweep is instant, so the grid redraws under a
-> new title reading `… · band 1.30` and the contour visibly retreats to the top of the plot. Put the
-> slider back to 1.05 before Shot 2.9 or every number after it is wrong.*
+> new title reading `… · band 1.30` and the contour disappears off the top of the plot entirely.
+> **Use 1.02 or 1.30** if you do this — those, plus 1.15, are the only bands in the golden cache
+> (`data/cache/golden/boundary__band=*`); anything else computes live, which is also instant but is
+> not the cached path. Put the slider back to 1.05 before Shot 2.9 or every number after it is
+> wrong.*
 
 
 ### Beat 4 — DEFEND (1:57 – 2:42)
 
 #### Shot 2.9 · 1:57 – 2:08
 **On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
-position scan`, `MATLAB not available on this machine`, `79 evals · <n>ms · exit 1` — unless you have
+position scan`, `MATLAB not available on this machine`, `33 evals · <n>ms · exit 1` — unless you have
 done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
 resolves in about a tenth of a second:
 `Citadel: cut NVDA exposure 0.16% · costs 0.01% of gross assets` — **once the rounding bug above is
@@ -278,14 +299,25 @@ cannot hold it back, so don't plan a reveal.
 
 
 #### Shot 2.10 · 2:08 – 2:18
-**On screen:** Cursor underlines the word GOOGL in the instruction, then flicks to the NVDA node.
+**On screen:** Cursor underlines **Citadel** in the instruction, then flicks to the Citadel node —
+which did *not* breach in round one.
 
-> "Notice it isn't NVIDIA. We shocked NVIDIA. The cheapest fix is in Alphabet, because Alphabet is
-> the third most crowded name here and Millennium is one of the two funds that breach in round one.
-> That's why you solve it instead of guessing."
+> "Notice who it isn't. Millennium and Renaissance are the two funds that breach first. The fix is in
+> neither of them. It's Citadel, which doesn't go until round two — and it's a sixth of one percent
+> of a single position. Citadel is the largest book here, so the smallest fractional cut anywhere in
+> the system is the one that takes the most dollars out of round two's selling. That is not the move
+> anyone would guess, and it's why you solve it instead of guessing."
 
-> *Crowding rank by share of total pairwise overlap: NVDA 26%, AMZN 26%, GOOGL 15%. Third, not
-> second. And Millennium breaches alongside Renaissance in round 1 — don't say "the" fund.*
+> *⚠ The old version of this beat said "notice it isn't NVIDIA — the cheapest fix is in Alphabet".
+> That is backwards now. Since the stabiliser started bisecting on cut depth (commit `f398bdb`) the
+> answer at the golden path is **Citadel · NVDA · 0.15625%**, cost 0.009% of gross assets — $3.7M out
+> of a $2.36B position. The fix **is** the shocked name. Anything quoting GOOGL, "five percent" or
+> "four basis points" is reading the old 5%-grid answer.*
+>
+> *Verified: Citadel $14.6B of the $40.9B total; Two Sigma $9.2B, Millennium $7.7B, Renaissance
+> $6.3B, Point72 $3.1B. Citadel's NVDA position is 16.2% of its own book. Round-one breachers are
+> Millennium and Renaissance — don't say "the" fund. Crowding rank, if a judge asks, is unchanged:
+> NVDA 26%, AMZN 26%, GOOGL 15% of total pairwise overlap.*
 
 
 #### Shot 2.11 · 2:18 – 2:30
@@ -313,9 +345,9 @@ has been on screen since the fix line landed. It reads, verbatim:
 `critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one`
 
 > "And here's the part we'd rather say than have you find. The stabiliser re-runs the search against
-> the patched books. The smallest shock that breaks us doesn't measurably move. Four basis points of
-> Alphabet clears *this* failure condition against *this* shock, and buys us nothing we can measure
-> against the next one."
+> the patched books. The smallest shock that breaks us doesn't measurably move. Three point seven
+> million dollars of NVIDIA clears *this* failure condition against *this* shock, and buys us nothing
+> we can measure against the next one."
 >
 > ⏸ *(beat)*
 >
@@ -416,10 +448,14 @@ shocks · multi-asset shocks · systemic-importance ranking · bystander exposur
 ## Recording notes
 
 - **Do not** talk during Shot 2.4's first two rounds or during the Shot 2.11 split-screen hold. Those
-  two silences are what make the demo land.
+  two silences are what make the demo land — but know how long they actually are. Rounds 1 and 2 of
+  the cascade take **2.2 seconds**, not six; the whole cascade settles at 3.2s. The split takes
+  **2.6s** end to end. Hold silence for the real duration, not the one the old script imagined.
 - **Shot 2.12 is not optional and not a caveat to mumble.** Being the first to say what the fix
   doesn't buy is worth more than the fix. If you are cutting for time, cut Act 4's list instead.
-- If a run is slow on the day, use the cached demo path. Do not fill the gap with narration.
+- Nothing in this app is slow. Every endpoint returns in under 50ms warm or cold; the only waits on
+  screen are animations we chose. Use the cached demo path anyway so a wifi failure can't reach the
+  server, but do not write "wait for it" into the edit anywhere — there is nothing to wait for.
 - If asked live where leverage comes from, the answer is one sentence: it is not in the filing, it is a
   declared parameter, and it is the slider on screen.
 - Numbers verified live 2026-09-12 by driving the real `web/app.js` against the real server and

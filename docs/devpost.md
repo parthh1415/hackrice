@@ -51,15 +51,17 @@ arrives through other people's liquidations of names it happens to share with th
 **The boundary.** A 16×16 phase diagram over gross leverage (1.5 to 8.0) and portfolio crowding
 (sweeping both ways from the books as filed — sharpened away from the system mean on one side,
 blended toward it on the other, so measured overlap runs 0.00 to 1.00), with amplification computed
-in every cell rather than sketched.
+in every cell rather than sketched, and a marching-squares contour traced at 1.5× on top of the
+shading so the boundary is a line you can point at rather than a colour change you have to argue for.
 It puts a marker on the configuration you are currently looking at: leverage 5.0, overlap 0.71 —
-just past the leverage boundary, where amplification jumps from 1.00 to 1.86 between λ≈4.5 and
-λ≈5.0. The question it answers is whether you got unlucky or whether you are standing somewhere
-structurally bad. Worth saying plainly: *where* that boundary sits is a function of the breach band
-we declared, and the sweep honours it: at the same −5% reference, a band of 1.02 puts the boundary at
-λ≈2.4 and a band of 1.10 at λ≈7.1, and at 1.30 nothing in the grid cascades at all. The shape of the
-map is the finding; the location of the marker on it is a consequence of parameters we chose and
-show.
+just past the leverage boundary. At the filed overlap, amplification sits flat at 1.00 up to λ≈4.1,
+is 1.16 at λ≈4.5 and 1.86 at λ≈5.0, and the 1.5× contour crosses at λ≈4.7. The question it answers
+is whether you got unlucky or whether you are standing somewhere structurally bad. Worth saying
+plainly: *where* that boundary sits is a function of the breach band we declared, and the sweep
+honours it: at the same −5% reference, a band of 1.02 puts the boundary at λ≈2.7 and a band of 1.10
+at λ≈7.7, and at 1.30 the filed-overlap column never leaves 1.00 at all — only the top of the plot,
+λ=8.0, still cascades, 16 of 256 cells. The shape of the map is the finding; the location of the
+marker on it is a consequence of parameters we chose and show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position and bisects on *how deep*
 the cut has to be. The answer at these settings: **Citadel cuts its NVDA position by 0.16%** —
@@ -78,8 +80,9 @@ against the patched books and reports it as `bought`. The measured delta is +0.0
 search resolution of 0.005pp — *inside its own error bar* — so the payload sets `measurable: false`
 and the note reads **"no measurable change in break point — a targeted patch, not structural
 repair"**. We deliberately do not quote the delta as though it meant something; that would be the
-same fake-precision mistake as the hero number, one level up. Four basis points of GOOGL clears
-*this* failure condition against *this* shock and buys nothing we can measure against the next one.
+same fake-precision mistake as the hero number, one level up. $3.7M of Citadel's NVDA — under a
+basis point of gross assets — clears *this* failure condition against *this* shock and buys nothing
+we can measure against the next one.
 That is the honest reading of a one-position, one-shock optimiser, and we would rather be the ones
 to say it. The genuine next version optimises over a *family* of shocks, and that is real work, not
 a slider.
@@ -166,9 +169,9 @@ round.
 fund runs before it is forced to sell — was hardcoded at 1.05 while leverage and γ sat on sliders. It
 moves the hero harder than either of them: band 1.02 gives NVDA −1.73% and amplification 3.10, band
 1.30 gives NVDA −27.33% and 1.43. A five-fold swing in the headline number, controlled by a constant
-nobody could see and nobody was declaring. It is a declared parameter now (`band`, default 1.05,
-range 1.0–1.5), it comes back in the `params` block on every response, and it belongs in the
-what-we-do-not-claim list next to leverage and γ.
+nobody could see and nobody was declaring. It is a slider now — third knob on the rail, `band`,
+default 1.05, range 1.0–1.5 — it comes back in the `params` block on every response, it has its own
+row in the assumptions panel, and it sits in the what-we-do-not-claim list next to leverage and γ.
 
 **The hero was printing precision the search could not resolve.** The bisection tolerance was 5e-4
 while the hero renders two decimals, so the last digit was decoration. It was not imprecise, it was
