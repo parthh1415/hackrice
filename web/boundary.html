@@ -36,11 +36,15 @@
       <p class="lede" id="clampNote" hidden style="color:var(--warn)"></p>
     </div>
 
+    <!-- five tiles do not fit in a 522px column: they wrapped to two rows and
+         left one tile alone on the second. The strip spans both cards. -->
+    <div class="card" id="statCard" hidden><div class="stats" id="stats"></div></div>
+
     <div class="grid-2" id="board" style="grid-template-columns:minmax(0,522px) minmax(0,1fr);align-items:start" hidden>
       <div class="card">
         <div class="card-header">
           <span class="card-title" id="mapTitle">Amplification</span>
-          <span class="num" id="readout" style="margin-left:auto;color:var(--text)"></span>
+          <span class="sub num" id="readout" style="margin-left:auto;white-space:nowrap"></span>
         </div>
         <div class="card-body tight">
           <svg class="map" id="map" viewBox="0 0 520 500" tabindex="0" role="img"
@@ -63,10 +67,6 @@
       </div>
     </div>
 
-    <!-- five tiles do not fit in a 522px column: they wrapped to two rows and
-         left one tile alone on the second. The strip spans both cards. -->
-    <div class="card" id="statCard" hidden><div class="stats" id="stats"></div></div>
-
     <div class="card" id="caveatCard" hidden>
       <div class="card-header"><span class="card-title">What this does not say</span>
         <span class="card-desc" id="caveatDesc"></span></div>
@@ -86,7 +86,7 @@ paintStatusBar("boundary", [["↑↓←→", "cell"]]);
    green stay reserved: red is a breach, green is within limit, and a heatmap
    that spent them here would make every other page's colours ambiguous. */
 const BANDS = [
-  [1.0005, "#111111", "1.00 absorbed"],
+  [1.0005, "#111111", "1.00"],
   [1.5,    "#603800", "1.00–1.49"],
   [2.0,    "#a46400", "1.50–1.99"],
   [2.5,    "#ea9602", "2.00–2.49"],
@@ -126,10 +126,10 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
   const iC = col.findIndex((a) => a >= 1.5);
 
   document.getElementById("lede").textContent = iC < 0
-    ? `At your crowding (${here.overlap.toFixed(2)}) the ${nFunds} modelled books absorb a ` +
+    ? `As filed, the ${nFunds} books overlap ${here.overlap.toFixed(2)} and absorb a ` +
       `${shockPct.toFixed(2)}% ${asset} shock at every leverage tested, to ${levs[levs.length - 1].toFixed(1)}×. ` +
       `Every cell is a full cascade at that fixed shock.`
-    : `At your crowding (${here.overlap.toFixed(2)}) the ${nFunds} modelled books absorb a ` +
+    : `As filed, the ${nFunds} books overlap ${here.overlap.toFixed(2)} and absorb a ` +
       `${shockPct.toFixed(2)}% ${asset} shock up to ${levs[Math.max(0, iC - 1)].toFixed(2)}× leverage ` +
       `and amplify it ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×. Every cell is a full cascade ` +
       `at that fixed shock; the white line is where amplification crosses 1.5×.`;
@@ -216,9 +216,9 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
      out at the moment it is appended — so the plate is measured from the
      string instead: 10px of this mono face is 6px per character, which is
      exact for a monospace and needs no layout to be true. */
-  const text = `YOU · λ ${here.leverage.toFixed(1)} · overlap ${here.overlap.toFixed(2)}`;
+  const text = `AS FILED · λ ${here.leverage.toFixed(1)} · overlap ${here.overlap.toFixed(2)}`;
   const w = text.length * 6, right = xm > 300;
-  const lx = right ? xm - 10 - w : xm + 10;
+  const lx = right ? xm - 12 - w : xm + 12;
   svg.appendChild(mk("rect", { x: lx - 4, y: ym - 19, width: w + 8, height: 15,
     fill: "#000", "fill-opacity": .88, "pointer-events": "none" }));
   const lbl = mk("text", { x: lx, y: ym - 8, "font-family": "var(--mono)", "font-size": 10,
@@ -237,7 +237,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     hl.setAttribute("x", cx(j) + 0.5); hl.setAttribute("y", cy(i) + 0.5);
   };
   let ci = iN, cj = jN;
-  const home = () => say(iN, jN, " · nearest cell to you");
+  const home = () => say(iN, jN, " · nearest to the filed books");
   home();
   svg.addEventListener("mousemove", (ev) => {
     const t = ev.target;
@@ -264,7 +264,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     ["Amplification here", `${grid[iN][jN].toFixed(2)}×`,
       `nearest cell: λ ${levs[iN].toFixed(2)}× · overlap ${ovs[jN].toFixed(2)}`,
       grid[iN][jN] >= 1.5 ? "bad" : ""],
-    ["Critical leverage at your crowding",
+    ["Critical leverage",
       iC < 0 ? `none to ${levs[levs.length - 1].toFixed(1)}×` : `${levs[iC].toFixed(2)}×`,
       iC < 0 ? "the shock is absorbed at every row tested"
              : `${col[Math.max(0, iC - 1)].toFixed(2)}× at ${levs[Math.max(0, iC - 1)].toFixed(2)}× → ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×`, ""],
@@ -273,7 +273,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
       `resolved to one grid step, ${step.toFixed(2)}×`,
       headroom !== null && headroom <= 0 ? "bad" : ""],
     ["Cells over 1.5×", `${flat.filter((a) => a >= 1.5).length} / ${flat.length}`,
-      "of leverage–crowding pairs amplify the shock", ""],
+      "pairs that amplify the shock", ""],
     ["Worst cell", `${worst.toFixed(2)}×`,
       `λ ${levs[wi].toFixed(1)}× · overlap ${ovs[wj].toFixed(2)}`, ""],
   ].map(([k, v, s, cls]) =>
@@ -284,12 +284,12 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     BANDS.map(([, fill, label]) =>
       `<span><i class="swatch" style="background:${fill}"></i>${label}</span>`).join("") +
     `<span><i class="swatch" style="background:#d9d9d9;height:2px"></i>1.5× line</span>` +
-    `<span><i class="swatch" style="background:none;border:1.5px solid var(--accent);border-radius:50%"></i>you</span>`;
+    `<span><i class="swatch" style="background:none;border:1.5px solid var(--accent);border-radius:50%"></i>as filed</span>`;
 
   /* ── the table, which is the key ─────────────────────────────────────── */
   document.getElementById("atCol").textContent = `At ${ovs[jN].toFixed(2)}`;
   document.getElementById("rowSub").textContent =
-    `at your crowding, ${ovs[jN].toFixed(2)} is the nearest computed column`;
+    `${ovs[jN].toFixed(2)} is the computed column nearest the filed books`;
   document.getElementById("rows").innerHTML = levs.map((l, i) => i).reverse().map((i) => {
     const r = grid[i];
     return `<tr${i === iN ? ' style="background:var(--accent-bg)"' : ""}>
@@ -317,7 +317,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
      `Sharpening the books concentrates them into the shocked name, so amplification can fall as ` +
      `crowding rises, and cells below the line that sit above it are real, not artefacts. Read the ` +
      `transition in leverage, where it is sharp` +
-     (iC > 0 ? `: ${col[iC - 1].toFixed(2)}× at ${levs[iC - 1].toFixed(2)}× and ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}× at your crowding.` : ".")],
+     (iC > 0 ? `: ${col[iC - 1].toFixed(2)}× at ${levs[iC - 1].toFixed(2)}× and ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}× at the filed overlap.` : ".")],
     ["The columns are not evenly spaced",
      `The horizontal axis blends the ${nFunds} real books toward each other or apart in ` +
      `${ovs.length} equal steps of that blend, not of overlap. The labels say where each column ` +
@@ -325,7 +325,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     ["Resolution is one cell",
      `The leverage axis steps by ${step.toFixed(2)}× and nothing between two rows was computed. ` +
      `"Critical leverage ${iC < 0 ? "none" : levs[Math.max(0, iC)].toFixed(2) + "×"}" means the first ` +
-     `computed row over 1.5×, not a threshold to two decimals — and your ${here.leverage.toFixed(1)}× ` +
+     `computed row over 1.5×, not a threshold to two decimals — and the declared ${here.leverage.toFixed(1)}× ` +
      `is not a row, so the marker sits between two.`],
   ].map(([k, v]) => `<tr><td style="width:180px"><b>${k}</b></td><td class="t small">${v}</td></tr>`).join("");
 

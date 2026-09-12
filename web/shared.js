@@ -186,22 +186,40 @@ function requireResult(current) {
        answer, and it has an action attached: lower the limit. */
     const ran = !!s.result;
     const limit = s.limit ? pct(s.limit, 0) : "your limit";
+    /* Keep the page's own header. Replacing all of <main> stripped the eyebrow
+       and the h1, so an empty state read as an error screen — a lone card at
+       the top of 700px of black, on a page that had just been announcing what
+       it was. */
+    const header = document.querySelector("main .stack.gap-3");
+    let head = "";
+    if (header) {
+      /* the page's lede is still its placeholder at this point — the script
+         that fills it never got there — so it would render as a bare em dash
+         under the headline. The empty state says the same thing properly. */
+      const clone = header.cloneNode(true);
+      clone.querySelectorAll(".lede").forEach((n) => n.remove());
+      head = clone.outerHTML;
+    }
+    /* and each page says what IT cannot do, rather than every page but defend
+       claiming there is nothing to "verify". */
+    const verb = { cascade: "trace", defend: "defend", verify: "verify",
+                   boundary: "place you on" }[current] || "show";
     document.querySelector("main").innerHTML = ran
-      ? `<div class="wrap page"><div class="card"><div class="empty">
-           <h2>No break point to ${current === "defend" ? "defend" : "verify"}</h2>
+      ? `<div class="wrap page stack gap-8">${head}<div class="card"><div class="empty">
+           <h2>No break point to ${verb}</h2>
            <p class="lede" style="margin:0 auto">At a ${limit} limit, no single-name fall
            inside the tested range crossed it — so there is nothing here to
-           ${current === "defend" ? "defend against" : "check"}. That is the edge of what was
-           tested, not a clean bill of health.</p>
-           <div style="margin-top:20px" class="row gap-4" style="justify-content:center">
+           ${verb}. That is the edge of what was tested, not a clean bill of health.</p>
+           <div class="row gap-4" style="margin-top:20px;justify-content:center">
              <a class="btn btn-primary" href="index.html">Lower the limit</a>
              <a class="btn btn-outline" href="analysis.html">Back to the analysis</a></div>
          </div></div></div>`
-      : `<div class="wrap page"><div class="card"><div class="empty">
+      : `<div class="wrap page stack gap-8">${head}<div class="card"><div class="empty">
            <h2>No analysis yet</h2>
            <p class="lede" style="margin:0 auto">Run a reverse stress test first — this page
            shows what that produced.</p>
-           <div style="margin-top:20px"><a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
+           <div class="row gap-4" style="margin-top:20px;justify-content:center">
+             <a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
          </div></div></div>`;
     paintNav(current);
     return null;

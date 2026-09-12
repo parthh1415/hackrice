@@ -134,6 +134,24 @@ bindKeys("analysis");
       `No single-name fall of up to ${pct(body.search_max_drop || 0.60, 0)} pushes this ` +
       `portfolio past ${pct(body.params.limit, 0)} under these assumptions. That is the ` +
       `edge of what was tested, not a clean bill of health.`;
+    /* Every other outcome on this site gets a panel. This one was a headline
+       and a sentence over 750px of black, which reads as the page failing
+       rather than as the search reporting. It is a result and it has numbers,
+       so it gets the same treatment as one. */
+    const names = (body.modelled || body.tickers || []).length;
+    document.getElementById("attrCard").outerHTML = `
+      <div class="card">
+        <div class="card-header"><span class="card-title">Search exhausted</span>
+          <span class="sub">Every modelled name, shocks to ${pct(body.search_max_drop || 0.60, 0)}</span></div>
+        <div class="card-body tight"><table class="pairs"><tbody>
+          <tr><td>Limit tested</td><td class="r num">${pct(body.params.limit, 0)}</td></tr>
+          <tr><td>Largest shock tested</td><td class="r num">−${pct(body.search_max_drop || 0.60, 0)}</td></tr>
+          <tr><td>Names searched</td><td class="r num">${names}</td></tr>
+        </tbody></table></div>
+        <div class="card-footer">
+          <a class="btn btn-primary" href="index.html">Lower the limit</a>
+          <a class="btn btn-outline" href="boundary.html">Map the whole system</a></div>
+      </div>`;
     return;
   }
 
@@ -173,7 +191,7 @@ bindKeys("analysis");
         <td class="r num muted">${pct(r.weight, 1)}</td>
         <td class="r num ${r.shocked ? "down" : "muted"}">${r.shocked ? "−" + pct(r.direct) : "—"}</td>
         <td class="r num down">−${pct(r.total)}</td>
-        <td class="r num ${r.contagion > 1e-9 ? "warn" : "muted"}">${r.contagion > 1e-9 ? "−" + pct(r.contagion) : "—"}</td>
+        <td class="r num ${r.contagion > 1e-9 ? "" : "muted"}">${r.contagion > 1e-9 ? "−" + pct(r.contagion) : "—"}</td>
         <td class="r num down">−${pct(r.costs)}</td>
       </tr>`).join("") +
       (cash ? `<tr><td><b>CASH</b></td><td class="r num muted">${pct(cash, 1)}</td>

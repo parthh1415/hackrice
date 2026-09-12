@@ -99,7 +99,7 @@ body{
 .nav-links a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
 .nav-links a[data-locked]{color:var(--text-dimmer);pointer-events:none}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:11px}
-.status{display:flex;align-items:center;gap:5px;color:var(--text-dim)}
+.status{display:flex;align-items:center;gap:5px;color:var(--text-dim);white-space:nowrap}
 .status b{color:var(--text);font-weight:400}
 
 /* ── page ───────────────────────────────────────────────────────────────── */
@@ -110,7 +110,10 @@ body{
 body{min-height:100vh;display:flex;flex-direction:column}
 main{flex:1 0 auto}
 .wrap{max-width:1180px;margin:0 auto;padding:0 12px}
-.page{padding:12px 0 32px}
+/* padding-top/bottom, NOT the shorthand: .wrap and .page sit on the same
+   element and `padding:12px 0 32px` zeroed .wrap's 12px gutter, so at 1024 the
+   cards touched the viewport edge on every page. */
+.page{padding-top:12px;padding-bottom:32px}
 
 /* ── status bar (OpenTerminal: the shortcuts live on screen) ────────────── */
 .statusbar{
@@ -287,7 +290,10 @@ input:focus,select:focus{border-color:var(--accent)}
    not a link. */
 .seg button[aria-pressed="true"]{background:var(--accent);color:#000}
 .seg button:hover:not([aria-pressed="true"]){color:var(--text)}
+/* cyan means interactive or current; a heading that says "no analysis yet"
+   is neither. */
 .empty{padding:34px 12px;text-align:center;color:var(--text-dim)}
+.empty h2{color:var(--text)}
 .empty h2{margin-bottom:6px}
 /* The diagram scales with the panel's width, so on a short screen — a 1280x800
    projector, say — it took the height the aspect ratio demanded and pushed the
@@ -295,6 +301,9 @@ input:focus,select:focus{border-color:var(--accent)}
    and the log have to be read together, so the picture yields: it letterboxes
    inside the viewBox rather than growing past what the window can show. */
 svg.viz{width:100%;max-height:min(470px,48vh);display:block;background:var(--panel)}
+/* On a 1280x800 projector 48vh still pushed the cascade page's only call to
+   action under the status bar. 1440x900 is unaffected. */
+@media (max-height:820px){svg.viz{max-height:40vh}}
 /* A near-square map, which svg.viz's height cap would letterbox to 384px on an
    800px screen and throw away half the cells. */
 svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--panel)}
@@ -302,6 +311,7 @@ svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--pa
    key, so the two have to be the same object at two scales. */
 .swatch{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:5px}
 .cellsw{display:inline-block;width:7px;height:7px;vertical-align:0;margin-right:6px}
+#legend{gap:14px}#legend>span{white-space:nowrap}
 
 /* value flash on update — OT's .flash-white, tuned to the accent */
 .flash{animation:flash 450ms ease-out}
@@ -319,6 +329,15 @@ svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--pa
    one layout rule with no exceptions. They scroll inside themselves instead,
    and the status fields that repeat information already in the nav step
    aside first. */
+/* Seven links and five status fields need ~1080px. At 1024 the right-hand
+   cluster wrapped inside a 30px bar, which is the first thing on every page at
+   projector width. */
+@media (max-width:1100px){
+  .nav{gap:12px}
+  .nav-links{margin-left:0}
+  .nav-links a{padding:0 8px}
+  .nav-right{gap:10px}
+}
 @media (max-width:900px){
   .nav,.statusbar{overflow-x:auto;scrollbar-width:none}
   .nav::-webkit-scrollbar,.statusbar::-webkit-scrollbar{display:none}
