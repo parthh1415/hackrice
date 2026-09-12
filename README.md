@@ -19,15 +19,18 @@ PYTHONPATH=src python3 -m firebreak.server
 
 Then open <http://localhost:8765>.
 
-`scripts/setup.sh` does all four of those in one go.
+`scripts/setup.sh` does the installs and the tests in one go, then prints the
+server command.
 
-Python 3.9+. numpy is the only runtime dependency — the server is stdlib
-(`http.server`), because nothing should need a pip install at 3am.
+Tested on Python 3.13; nothing here uses syntax newer than 3.8. numpy is the only
+runtime dependency — the server is stdlib (`http.server`), because nothing should need
+a pip install at 3am.
 
 ## Run it with no network
 
-The holdings matrix (`data/cache/dataset.json`, 4KB, one frozen quarter) is committed, and
-so is a set of recorded answers in `data/cache/golden/`. Nothing here reaches the internet
+The holdings matrix (`data/cache/dataset.json`, 1.6KB, one frozen quarter) is committed,
+and so are 22 recorded answers in `data/cache/golden/` (172KB). Nothing here reaches the
+internet
 unless you explicitly ask it to.
 
 ```sh
