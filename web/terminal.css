@@ -199,9 +199,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{
 }
 .timeline .round{font:400 10px/1 var(--mono);color:var(--text-3);min-width:8.5rem}
 .track{display:flex;gap:3px;flex:1}
-.track div{flex:1;height:4px;background:var(--bg-raised);border-radius:2px;cursor:pointer}
-.track div[data-on]{background:var(--action)}
-.track div[data-breach]{background:var(--danger)}
+/* The segments are <button class="tl-seg" data-state>, not divs with data-on.
+   My first version of these rules invented a DOM that does not exist, matched
+   nothing, and let the old stylesheet through — which paints the CURRENT
+   segment in the alert colour. So the idle stage showed a solid red timeline
+   under the words "no shock applied", claiming a breach that had not
+   happened. Position is not severity: the current round is the ACTION colour,
+   and red is reserved for a frame where something actually breached. */
+.track .tl-seg::after{background:var(--bg-raised)}
+.track .tl-seg:hover::after{background:var(--bg-hover)}
+.track .tl-seg[data-state="done"]::after{background:var(--action-soft)}
+.track .tl-seg[data-state="current"]::after{background:var(--action)}
+.track .tl-seg[data-breach]::after{background:var(--danger)}
 
 /* ── metrics band ──────────────────────────────────────────────────────── */
 .band{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:var(--line-soft)}

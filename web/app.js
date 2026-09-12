@@ -507,6 +507,9 @@ function paintTimeline(current) {
     const seg = document.createElement("button");
     seg.className = "tl-seg";
     seg.dataset.state = t === current ? "current" : t < current ? "done" : "idle";
+    // Red means a book actually crossed its limit in this round, not merely
+    // that this is the round we are looking at.
+    if ((state.run.frames[t].breached || []).length) seg.dataset.breach = "";
     seg.title = t === 0 ? "shock applied" : `round ${t}`;
     seg.addEventListener("click", () => {
       claimStage();
