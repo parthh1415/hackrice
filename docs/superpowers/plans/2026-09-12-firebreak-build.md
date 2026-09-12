@@ -6,12 +6,12 @@
 
 **Architecture:** Pure-Python engine (already built and tested) wrapped by a stdlib HTTP server exposing JSON endpoints. Vanilla-JS frontend, no build step, no framework — four scenes on one page, advanced by one button each. Fund holdings come from real SEC 13F filings; leverage and price impact are declared scenario parameters.
 
-**Tech Stack:** Python 3.13 + numpy + pytest. Stdlib `http.server`. Vanilla JS + inline SVG. No npm, no bundler, no CDN dependency.
+**Tech Stack:** Python 3.13 + numpy + pytest. Stdlib `http.server`. Vanilla JS + inline SVG. No npm, no bundler, no CDN dependency. *(The no-CDN rule was briefly broken — the page linked Geist off Google Fonts — and is now honoured by self-hosting it in `web/fonts/`.)*
 
 **Spec:** `docs/superpowers/specs/2026-09-12-firebreak-design.md`
 
 > **Status 2026-09-12.** This is the plan as written, kept for the record. Tasks 1–6 shipped, Task 8
-> shipped only in part (the golden-path cache; the assumptions panel was not built);
+> shipped in full (golden-path cache and assumptions panel both);
 > **Task 7 (Scene 4 — CSV import / bystander view) was cut** and is a Devpost "what's next" bullet.
 > Code blocks below are the plan's *intended* implementations and several drifted during the build —
 > where that happened it is flagged inline. The spec is the document that has been reconciled against
@@ -200,7 +200,7 @@ git add -A && git commit -m "stabilisation search — cheapest position cut that
 }
 ```
 
-ADV figures are order-of-magnitude dollar volumes; they are a declared parameter. Do not present them as precise. *(They were meant to appear in an assumptions panel; that panel was never built — see Task 8.)*
+ADV figures are order-of-magnitude dollar volumes; they are a declared parameter. Do not present them as precise. *(They appear in the assumptions panel, one row per ticker — see Task 8.)*
 
 - [ ] **Step 2: Write the failing test**
 
@@ -457,12 +457,16 @@ def _blend_toward_mean(holdings, blend):
 
 Colour each cell by amplification band. Draw the contour where amplification crosses 1.5 as the critical boundary. Mark the current `(leverage, measured overlap)` as "you are here".
 
-> **Drifted.** No contour is drawn. `drawBoundary` shades each cell into one of five bands —
-> amplification < 1.05, < 1.30, < 1.80, < 3.00, and above — and the boundary is whatever the eye
-> reads off the white-to-red step at **1.80**, not a 1.5 isoline. The marker is a ring and a dot.
-> The grid also renders in one synchronous pass rather than filling in cell by cell.
+> **As built.** `drawBoundary` shades each cell into one of five bands — amplification < 1.05,
+> < 1.30, < 1.80, < 3.00, and above — and then draws the **1.5× contour over it by marching
+> squares**, as this step asked. The marker is a ring and a dot. One thing did drift: the grid
+> renders in a single synchronous pass rather than filling in cell by cell.
 
 - [ ] **Step 3: Make the leverage slider move the marker live**
+
+> **Also shipped:** a third slider, `#breachBand` (1.00–1.50, default 1.05), which this plan never
+> specified. The breach band was a hardcoded constant during the build and turned out to move the
+> headline number more than either slider that *was* specified. See spec §2.4 item 7.
 
 - [ ] **Step 4: Commit**
 
@@ -519,11 +523,11 @@ git add -A && git commit -m "scene 4 — you never sold, you still lost"
 
 - [ ] **Step 1: Assumptions panel** listing: quarter, source, λ, γ, ADV values, and the four "what we do not claim" bullets from spec §9. Always reachable, never hidden.
 
-> **Not built.** There is no assumptions panel in `web/index.html` — no quarter, no source line, no
-> bullets. The declared parameters live on the control strip and in the `params` block of every API
-> response, and the "what we do not claim" list lives in `docs/devpost.md` and the video script.
-> Spec §9 now says so. This is the largest single gap between the docs as originally written and the
-> shipped app, and it is a small piece of HTML.
+> **Built, and larger than specified.** An **Assumptions** button in the masthead opens a modal
+> (`fillAssumptions` in `web/app.js`) with eight rows, each tagged `measured` / `declared` / `limit`.
+> It is populated from the live payload rather than hardcoded, so the leverage, band, γ and ADV it
+> shows are the ones the numbers on screen were computed with — which is the only version of this
+> panel worth having. It also carries the breach band and a scale caveat that were not in this plan.
 
 - [ ] **Step 2: Cache the golden path.** Add `?demo=1` which loads a recording instead of computing.
 
@@ -552,7 +556,7 @@ git add -A && git commit -m "assumptions panel + cached demo path so wifi can't 
 ## Self-Review
 
 **Spec coverage.** *(Written before the build; Task 7 was subsequently cut and Task 8's assumptions
-panel was never built — §9 is not on screen anywhere.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **139 tests** as of
+panel is built and §9 is on screen.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **146 tests** as of
 2026-09-12, all passing.)* Gap found and closed: the spec's §5 Scene 2 needed a server-side sweep, added as `/api/boundary` in Task 5.
 
 **Placeholders.** None — every code step contains runnable code. Task 4's steps describe rendering rather than pasting 200 lines of SVG, which is a judgement call: the interface (`renderNetwork`, `playCascade`, the trajectory shape) is specified exactly, and the drawing is genuinely free-form.

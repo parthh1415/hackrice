@@ -61,11 +61,17 @@ we declared, and the sweep honours it: at the same −5% reference, a band of 1.
 map is the finding; the location of the marker on it is a consequence of parameters we chose and
 show.
 
-**The defence.** The inverse search. It scans every (fund, asset) position for the smallest reduction
-that survives the *same* shock. The answer at these settings: **Millennium cuts its GOOGL position by
-5%**, which is 0.04% of the system's gross assets — four basis points. Re-run NVDA −5.27% against the
-patched books and the outcome goes from four breaches over three rounds to two breaches in one round,
-final loss 9.12% down to **6.48%**, amplification 1.87 down to **1.33**.
+**The defence.** The inverse search. It scans every (fund, asset) position and bisects on *how deep*
+the cut has to be. The answer at these settings: **Citadel cuts its NVDA position by 0.16%** —
+one-sixth of one percent of a single holding, 0.009% of the system's gross assets, under a basis
+point. Re-run NVDA −5.27% against the patched books and the outcome goes from four breaches over
+three rounds to two breaches in one round, final loss 9.12% down to **6.48%**, amplification 1.87
+down to **1.33**.
+
+The depth matters as much as the position. Our first version searched a 5% grid, so it answered
+*which* position to cut and never *how much* — every scenario came back "5%", which is what a grid
+floor looks like when you mistake it for a result. Bisected, the cheapest cuts across our recorded
+scenarios are 0.16%, 0.31%, 0.62% and 1.41%: varied, because measured.
 
 **And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
 against the patched books and reports it as `bought`. The measured delta is +0.0039pp against a
@@ -82,11 +88,11 @@ Worth one clarification, because the screen says it plainly: after the fix the s
 "survive" in the sense of nothing breaking. Millennium and Renaissance still breach. It clears the
 failure condition we set, which is *three or more*. Two is fewer than three.
 
-The intervention is in GOOGL, not NVDA. That is the point of solving it rather than guessing. GOOGL is
-the third most crowded name in the system, behind NVDA and AMZN, and Millennium is one of the two
-funds whose round-one breach starts the chain. Cutting the shocked name would have been the obvious
-move and it is not the cheapest one. Read it as a targeted patch for a named scenario, not as
-structural repair.
+Read it as a targeted patch for a named scenario, not as structural repair. And note what the
+optimiser is actually exploiting: Citadel does not breach first — Millennium and Renaissance do —
+but Citadel is the largest book in the system at $14.6B, so the smallest *fractional* cut there
+removes the most dollars of round-two selling pressure. That is not the move anyone would guess, and
+it is why you solve it rather than eyeball it.
 
 ## How we built it
 
@@ -116,8 +122,12 @@ MATLAB is not present the API falls back to an exhaustive Python position scan a
 UI**, with the solver name, evaluation count and exit flag on screen. We would rather show the fallback
 than imply a solver we did not run.
 
-**Frontend.** Vanilla JS and inline SVG on a stdlib `http.server`. No npm, no bundler, no CDN. Nothing
-to install on a demo machine and nothing that breaks when conference wifi does. The cascade animation
+**Frontend.** Vanilla JS and inline SVG on a stdlib `http.server`. No npm, no bundler, no build step,
+no CDN — nothing to install on a demo machine and nothing that breaks when conference wifi does.
+That last part we had to earn twice: the page linked Geist from Google Fonts while this very
+paragraph claimed "no CDN", which one look at a network tab would have shown a judge. The font is
+self-hosted now (`web/fonts/`, `web/fonts.css`, Latin and Greek subsets — the app needs γ, λ and δ
+and nothing else outside Latin), so the claim and the page finally agree. The cascade animation
 reads `trajectory[t]` frame by frame; it never interpolates between precomputed endpoints, because the
 animation is supposed to *be* the mechanism rather than illustrate it.
 
@@ -135,10 +145,22 @@ the phrase means nothing. The search was bisecting over a function that had no t
 insolvency is `+inf` leverage, full liquidation, marked defaulted. Breach count is now monotone at the
 demo settings, which we check rather than assert: a test sweeps all ten assets from 0% to 60% at
 λ=5.0 and γ=0.2 and asserts the count never falls. We do not claim it globally — there is still a
-residual case at λ=3.0, γ=0.5 where MSFT −32% gives five breaches and −33% gives four, with nobody
-insolvent, which is a VWAP and round-ordering effect rather than the original hole. Final *loss* is
+residual case at λ=7.5, γ=0.1 where TSLA −20% gives five breaches and −21% gives four, with nobody
+insolvent. A bigger shock kills the distressed funds a round sooner, so they liquidate at a higher
+VWAP and less damage reaches the funds behind them — a round-ordering effect rather than the original
+hole. (We have a second, independently found case at λ=3.0, γ=0.5 on MSFT that behaves identically.
+Two of us went looking and found two; we are not claiming those are the only ones.) Final *loss* is
 non-monotone by design and we have a test that asserts it stays that way, so nobody later "fixes" it
 into a claim we cannot support.
+
+**The optimiser answered "which position" and never "how much".** The stabiliser searched a 5%
+reduction grid, so every scenario we recorded came back with the same answer: cut 5%. Ten
+recordings, one number. That is not a result, it is the floor of the grid wearing a result's
+clothes, and we read it as a finding for hours. Bisecting on depth as well as position, the cheapest
+cuts come out at 0.16%, 0.31%, 0.62% and 1.41% — and the headline got dramatically stronger, because
+the real answer is that cutting one-sixth of one percent of a single position prevents the whole
+cascade. We nearly shipped a much weaker claim because we never questioned a number that looked
+round.
 
 **The most important parameter was invisible.** The breach band — how far over its target leverage a
 fund runs before it is forced to sell — was hardcoded at 1.05 while leverage and γ sat on sliders. It
@@ -199,7 +221,7 @@ exponential impact. The actual ancestor is Greenwood, Landier & Thesmar (2015), 
 `b_n = d/e` gives `q = (λ−1)·loss`, identical to ours. Caccioli is cited for overlapping-portfolio
 contagion and the critical-leverage boundary, which is what it is actually about.
 
-Eight of these eleven came out of handing the project to independent reviewers who had no stake in it
+Nine of these twelve came out of handing the project to independent reviewers who had no stake in it
 being right. Not one of them was found by a failing test — every single one produced a plausible
 number and shipped.
 
@@ -212,9 +234,11 @@ everything turning red at once.
 Point72's number. 2.8% exposure, 0.75% direct loss, 5.70% total. That single line is the whole thesis
 about overlapping portfolios, and it came out of real filings rather than a constructed example.
 
-The fix is non-obvious and it is *priced*. 0.04% of gross assets, in a name nobody shocked. Output is
-a sentence a PM could act on, not a risk score — and we report what it does not buy in the same
-breath.
+The fix is non-obvious and it is *priced*. Cutting 0.16% of one position — 0.009% of the system's
+gross assets — stops a cascade that costs 9.1% of system equity. It is not the fund that breaches
+first, and it is a depth no one would have guessed, which is the whole argument for solving it
+rather than eyeballing it. Output is a sentence a PM could act on, not a risk score, and we report
+what it does not buy in the same breath.
 
 Every number on screen is derivable, and we shipped honest magnitudes: amplification 1.87, not the
 11.8 we could have had by leaving the broken metric in; a hero that prints only the digits the search
@@ -236,7 +260,9 @@ Sanity tests that encode invariants catch more than tests that check outputs. `�
 == 1.0` is one line and it is the test that caught the metric bug. Checking that amplification came out
 "about right" would have sailed past it.
 
-And a metric that looks impressive deserves more suspicion than one that looks boring.
+And a metric that looks impressive deserves more suspicion than one that looks boring. So does one
+that looks round. "Cut 5%" came back from ten different scenarios and we read it as a finding for
+hours before noticing it was the resolution of the grid we were searching.
 
 ## What's next for Firebreak
 
@@ -267,9 +293,10 @@ frontend, no framework and no build step. SEC EDGAR 13F-HR filings for holdings.
 
 ## What this does not claim
 
-These are stated here and said out loud in the demo. *(The in-app assumptions panel is not built —
-the declared parameters are visible on the control strip and echoed in the `params` block of every
-API response, but there is no panel in the UI rendering the bullets below. It is on the list.)*
+There is an **Assumptions** button in the app, and the panel behind it says all of this on screen:
+eight rows, each tagged `measured`, `declared` or `limit`, filled from the live payload so the
+leverage, band, γ and ADV it shows are the ones the numbers beside it were computed with. We say
+them out loud as well.
 
 We do not predict market moves. Firebreak computes a stability property of a declared configuration.
 
@@ -277,8 +304,8 @@ Leverage is not disclosed in 13F. `λ` is our parameter. It is visible and adjus
 
 Neither is the breach band. `band` — how far over target leverage a fund runs before it is forced to
 sell — is our parameter too, it defaults to 1.05, and it swings the headline number harder than
-leverage or γ. Today it is set by URL rather than by a slider, which is the least visible place for
-the most influential knob; every response declares the value it used.
+leverage or γ. It has its own slider and its own row in the assumptions panel, because the most
+influential knob in a model should not be the least visible one.
 
 13F is long-only US equity, filed quarterly with a 45-day lag. It excludes shorts and derivatives.
 Options rows are filtered out, rows are aggregated by CUSIP across internal managers, and our universe

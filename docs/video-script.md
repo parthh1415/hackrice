@@ -1,8 +1,15 @@
 # Firebreak — demo video script
 
-**Target length:** 3:42. Hard ceiling 4:00. *(Was 3:30 before Shot 2.12 was added. If you are
-running over, the twelve seconds come out of Shot 2.7's grid pause and Shot 4.2's list — not out of
-2.12, and not out of either silence.)*
+**Target length:** 3:42. Hard ceiling 4:00.
+
+> **⚠ The script does not currently fit, and the per-shot timecodes below are a target, not a
+> measurement.** Counted at the stated 150 wpm, the spoken lines alone run **7:08**; with the marked
+> ⏸ silences it is about **7:25** — twice the ceiling. *Every single shot* is over its slot. The
+> worst are 2.12 (12s allotted, 42s of words), 3.3 (10s / 34s), 2.6 (13s / 30s), 2.2 (6s / 27s),
+> 4.2 (12s / 26s), 3.1 (10s / 24s), 4.1 (12s / 23s), 3.2 (10s / 22s). Roughly **half the words have
+> to come out** before this is recordable. That is a writing decision, not a pacing one — do not try
+> to solve it by speaking faster, and do not solve it by cutting Shot 2.12.
+
 **Required HackRice structure:** 30s intro · 2min demo · 30s technical design · 30s impact and future.
 
 **Before you record**
@@ -10,9 +17,11 @@ running over, the twelve seconds come out of Shot 2.7's grid pause and Shot 4.2'
 - Sliders at the golden path: gross leverage **5.0**, price impact **γ = 0.20**, failure condition
   **3 or more funds breach**, and the breach band at its default **1.05**. Every number below is the
   live output at those settings. If you move a slider, the numbers change and this script is wrong.
-- **The band has no slider** — it is a URL parameter (`&band=`) that defaults to 1.05. Leave it
-  alone and don't put it in the URL bar on camera. It swings the hero harder than either slider
-  (1.02 → −1.73%, 1.30 → −27.33%), which is exactly why Act 3 has to name it as a declared parameter.
+- **The band is a slider now** — `Breach band`, third knob down the rail, range 1.0–1.5 step 0.01,
+  default 1.05. It is on camera the whole time like the other two and no longer needs a URL
+  parameter. Leave it at 1.05 for the run. It swings the hero harder than either of the others
+  (1.02 → −1.73%, amp 3.10; 1.30 → −27.33%, amp 1.43), which is exactly why Act 3 names it as a
+  declared parameter.
 - **Read numbers off the screen, not off this script's underlying floats.** The app rounds, and
   saying a float over a display that shows something else is the fastest way to lose a judge. The
   full rendered set at the golden path, verified live 2026-09-12 — **this is the authority; if a
@@ -24,22 +33,37 @@ running over, the twelve seconds come out of Shot 2.7's grid pause and Shot 4.2'
   | hero sub | `NVDA · 4 of 5 funds forced to sell` | counts |
   | metrics band | `Shock loss 4.9%` · `After cascade 9.1%` · `Amplification 1.87×` · `Breaches 4` · `Rounds 3 / 3` | losses 1 dp, amp 2 dp |
   | round label | `round 3 / 3` | integers |
-  | asset label, NVDA | `−5.27%` | 2 dp |
+  | asset label, NVDA, at t0 | `−5.27%` | 2 dp |
+  | asset label, NVDA, at round 3 / 3 | `−5.76%` | 2 dp |
   | fund labels at t0 | `L 5.18` `L 5.36` `L 5.03` `L 5.15` `L 5.25` | 2 dp |
-  | fix line | `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets` | reduction 0 dp, cost 2 dp |
+  | fix line | `Citadel: cut NVDA exposure 0% · costs 0.01% of gross assets` | reduction 0 dp ⚠, cost 2 dp |
+
+  ⚠ **That `0%` is a live bug, not a typo.** The stabiliser used to be pinned to a 5% grid; it
+  bisects now, so the cheapest cut is 0.156% and `toFixed(0)` rounds the headline instruction to
+  zero. Eight of the ten recorded scenarios read `0%`. **Do not record Scene 3 until this is
+  fixed** — the one sentence the scene exists to produce currently tells a PM to cut nothing.
   | split feet | `9.1% loss · 4 breaches · amp 1.87×` / `6.5% loss · 2 breaches · amp 1.33×` | loss 1 dp, amp 2 dp |
   | shock stamp | `identical shock · 5.27% NVDA` | 2 dp |
   | boundary marker | `L 5.0 · overlap 0.71` | 1 dp / 2 dp |
   | boundary axes | `1.5`–`8.0`, `0.00 · 0.72 · 1.00` | 1 dp / 2 dp |
-  | boundary title | `amplification · single-name 5% reference` | — |
-  | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0%` | — |
-  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `79 evals · exit 1` | — |
-  | sliders | `5.0` and `0.20` | 1 dp / 2 dp |
+  | boundary title | `amplification · contour at 1.5× · single-name 5% reference · band 1.05` | 1 dp / 2 dp |
+  | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0% · <n>ms` | — |
+  | solver, after boundary | `parameter sweep` · `cells 256 · <n>ms` | — |
+  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `79 evals · <n>ms · exit 1` | — |
+  | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one` | 2 dp / 3 dp |
+  | sliders | `5.0`, `0.20` and `1.05` | 1 dp / 2 dp / 2 dp |
 
-  Nothing else in this script is a screen value. The Point72 overlay in Shot 2.6, the architecture
-  diagram, the `bought` slide in Shot 2.12 and the "what we do not claim" bullets in Shot 3.3 are
-  all things you have to make — the app renders none of them.
+  Nothing else in this script is a screen value. Two things you still have to make: the Point72
+  overlay in Shot 2.6 and the architecture diagram in Shot 3.1. The other two are in the product
+  now — `bought` renders as a line above the split (Shot 2.12) and the assumptions live behind the
+  **Assumptions** button in the masthead (Shot 3.3), so both of those beats are live app, not slides.
 - Run the loop once to warm the cache. Serve with the cached demo path so wifi cannot kill you.
+- **The app runs the attack by itself at boot.** By the time the page has settled, the hero already
+  reads `5.27%`, the metrics band is filled and the timeline is parked on `round 3 / 3`. There is no
+  blank idle state to open on. Either open on a fresh reload and start talking over the boot run, or
+  accept that Shot 2.3's click is a *re-run* of an answer already on screen — it does replay the
+  count-up and the cascade from round 0, so the reveal still reads. Just don't describe the opening
+  frame as empty.
 - Browser at 1280×800, zoom 100%, no tab bar clutter, no notifications.
 - Speak at roughly 150 words per minute. The lines below are timed for that.
 - **⏸ marks a deliberate silence.** Do not talk over the cascade. The animation is the argument.
@@ -64,8 +88,10 @@ Capital One challenge · MathWorks challenge".
 > smallest shock that breaks this system, and what is the cheapest change that prevents it."
 
 ### Shot 1.3 · 0:21 – 0:30
-**On screen:** The live app, idle. Five fund nodes, ten asset nodes, edges visible. Sliders and the
-solver strip legible at the bottom.
+**On screen:** The live app as it lands. Five fund nodes, ten asset nodes, edges visible. Three
+sliders, the failure-condition select and the solver strip legible down the left rail. **Not idle —
+the app has already run the attack for itself**, so the hero reads `5.27%` and the timeline is
+parked on `round 3 / 3` before you have touched anything.
 
 > "Real holdings from five hedge funds' SEC 13F filings. A Python cascade engine, MATLAB pattern
 > search for the optimisation, and a plain JavaScript front end. Purpose: find the failure before it
@@ -80,21 +106,27 @@ solver strip legible at the bottom.
 #### Shot 2.1 · 0:30 – 0:44
 **On screen:** Cursor traces across the bipartite network, then rests on the control strip.
 
-> *There is **no** assumptions strip in the app — no quarter, no source line, no panel. If you want
-> 2026-06-30 and "SEC 13F-HR" on screen for this beat you have to put them on a slide. Do not point
-> the cursor at something that isn't there.*
+> *The provenance is in the app now. **Assumptions** sits in the masthead next to the badge and opens
+> a panel whose first row reads "measured · Holdings — Real, and the only thing here that is. SEC
+> 13F-HR, period 2026-06-30, 5 managers across 10 names, $40.9B gross notional." One click, Escape or
+> Close to dismiss. You can open it here or save it for Shot 3.3, but don't claim a strip on the
+> stage — it is a modal over the network, not a band under it.*
 
 > "Citadel, Millennium, Point72, Two Sigma, Renaissance. Ten mega-cap names. These are their real
 > filed books, second quarter twenty twenty-six. Mean pairwise overlap between these five portfolios
 > is zero point seven one. Citadel and Two Sigma are at zero point nine two. Nearly the same fund."
 
 #### Shot 2.2 · 0:44 – 0:50
-**On screen:** Cursor on the sliders. Leverage 5.0, γ 0.20 highlighted briefly.
+**On screen:** Cursor down the rail. Leverage `5.0`, γ `0.20`, Breach band `1.05` — three sliders,
+all three highlighted briefly.
 
 > "Leverage and price impact aren't in a 13F, so they're ours. Five times gross, impact coefficient
-> zero point two, both adjustable, both on screen the whole time. There's a third one — how far over
-> its limit a fund runs before it's forced to sell. We hold that at one point oh five and I'll come
-> back to it, because it moves this number more than either slider does."
+> zero point two, both adjustable, both on screen the whole time. And a third one — how far over
+> its limit a fund runs before it's forced to sell. One point oh five. I'll come back to it, because
+> it moves this number more than either of the others."
+
+> *All three are sliders on the rail; the band is no longer hidden in a URL. Don't say "we hold that
+> at" as though it were a constant you couldn't reach — it is the knob directly under γ.*
 
 
 #### Shot 2.3 · 0:50 – 0:57
@@ -120,7 +152,10 @@ solver strip legible at the bottom.
 
 > "Watch it move."
 >
-> ⏸ *(full silence through round 1 and round 2, ~6s)*
+> ⏸ *(full silence through round 1 and round 2 — which is **2.2 seconds**, not six. The step is
+> 1020ms: round 1 lands ~0.3s after the click, round 2 at ~1.3s, round 3 at ~2.3s, and the whole
+> cascade has settled by ~3.2s. If you hold six seconds of silence you are holding three seconds of
+> a frozen final frame. Either come in at 2.2s or cut back to round 0 and let it play twice.)*
 >
 > "Millennium and Renaissance breach first. They're the two heaviest in NVIDIA. To get back under
 > their limits they sell across the whole book, not just the name that fell. Everything they own
@@ -134,7 +169,9 @@ solver strip legible at the bottom.
 
 #### Shot 2.6 · 1:19 – 1:32
 **On screen:** Zoom to the Point72 node, which never turned red. Its only on-screen readout is its
-leverage label, which ends around `L 5.03`. **Add the three numbers as an overlay in the edit** —
+leverage label, which **starts** at `L 5.03` and **ends** at `L 5.24` — it is the one fund whose
+leverage goes *up* across the cascade, because its equity falls and it never sells. That is worth
+the zoom on its own. **Add the three numbers as an overlay in the edit** —
 `NVDA weight 2.8% · direct loss 0.75% · total loss 5.70%`. The app renders none of them; they are
 derived from the trajectory and this beat depends on them, so build the overlay rather than pointing
 the cursor at something that isn't there.
@@ -168,16 +205,22 @@ bottom, with `amplification · single-name 5% reference` in the top right.
 > and a half to eight. Crowding from every fund holding something different, through the books
 > exactly as filed, all the way up to every fund holding the same thing."
 >
-> ⏸ *(wait for the sweep to return, ~2s — dead air, not an animation)*
+> ⏸ *(there is **no** wait. The sweep returns in under 50ms warm or cold, and `drawBoundary` paints
+> all 256 rects plus the contour in one synchronous pass, so the grid is on screen within about a
+> twentieth of a second of the click. Don't write dead air into the edit and don't say "give it a
+> moment" — there isn't one. If you want a beat here it has to be a presenter pause on a grid that
+> is already up.)*
 
 #### Shot 2.8 · 1:42 – 1:57
 **On screen:** The marker — a white ring and dot — lands at leverage 5.0, overlap 0.71, just above
 the band where the shading flips from white to red.
 
-> *There is **no contour line**. `drawBoundary` shades each cell into one of five bands (amplification
-> < 1.05, < 1.30, < 1.80, < 3.00, above) and draws a ring for the marker. Nothing traces the
-> boundary — the eye reads it off where white becomes red, which is the 1.80 step. Say "where it
-> turns red", not "the contour".*
+> *There **is** a contour now. `drawBoundary` shades each cell into one of five bands (amplification
+> < 1.05, < 1.30, < 1.80, < 3.00, above) **and then runs marching squares at 1.5× and strokes the
+> crossings in white** — 29 short segments at the golden path. The title in the top right names it:
+> `amplification · contour at 1.5× · single-name 5% reference · band 1.05`. So "the contour" is a
+> thing you can point at and a word you are allowed to say. Say **1.5×** if you name the level; do
+> not say 1.80 — that was the old shading step, and it is not where the line is drawn.*
 
 > "Every cell is a full cascade, computed, not drawn. And there's a boundary. Below it the shock gets
 > absorbed. Above it, it runs. You are here."
@@ -188,21 +231,27 @@ the band where the shading flips from white to red.
 > place, you can move."
 
 > *Say "below / above", not "one side / the other". The sharp transition is in **leverage** — at the
-> filed overlap, amplification goes 1.00 at λ≈4.5 to 1.86 at λ≈5.0. Along the crowding axis the
+> filed overlap column, amplification is flat at 1.00 all the way up to λ≈4.1, is 1.16 at λ≈4.5 and
+> 1.86 at λ≈5.0, and the 1.5× contour crosses at **λ≈4.7**. (Not "1.00 at 4.5" — 4.5 is already off
+> the floor.) Along the crowding axis the
 > reference shock is single-name, so amplification is not monotone in crowding. If a judge points at
 > the right-hand columns and asks why they're cooler, that's why: blending toward the mean dilutes
 > the shocked name. Don't claim a crowding threshold on camera.*
 >
 > *And don't oversell "right on the edge". Where the leverage boundary sits is set by the breach band
-> we chose. The sweep honours `band`, so you can show this: at the same −5% reference, band 1.02 puts
-> the boundary at λ≈2.4, band 1.05 at λ≈4.5, band 1.10 at λ≈7.1, and at band 1.30 nothing in the grid
-> cascades at all. The map's shape is the finding; the marker sitting near the line at band 1.05 is
-> partly a consequence of picking 1.05. If a judge presses, concede it immediately — "that's a
-> parameter we declared, and here's how much it moves" is a much better answer than defending the
-> coincidence.*
+> we chose. The sweep honours `band`, so you can show this — measured off the 1.5× contour at the
+> filed overlap column: band 1.02 puts it at **λ≈2.7**, band 1.05 at **λ≈4.7**, band 1.10 at
+> **λ≈7.7**, and at band 1.30 the filed-overlap column never leaves 1.00 — only the top row, λ=8.0,
+> cascades at all (16 of 256 cells amplify, 12 of them cross 1.5×). Do **not** say "nothing in the
+> grid cascades" at 1.30; something does, it is just nowhere near where we are standing. The map's
+> shape is the finding; the marker sitting near the line at band 1.05 is partly a consequence of
+> picking 1.05. If a judge presses, concede it immediately — "that's a parameter we declared, and
+> here's how much it moves" is a much better answer than defending the coincidence.*
 >
-> *If you want to demonstrate it live, `&band=` on the URL re-sweeps the grid. Rehearse it: it means
-> typing in the address bar on camera, and the band has no slider.*
+> *Demonstrating it live is now a drag, not a URL: pull the **Breach band** slider and press **Map
+> the boundary** again. Nothing to type on camera. The sweep is instant, so the grid redraws under a
+> new title reading `… · band 1.30` and the contour visibly retreats to the top of the plot. Put the
+> slider back to 1.05 before Shot 2.9 or every number after it is wrong.*
 
 
 ### Beat 4 — DEFEND (1:57 – 2:42)
@@ -211,8 +260,11 @@ the band where the shading flips from white to red.
 **On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
 position scan`, `MATLAB not available on this machine`, `79 evals · <n>ms · exit 1` — unless you have
 done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
-resolves:
-`Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets`
+resolves in about a tenth of a second:
+`Citadel: cut NVDA exposure 0.16% · costs 0.01% of gross assets` — **once the rounding bug above is
+fixed.** Today it renders `0%`.
+and the `bought` line lands **immediately underneath it, at the same moment** — see Shot 2.12. You
+cannot hold it back, so don't plan a reveal.
 
 > "Now run it backwards again. Same failure condition, same shock. What is the smallest change
 > anywhere in this system that gets us under it?"
@@ -220,7 +272,9 @@ resolves:
 >
 > ⏸ *(let the instruction render)*
 >
-> "Millennium cuts Alphabet by five percent. Four basis points of the system's gross assets."
+> "Citadel cuts NVIDIA by zero point one six percent. Under a basis point of the system's gross
+> assets."
+
 
 
 #### Shot 2.10 · 2:08 – 2:18
@@ -245,7 +299,8 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 > ⏸ *(hold on the split, ~2s)*
 >
 > "After: two funds, one round, six point five. Amplification one point eight seven down to one point
-> three three. For four basis points."
+> three three. For sixteen hundredths of one percent of one position."
+
 >
 > *Say "two funds", never "it survives". Millennium and Renaissance still breach — the fix clears the
 > condition we asked about, which was three or more. If you say "survives" over a panel reading
@@ -253,8 +308,9 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 
 
 #### Shot 2.12 · 2:30 – 2:42  — **NEW. Do not cut this one.**
-**On screen:** Hold on the split and cut to a slide reading
-`critical shock before fix −5.27%  ·  after the fix: no measurable change`.
+**On screen:** No slide. Stay on the split and push in on the `bought` line sitting above it, which
+has been on screen since the fix line landed. It reads, verbatim:
+`critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one`
 
 > "And here's the part we'd rather say than have you find. The stabiliser re-runs the search against
 > the patched books. The smallest shock that breaks us doesn't measurably move. Four basis points of
@@ -270,16 +326,21 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 
 > *Where this comes from: the `bought` object on `/api/stabilise` — `before_pct` 5.2734,
 > `after_pct` 5.2773, `delta_pct` +0.0039, `resolution_pct` 0.005, `measurable: false`, note
-> `"no measurable change in break point — a targeted patch, not structural repair"`.*
+> `"no measurable change in break point — a targeted patch, not structural repair"`. `showBought()`
+> renders it; it is live, and it is on screen from the moment Stabilise returns.*
 >
-> **Do not say "it goes from 5.27 to 5.28".** The delta is +0.0039pp and the search resolves
-> 0.005pp, so that movement is inside its own error bar — quoting it is the same fake-precision
-> mistake as the old hero number, one level up. "No measurable change" is the claim that survives.*
+> **Do not read the arrow out loud.** The screen prints `5.27% → 5.28%`, but the delta behind it is
+> +0.0039pp against a search that resolves 0.005pp — inside its own error bar. The line's own second
+> half is the claim that survives: **"no measurable change"**. Say that, and if the cursor is
+> anywhere near the arrow, say why it doesn't mean anything. *(Flagged to the team: the app printing
+> `5.28%` at all is the same fake-precision mistake the hero number was fixed for, one level up. If
+> it gets changed before you record, re-check this line.)*
 >
 > **Do not demonstrate this by clicking Find weakest shock after Stabilise.** `/api/break` reloads
-> the dataset from disk, so it re-searches the **unpatched** books — it would print −5.27% again for
-> the wrong reason and you'd be showing the right conclusion off a broken mechanism. Nothing in the
-> UI renders `bought` today. Until it does, this beat is a slide, or you show the JSON.*
+> the dataset from disk, so it re-searches the **unpatched** books — it would print 5.27% again for
+> the wrong reason and you'd be showing the right conclusion off a broken mechanism. The button is
+> perfectly clickable and takes about 3.2 seconds; that is exactly the trap. The `bought` line
+> already says the thing, live. Use it.*
 
 
 ---
@@ -306,8 +367,13 @@ in the app showing the live solver name, evaluation count and exit flag.
 > you which solver actually produced the number on screen."
 
 ### Shot 3.3 · 3:02 – 3:12
-**On screen:** A slide with the "what we do not claim" bullets. *(The in-app assumptions panel is
-not built — do not cut to the app for this shot expecting to find one.)*
+**On screen:** Click **Assumptions** in the masthead. The panel opens instantly over the stage with
+eight rows, each tagged `measured`, `declared` or `limit`, filled from the live payload — Holdings
+(SEC 13F-HR, 2026-06-30, 5 managers, 10 names, $40.9B), Leverage (5.0×), Breach band (1.05, with
+"1.02 gives −1.73%, 1.30 gives −27.33%" written into the row), Price impact (γ = 0.20), ADV,
+What 13F omits, Scale (~$8.2B system equity, "the mechanism transfers; the magnitude does not"),
+Not a prediction ("not a proven threshold"). *No slide needed — this is the product now.* Escape or
+**Close** puts it away.
 
 > "And the honesty is not an afterthought. We do not predict market moves. Leverage is not in a 13F,
 > it's our parameter. Neither is the breach band, the one I flagged earlier — that's ours too, it
@@ -356,18 +422,24 @@ shocks · multi-asset shocks · systemic-importance ranking · bystander exposur
 - If a run is slow on the day, use the cached demo path. Do not fill the gap with narration.
 - If asked live where leverage comes from, the answer is one sentence: it is not in the filing, it is a
   declared parameter, and it is the slider on screen.
-- Numbers verified live 2026-09-12 at leverage 5.0, γ 0.20, band 1.05, breaches ≥ 3, against
-  `/api/break` and `/api/stabilise`. Re-run before recording and correct any drift rather than
+- Numbers verified live 2026-09-12 by driving the real `web/app.js` against the real server and
+  reading the rendered DOM, at leverage 5.0, γ 0.20, band 1.05, breaches ≥ 3. Re-run before recording and correct any drift rather than
   reading these from the page. Verified this pass — **screen value first, float in brackets**:
   hero NVDA −5.27% (5.2734); shock loss 4.9% (4.876%); after cascade 9.1% (9.122%); amplification
   1.87× (1.8710); 4 breaches, 3 rounds; order Millennium+Renaissance → Citadel → Two Sigma, Point72
-  never; Point72 2.8% / 0.75% / 5.70%; fix `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross
-  assets` (reduction 0.05, cost 0.000441); after 6.5% (6.482%) and 1.33× (1.3289), 2 breaches in
-  1 round; shock stamp `5.27% NVDA`; boundary marker `L 5.0 · overlap 0.71` (0.7117).
+  never; Point72 2.8% / 0.75% / 5.70%; fix `Citadel: cut NVDA exposure 0.16% · costs 0.01% of gross
+  assets` (reduction 0.0015625, cost 0.0000903); after 6.5% (6.482%) and 1.33× (1.3299), 2 breaches in
+  1 round; shock stamp `5.27% NVDA`; boundary marker `L 5.0 · overlap 0.71` (0.7117); fund labels at
+  t0 `L 5.18 · L 5.36 · L 5.03 · L 5.15 · L 5.25`, at round 3 / 3 `L 4.87 · L 4.91 · L 5.24 · L 4.80
+  · L 4.92`; NVDA asset label −5.27% at t0, −5.76% at the end.
+- Measured wall clock, click to settled, on a warm cache: attack → cascade **3.2s**; Map the boundary
+  → grid on screen **0.05s**; Stabilise → fix and `bought` lines **0.1s**, split animation done
+  **2.6s**; Assumptions → open **instant**. Every API call is under 50ms. The interaction costs
+  almost nothing — all the time in this video is speech, which is the problem flagged at the top.
 - `bought` on `/api/stabilise`: before 5.2734%, after 5.2773%, delta +0.0039pp against
   `resolution_pct` 0.005 → **`measurable: false`**, note "no measurable change in break point — a
-  targeted patch, not structural repair". Quote the note, not the delta. Shot 2.12 is the only place
-  this reaches the audience, because nothing renders it.
+  targeted patch, not structural repair". Quote the note, not the delta. It renders on screen above
+  the split as soon as Stabilise returns, so Shot 2.12 is a live beat, not a slide.
 - The solver strip will read **"SciPy-free Python · exhaustive position scan"** unless someone has
   run `matlab/stabilise.m` and dropped `solve_out.json` into `data/cache/` first — see
   `matlab/README.md`. Shot 3.2's line about MATLAB pattern search is only true if you do that step.

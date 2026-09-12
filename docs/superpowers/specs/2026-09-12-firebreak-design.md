@@ -93,10 +93,15 @@ Three reviewers went at this independently. Findings that changed the code:
    insolvency is +inf leverage, full liquidation, marked defaulted. Breach count
    is now monotone **at the demo settings** — checked in
    `tests/test_breach_count_is_monotone_on_the_real_books` over all 10 assets ×
-   0–60% at λ=5.0, γ=0.2. It is **not** monotone everywhere: at λ=3.0, γ=0.5,
-   MSFT −32% gives 5 breaches and −33% gives 4, with no fund insolvent. That
-   residual is a VWAP/round-ordering effect, not the insolvency hole. Do not
-   claim global monotonicity. (Final *loss* is separately non-monotone by
+   0–60% at λ=5.0, γ=0.2. It is **not** monotone everywhere. The canonical
+   counterexample, the one cited in `search.py`, is **λ=7.5, γ=0.1, TSLA −20%
+   → 5 breaches, −21% → 4**: a bigger shock kills the distressed funds a round
+   sooner, so they liquidate at a higher VWAP and less damage reaches the funds
+   behind them. (A second, independently found case behaves the same way at
+   λ=3.0, γ=0.5, MSFT −32% → −33%. Two authors found two; there are more.
+   Quote the TSLA one so the docs and the code agree.) No fund is insolvent in
+   either — this is a VWAP/round-ordering effect, not the insolvency hole. Do
+   not claim global monotonicity. (Final *loss* is separately non-monotone by
    design — see `test_loss_is_not_claimed_to_be_monotone`, ~6% of steps across
    12,200 runs, worst dip 16%.)
 2. **Sales settled at book prices**, so a fund liquidating its whole book took
@@ -212,7 +217,7 @@ V_i = Σ_j Q[j,i]                          total dollar selling in asset i
 ```
 
 `ADV_i` = average daily dollar volume (hardcoded from public data; returned on every dataset
-response — the assumptions panel that was meant to display it is **not built**, see §9).
+response, and listed in the assumptions panel — see §9).
 `γ_i` = impact coefficient, **a slider, not a constant**. Square-root impact
 (`−Y_i σ_i √(V_i/ADV_i)`) is a stretch alternative, not MVP.
 
@@ -293,18 +298,20 @@ essentially where it was. The `/api/stabilise` response carries a `bought` objec
 `{before_pct, after_pct, delta_pct, resolution_pct, measurable, after_asset, note}` — from re-running
 `find_weakest_shock` against the patched books.
 
-At the demo settings: `before_pct` 5.2734, `after_pct` 5.2773, `delta_pct` +0.0039, against a
+At the demo settings the fix is **Citadel cuts NVDA by 0.156%**, costing 0.0090% of gross assets,
+and `bought` reads: `before_pct` 5.2734, `after_pct` 5.2773, `delta_pct` +0.0039, against a
 `resolution_pct` of 0.005. The delta is **inside the search's own resolution**, so `measurable` is
 `false` and the note reads *"no measurable change in break point — a targeted patch, not structural
 repair"*. **Report the note, never the delta.** Quoting +0.0039pp as a result would be the same
 fake-precision failure as §2.4 item 8, one level up — a number inside its own error bar presented as
 though it meant something.
 
-Two things not to say alongside it. The patched system does **not** "survive" the shock: Millennium
-and Renaissance still breach, and the fix clears a condition that asks for *three or more*. And
-nothing in the UI renders `bought`, while `/api/break` reloads the dataset from disk — so clicking
-*Find weakest shock* after *Stabilise* re-searches the **unpatched** books and cannot be used to
-demonstrate any of this.
+`showBought` in `web/app.js` renders this under the fix line, and it follows the same rule: when
+`measurable` is false it draws the arrow without a delta and says *"no measurable change (search
+resolves to ±0.005pp)"* rather than printing a number the search cannot support.
+
+One thing not to say alongside it: the patched system does **not** "survive" the shock. Millennium
+and Renaissance still breach; the fix clears a condition that asks for *three or more*.
 
 The honest fix is a different objective: **maximise the critical shock**, or minimise cost subject to
 surviving a *family* of shocks, rather than the one already named. That is the top "what's next"
@@ -362,7 +369,7 @@ And `rounds`/`breached` live at the top level, not inside `metrics`.
 | Scene | Question | Output |
 |---|---|---|
 | **1 — Break** | "What's the smallest thing that kills us?" | `NVDA −X%`, then the cascade animates round by round |
-| **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here". As built: a 16×16 grid shaded into five amplification bands (<1.05, <1.30, <1.80, <3.00, above) with a ring-and-dot marker. **No contour line is drawn** — the visible boundary is the white-to-red step at 1.80 — and the grid paints in one pass rather than animating. |
+| **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here". As built: a 16×16 grid shaded into five amplification bands (<1.05, <1.30, <1.80, <3.00, above), a **marching-squares iso-contour at amplification 1.5** drawn over it, and a ring-and-dot marker. The grid paints in one pass rather than animating. |
 | **3 — Firebreak** | "What's the cheapest way out?" | a priced instruction; same shock re-run; before/after |
 | **4 — Exposure** *(planned, not built)* | "What does this mean for me?" | user's CSV portfolio as an unlevered node that cannot breach but still loses |
 
@@ -404,7 +411,7 @@ Devpost "what's next" bullets.
 
 All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
 (`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite was
-**139 tests, all passing** when this was last reconciled; it is still growing, so read the count off
+**146 tests, all passing** when this was last reconciled; it is still growing, so read the count off
 `python3 -m pytest tests/ -q | tail -1` rather than quoting this line.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
@@ -436,6 +443,18 @@ Tests 2 and 6 protect the headline claim. Test 7 protects the demo.
 | Scope overrun | Scene 4 cut first, then heatmap, then stabilisation. Scenes 1 + cascade animation are the irreducible core. |
 | Non-monotone damage breaks bisection | Grid-bracket then bisect (§3.9). Test 6. |
 
+**Open bug, 2026-09-12 — blocks the Scene 3 demo.** `fixLine` in `web/app.js` renders the
+reduction as `(f.reduction * 100).toFixed(0)`. That was fine while the stabiliser was pinned to a 5%
+grid; now that it bisects, reductions are sub-1% and the headline instruction rounds to **zero**. At
+the demo settings the screen currently reads:
+
+> `Citadel: cut NVDA exposure 0% · costs 0.01% of gross assets`
+
+Eight of the ten recorded scenarios say `0%`; the other two say `1%`. The one sentence the whole
+scene exists to produce is currently an instruction to cut nothing. Needs 2 dp, or a significant-
+figure formatter. Until it is fixed, do not quote the reduction as a screen value — the float is
+0.156%, the display is not.
+
 **Fixed 2026-09-12** (was: `_boundary` read `band`, echoed it back in `band` and `params`, then
 hardcoded `max_leverage = lev * 1.05` inside the sweep, so the phase diagram was byte-identical at
 every band while the payload claimed otherwise — the exact "confident answer to a different question"
@@ -448,15 +467,16 @@ consequence of a parameter we declared, not a measurement.
 
 ## 9. What we do not claim
 
-Say these out loud before a judge asks. **The assumptions panel is not built** — the declared
-parameters are on the control strip and in every response's `params` block, but nothing in the UI
-renders the list below. Until it is, these live in the script and in `docs/devpost.md`.
+**Built and on screen.** The *Assumptions* button opens a panel (`web/index.html`, populated by
+`fillAssumptions` in `web/app.js`) with eight rows, each tagged `measured` / `declared` / `limit`
+and filled from the live payload rather than hardcoded — so the leverage, band, γ and ADV it shows
+are the ones the numbers on screen were computed with. Say them out loud as well as showing them.
 
 - We do **not** predict market moves. We compute a stability property of a declared configuration.
 - Leverage is **not** in 13F. It is our parameter, visible and adjustable.
 - **Neither is the breach band.** `band` defaults to 1.05 and moves the headline number more than
-  leverage or γ do (§2.4 item 7). It is a URL parameter today, not a slider — the least visible
-  place for the most influential knob. Every response declares the value used.
+  leverage or γ do (§2.4 item 7). It has its own slider (`#breachBand`, 1.00–1.50), it is a row in
+  the assumptions panel, and every response declares the value used.
 - Where the leverage boundary sits in Scene 2 is a consequence of the band we chose, not a
   measurement. "You are here, right on the edge" is a statement about a declared configuration.
 - 13F is long-only US equity, quarterly, 45-day lag, and excludes shorts and derivatives.
