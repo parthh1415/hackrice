@@ -573,9 +573,7 @@ let noteKind = null;
 
 function setNote(kind, text, stale) {
   noteKind = kind;
-  const note = $("heroNote");
-  note.textContent = text;
-  note.hidden = false;
+  $("heroNote").textContent = text;
   if (stale) { $("heroVal").dataset.stale = ""; $("band").dataset.stale = ""; }
   else undim();
 }
@@ -583,7 +581,6 @@ function setNote(kind, text, stale) {
 function clearNote(kind) {
   if (kind && noteKind !== kind) return;
   noteKind = null;
-  $("heroNote").hidden = true;
   $("heroNote").textContent = "";
   undim();
 }

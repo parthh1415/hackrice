@@ -334,13 +334,12 @@ const svg = (id) => d.getElementById(id);
   set("leverage", "8");
   await sleep(120);
   check("moving a knob marks the run it disowns",
-        !d.getElementById("heroNote").hidden &&
+        text("heroNote") !== "" &&
         d.getElementById("heroVal").hasAttribute("data-stale"),
         `hero ${heroWas} → ${text("heroVal")}, note "${text("heroNote")}"`);
   set("leverage", "1.5");
   await sleep(120);
-  check("putting it back clears the mark", d.getElementById("heroNote").hidden,
-        text("heroNote"));
+  check("putting it back clears the mark", text("heroNote") === "", text("heroNote"));
 
   /* A beat that did not run must say so where the eye already is. */
   console.log("\nERROR PATH — a beat that failed says which beat");

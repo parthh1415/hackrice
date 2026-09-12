@@ -96,7 +96,15 @@ svg .pulse{transform-box:fill-box;transform-origin:center}
    reads it mid-sentence, so say it on the hero's own line of sight and dim
    what it refers to — dimmed digits read as "not current" before anyone has
    finished the words. */
-.hero-note{font:400 11px/1.4 var(--mono);letter-spacing:.02em;color:var(--alert)}
+/* Always in the layout, empty when there is nothing to say. Appearing and
+   disappearing would change the masthead height, which shrinks the stage,
+   which trips the ResizeObserver into recomputing the layout — so the whole
+   network would step sideways at the exact moment we are asking a judge to
+   look at a number. Reserve the line once instead. */
+.hero-note{
+  font:400 11px/1.4 var(--mono);letter-spacing:.02em;color:var(--alert);
+  min-height:15px;
+}
 .hero-val[data-stale],.band[data-stale] .v{opacity:.34}
 
 .badge{
