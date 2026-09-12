@@ -334,7 +334,9 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
         "stroke-dashoffset": len,
       });
       svg.appendChild(path);
-      path.animate(
+      // Same guard as the breach ring: Web Animations is not universal and a
+      // liquidation flow is decoration over a path that is already drawn.
+      if (typeof path.animate === "function") path.animate(
         [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
         { duration: DUR_FLOW, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" }
       );
@@ -1354,10 +1356,14 @@ async function boot() {
   })
 );
 $("breaches").addEventListener("change", checkKnobs);
-$("attackBtn").addEventListener("click", attack);
+/* attackBtn belongs to the TERMINAL now: it runs the portfolio's reverse
+   test, not the institutional "N funds breach" search. Leaving the old
+   handler attached meant the hero read 5.27% with four funds while the
+   telemetry column — which the portfolio result populates — stayed empty. */
 $("replayBtn").addEventListener("click", () => {
   claimStage();          // a sweep still in the air must not steal this back
   if (state.beat === "split" && split.before) return playSplit();
+  if (pm.result && pm.result.found) return replayPortfolioCascade();
   if (state.run) { showScene("network"); playCascade(); }
 });
 $("boundaryBtn").addEventListener("click", boundary);
@@ -1369,7 +1375,6 @@ $("assumePanel").addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") $("assumePanel").hidden = true;
 });
-$("defendBtn").addEventListener("click", defend);
 /* A window resize listener is not enough. The Geist webfont lands after
    first paint, reflows the masthead, and the stage changes height — so the
    layout was computed against a box that no longer exists and the diagram
@@ -1883,6 +1888,7 @@ $("csvFile").addEventListener("change", async (ev) => {
 });
 
 $("defendBtn").addEventListener("click", computeDefense);
+$("attackBtn").addEventListener("click", runReverseTest);
 $("helpBtn").addEventListener("click", () => COMMANDS.help());
 $("modelTags").addEventListener("click", (ev) => {
   if (ev.target.closest(".tag")) openAssumptions();
