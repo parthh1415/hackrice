@@ -918,14 +918,31 @@ function showBought(b) {
   }
   // after_pct null is the strong outcome, not a missing one: the patched books
   // could not be broken at all. Say that rather than hiding the line.
-  const after = b.after_pct === null ? "nothing breaks it" : `${b.after_pct.toFixed(2)}%`;
-  const movement = b.measurable && b.delta_pct !== null
-    ? `moves it ${b.delta_pct >= 0 ? "+" : ""}${b.delta_pct.toFixed(2)}pp`
-    : `<b>no measurable change</b> <em>(search resolves to ±${b.resolution_pct.toFixed(3)}pp)</em>`;
+  const broke = b.after_pct !== null;
+  const measurable = b.measurable && b.delta_pct !== null;
+  const tail = " — defends this shock, not the next one";
+
+  if (!broke) {
+    line.hidden = false;
+    line.innerHTML =
+      `critical distance <b>${b.before_pct.toFixed(2)}%</b> → <b>nothing breaks it</b>` + tail;
+    return;
+  }
+
+  // No arrow when there is nothing to point at. This read
+  // "critical distance 5.27% → 5.28% · no measurable change", which is two
+  // different numbers directly beside the claim that they are the same one.
+  // 5.2734 and 5.2773 are indistinguishable to a search resolving to
+  // 0.010pp, and they only look different because 2dp rounding happens to
+  // straddle the boundary between them. A judge reading that line sees us
+  // contradict ourselves in the space of six words, on the beat whose whole
+  // job is admitting how little the fix bought.
   line.hidden = false;
-  line.innerHTML =
-    `critical distance <b>${b.before_pct.toFixed(2)}%</b> → <b>${after}</b> · ${movement}` +
-    ` — defends this shock, not the next one`;
+  line.innerHTML = measurable
+    ? `critical distance <b>${b.before_pct.toFixed(2)}%</b> → <b>${b.after_pct.toFixed(2)}%</b>` +
+      ` · moves it ${b.delta_pct >= 0 ? "+" : ""}${b.delta_pct.toFixed(2)}pp` + tail
+    : `critical distance <b>${b.before_pct.toFixed(2)}%</b> · <b>no measurable change</b>` +
+      ` <em>(search resolves to ±${b.resolution_pct.toFixed(3)}pp)</em>` + tail;
 }
 
 /* Flatten the API's payload into the shape the stage draws from. */
@@ -1150,6 +1167,16 @@ function drawBoundary(svg, b) {
    second half lived only in a doc was the weaker half of an honest claim —
    and the panel existed before I rebuilt the UI and got dropped in the
    rewrite without anyone noticing for six hours. */
+/* Where the breach-band sensitivity pair was actually measured. Every entry
+   has to match before the panel is allowed to say "At these settings" — the
+   previous version listed two of the three and quoted the pair at every
+   gamma. Add a knob to the model and it belongs here too. */
+const MEASURED_AT = [
+  [(p, lev) => lev, 5.0],
+  [(p) => Number((p.gamma == null ? 0.2 : p.gamma).toFixed(2)), 0.2],
+  [(p) => Number(p.breaches), 3],
+];
+
 function fillAssumptions(data, run) {
   const p = (run && run.params) || {};
   const lev = p.leverage == null ? 5 : p.leverage;
@@ -1167,20 +1194,25 @@ function fillAssumptions(data, run) {
       `<b>$${(gross / 1e9).toFixed(1)}B</b> gross notional. Anyone can reproduce it from EDGAR.`],
     ["declared", "Leverage", `No fund discloses it. It is the slider, applied uniformly at ` +
       `<b>${lev.toFixed(1)}\u00d7</b>, and every number on screen moves when it changes.`],
-    // The sensitivity pair is a MEASUREMENT, and it was measured at leverage
-    // 5.0 with the >=3 condition. Quoted unconditionally it drifted badly:
-    // at leverage 3.0 the real pair is -4.59% / -57.12%, so the panel stated
-    // -1.73% / -27.33% — wrong by 2.6x and 2.1x — while every row around it
-    // interpolated live values. Re-deriving it costs two more cascades per
-    // open, which this panel does not have; so it is shown only where it is
-    // true, and the claim it supports stands on its own everywhere else.
+    // The sensitivity pair is a MEASUREMENT, taken at leverage 5.0, gamma 0.20
+    // and the >=3 condition. Quoted unconditionally it drifted badly — at
+    // leverage 3.0 the real pair is -4.59% / -57.12%, against the -1.73% /
+    // -27.33% printed — so it was gated. The gate then checked leverage and
+    // the breach count and forgot gamma, which is the third knob it was
+    // measured at, so at gamma 1.00 the panel said "At these settings" over
+    // -1.73% / -27.33% when the truth is -1.43% / -17.25% and the 1.02 answer
+    // is a different name entirely (AMZN, not NVDA). Two rows below, the same
+    // panel prints gamma to 2dp. It contradicted itself on one screen.
+    //
+    // MEASURED_AT is the whole point: a measurement is only quotable at the
+    // settings it was taken at, and "the settings" means all of them.
     ["declared", "Breach band", `<b>${(p.band == null ? 1.05 : p.band).toFixed(2)}</b> \u2014 how far over ` +
       `target a fund runs before it is forced to sell. This swings the headline harder than ` +
       `leverage or impact.` +
-      (lev === 5.0 && Number(p.breaches) === 3
+      (MEASURED_AT.every(([read, want]) => read(p, lev) === want)
         ? ` At these settings, 1.02 gives \u22121.73% and 1.30 gives \u221227.33%.`
         : ` The pair we measured \u2014 1.02 \u2192 \u22121.73%, 1.30 \u2192 \u221227.33% \u2014 was taken at ` +
-          `leverage 5.0 with \u22653 breaching, and does not describe the current settings.`)],
+          `leverage 5.0, \u03b3 0.20 and \u22653 breaching, and does not describe the current settings.`)],
     ["declared", "Price impact", `A model, not a measurement. <code>\u0394p/p = \u2212\u03b3 \u00b7 (dollars sold) / ADV</code>, ` +
       `linear in participation, \u03b3 = <b>${(p.gamma == null ? 0.2 : p.gamma).toFixed(2)}</b>. ` +
       `At \u03b3=0 there is no contagion and amplification is exactly 1.00 \u2014 that is the control.`],

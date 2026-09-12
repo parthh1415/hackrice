@@ -68,7 +68,7 @@ The app writes a spec every time you press **Stabilise**:
 
     data/cache/solve_spec.json
 
-(written by `write_spec` on every `/api/stabilise` call — `api.py:345`.)
+(written by `write_spec` on every `/api/stabilise` call — `api.py:380`.)
 
 In MATLAB Online:
 

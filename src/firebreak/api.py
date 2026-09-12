@@ -407,7 +407,16 @@ def _stabilise(params):
     # change rather than as a number. Tightening the tolerance does not rescue
     # it: at 0.05pp the delta was +0.03pp, and it stayed inside. Same
     # fake-precision failure as the hero number, one level up.
-    resolution = _SEARCH_TOLERANCE * 100.0
+    # TWO tolerances, not one. `delta` is the difference of two independently
+    # bisected searches, and each of them can be off by up to a tolerance in
+    # either direction, so the error on their difference is twice that. The
+    # bar was one tolerance, which meant a delta of, say, 0.007pp would have
+    # been announced as "+0.01pp" while sitting inside its own error bar —
+    # the exact fake-precision failure this block exists to prevent, at the
+    # one place that is supposed to be policing it. It does not bite today
+    # (the nearest measurable case is +0.148pp, thirty times over), which is
+    # precisely why it would have gone on not biting.
+    resolution = 2.0 * _SEARCH_TOLERANCE * 100.0
     measurable = delta is not None and abs(delta) > resolution
     bought = {
         "before_pct": found.pct,

@@ -25,15 +25,27 @@ from firebreak import api
 from firebreak.search import DEFAULT_TOLERANCE
 
 
-def test_the_stated_resolution_is_the_search_s_own_tolerance():
-    """Not a constant that happens to look right.
+def test_the_stated_resolution_is_two_searches_worth_of_tolerance():
+    """Not a constant that happens to look right, and not one search's worth.
 
     The UI prints this as "search resolves to +/-Xpp" — the bound on what the
-    product is willing to claim. It has to come from the thing doing the
-    searching, or it is decoration.
+    product is willing to claim — so it has to come from the thing doing the
+    searching. It also has to count BOTH of them: `delta` is the difference of
+    two independently bisected searches, each able to be off by a tolerance in
+    either direction, so the error on their difference is twice that.
+
+    It was one tolerance until a review agent pointed out the arithmetic. A
+    delta of 0.007pp would have been announced as "+0.01pp" while sitting
+    inside its own error bar — the precise fake-precision failure this block
+    exists to police. It did not bite, because the nearest measurable case is
+    thirty times over the bar, which is exactly why it would have gone on not
+    biting.
     """
     result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
-    assert result["bought"]["resolution_pct"] == pytest.approx(DEFAULT_TOLERANCE * 100)
+    assert result["bought"]["resolution_pct"] == pytest.approx(2 * DEFAULT_TOLERANCE * 100), (
+        "the stated resolution must be two searches' worth of tolerance, "
+        "because the delta it bounds is the difference of two searches"
+    )
 
 
 @pytest.mark.parametrize("breaches", [3, 4])

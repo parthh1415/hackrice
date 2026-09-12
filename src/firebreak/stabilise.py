@@ -64,7 +64,8 @@ def find_cheapest_fix(condition, holdings, shock, **cascade_kwargs):
     and stops at the first level that clears the condition — anything smaller
     already failed, so there's no point going further. That step is only a
     bracket, though: the true minimum is somewhere inside it, so a bisection
-    then narrows it to _DEPTH_TOLERANCE before we price it. We keep whichever
+    then narrows it to within _DEPTH_RTOL of the answer before pricing it.
+    We keep whichever
     position's cut came out cheapest overall.
     """
     holdings = np.asarray(holdings, dtype=float)
