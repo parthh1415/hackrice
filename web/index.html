@@ -6,134 +6,100 @@
 <title>Firebreak</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="shell">
+<div class="app">
 
   <header class="mast">
-    <div class="mast-id">
-      <h1>Firebreak</h1>
-      <p>Every stress test asks what if this happens. This one asks the opposite —
-         what's the smallest thing that has to happen to break us.</p>
-      <div class="status"><span class="dot" id="dot"></span><span id="state">connecting…</span></div>
+    <div class="wordmark">Firebreak<small>Reverse stress testing</small></div>
+
+    <div class="badge" id="badge" data-mode="cached">
+      <span class="dot"></span><span id="badgeText">connecting</span>
     </div>
+
     <div class="hero">
-      <span class="val idle" id="heroVal">—</span>
-      <span class="meta">
-        <span class="label">Critical shock distance</span>
-        <span class="sub" id="heroSub">press find weakest shock</span>
+      <span class="hero-val num" id="heroVal" data-idle>—</span>
+      <span class="hero-meta">
+        <span class="hero-label">Critical shock distance</span>
+        <span class="hero-sub" id="heroSub">smallest single-name drop that breaks the system</span>
       </span>
     </div>
   </header>
 
-  <section class="controls">
+  <aside class="rail">
     <div class="knob">
-      <label for="leverage">Gross leverage <b id="leverageVal">5.0</b></label>
+      <label for="leverage">Gross leverage <b class="num" id="leverageVal">5.0</b></label>
       <input type="range" id="leverage" min="1.5" max="8" step="0.1" value="5">
     </div>
     <div class="knob">
-      <label for="gamma">Price impact γ <b id="gammaVal">0.20</b></label>
+      <label for="gamma">Price impact γ <b class="num" id="gammaVal">0.20</b></label>
       <input type="range" id="gamma" min="0" max="1" step="0.05" value="0.2">
     </div>
     <div class="knob">
       <label for="breaches">Failure condition</label>
       <select id="breaches">
-        <option value="2">2 or more funds breach</option>
-        <option value="3" selected>3 or more funds breach</option>
-        <option value="4">4 or more funds breach</option>
-        <option value="5">5 or more funds breach</option>
+        <option value="2">≥ 2 funds breach</option>
+        <option value="3" selected>≥ 3 funds breach</option>
+        <option value="4">≥ 4 funds breach</option>
+        <option value="5">≥ 5 funds breach</option>
       </select>
     </div>
-    <button class="primary" id="breakBtn">find weakest shock</button>
-    <button id="replayBtn">replay</button>
-    <button id="boundaryBtn">map the boundary</button>
-    <button id="stabiliseBtn" disabled>stabilise</button>
-  </section>
 
-  <section class="scene" id="scene1" hidden>
-    <div class="scene-head">
-      <span class="scene-n">01</span>
-      <h2>Break</h2>
-      <p class="q">what's the smallest thing that kills us?</p>
+    <div class="actions">
+      <button class="primary" id="attackBtn">Find weakest shock</button>
+      <button id="replayBtn">Replay cascade</button>
+      <button id="boundaryBtn">Map the boundary</button>
+      <button id="defendBtn" disabled>Stabilise</button>
     </div>
-    <div class="metrics" id="metrics"></div>
-    <div class="grid-2" style="margin-top:1.25rem">
-      <div>
-        <div class="net-wrap"><svg id="network" role="img"
-             aria-label="Contagion network: assets on the left, funds on the right, coloured by state as the cascade runs."></svg></div>
-        <div class="round-strip">
-          <span id="pips" style="display:flex;gap:.25rem"></span>
-          <span id="roundLabel">—</span>
-        </div>
+
+    <div class="solver" id="solver">
+      <span class="k">Numerical engine</span>
+      <span class="v" id="solverName">—</span>
+      <span class="v" id="solverStats"><span>awaiting solve</span></span>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="scene" id="sceneNetwork">
+      <svg id="network" role="img"
+           aria-label="Contagion network. Assets on the left, portfolios on the right, edge thickness proportional to position value, nodes coloured by state."></svg>
+    </div>
+
+    <div class="scene" id="sceneBoundary" hidden>
+      <svg id="boundary" role="img"
+           aria-label="Phase diagram. Portfolio overlap on the horizontal axis, gross leverage on the vertical, shaded by amplification, with the real system marked."></svg>
+    </div>
+
+    <div class="scene split" id="sceneSplit" hidden>
+      <div class="split-half">
+        <div class="split-cap">Before</div>
+        <svg id="netBefore" role="img" aria-label="Cascade outcome before intervention."></svg>
+        <div class="split-foot num" id="footBefore">—</div>
       </div>
-      <div class="panel">
-        <h3>Funds</h3>
-        <div class="funds" id="fundRows"></div>
-        <p class="hint">A fund turns red the round it breaches its limit. Watch for one
-           that breaches without holding the shocked name at all — that's contagion
-           through shared positions, not through the shock.</p>
+      <div class="divider"></div>
+      <div class="split-half">
+        <div class="split-cap"><b>After firebreak</b></div>
+        <svg id="netAfter" role="img" aria-label="Cascade outcome after the intervention, under the identical shock."></svg>
+        <div class="split-foot num" id="footAfter">—</div>
       </div>
+      <div class="fix-line" id="fixLine" hidden></div>
     </div>
-  </section>
+  </main>
 
-  <section class="scene" id="scene2" hidden>
-    <div class="scene-head">
-      <span class="scene-n">02</span>
-      <h2>Boundary</h2>
-      <p class="q">bad luck, or is our structure the problem?</p>
-    </div>
-    <div class="grid-2">
-      <div class="net-wrap"><svg id="boundary" role="img"
-           aria-label="Phase diagram: portfolio overlap across the bottom, gross leverage up the side, shaded by amplification, with the real system marked."></svg></div>
-      <div class="panel">
-        <h3>Reading it</h3>
-        <p class="hint" style="margin-top:0">Green is stable — a shock dies out. Red is
-           where forced selling feeds itself. The edge between them is the critical
-           leverage, and it <em>falls as crowding rises</em>: the more alike these books
-           are, the less leverage it takes to tip over.</p>
-        <p class="hint">Nothing about the assets changes across this map. Only the
-           structure does.</p>
-        <p class="hint">Caccioli, Shrestha, Moore &amp; Farmer (<em>J. Banking &amp;
-           Finance</em>, 2014) derive this boundary analytically. This one is computed
-           from filed positions.</p>
-        <p class="hint" id="boundaryNote" style="color:var(--muted)"></p>
-      </div>
-    </div>
-  </section>
+  <div class="timeline">
+    <span class="tl-label" id="roundLabel">no run</span>
+    <div class="tl-track" id="track"></div>
+  </div>
 
-  <section class="scene" id="scene3" hidden>
-    <div class="scene-head">
-      <span class="scene-n">03</span>
-      <h2>Firebreak</h2>
-      <p class="q">what's the cheapest way out?</p>
-    </div>
-    <div class="fix" id="fixCard"></div>
-    <div class="ba" id="beforeAfter" style="margin-top:1rem"></div>
-    <p class="hint">Identical shock on both sides. The only thing that changed is one
-       position size.</p>
-  </section>
-
-  <details class="assume">
-    <summary>Assumptions &amp; what this does not claim</summary>
-    <ul>
-      <li><b>Holdings are real.</b> <span id="provenance">loading…</span>. Anyone can
-          reproduce them from EDGAR.</li>
-      <li><b>Leverage is not.</b> No fund discloses it. It's the slider above, applied
-          uniformly, and every number on this page moves when you change it.</li>
-      <li><b>Price impact is a model, not a measurement.</b>
-          <code>Δp/p = −γ · (dollars sold) / ADV</code>, linear in participation.
-          γ is the second slider. At γ=0 there is no contagion and amplification is
-          exactly 1.00 — that's the control.</li>
-      <li><b>ADV figures are order-of-magnitude:</b> <span id="advList">…</span></li>
-      <li><b>13F is long-only US equity</b>, quarterly, filed 45 days late. Options and
-          bond principal rows are filtered out. Shorts and derivatives are invisible to us.</li>
-      <li><b>We do not predict market moves.</b> This computes a stability property of a
-          declared configuration. The shock it finds is the smallest one <em>our search
-          found</em> under <em>these</em> assumptions.</li>
-    </ul>
-  </details>
+  <div class="band" id="band">
+    <div class="cell"><span class="v num">—</span><span class="l">Shock loss</span></div>
+    <div class="cell"><span class="v num">—</span><span class="l">After cascade</span></div>
+    <div class="cell"><span class="v num">—</span><span class="l">Amplification</span></div>
+    <div class="cell"><span class="v num">—</span><span class="l">Breaches</span></div>
+    <div class="cell"><span class="v num">—</span><span class="l">Rounds</span></div>
+  </div>
 
 </div>
 <script src="app.js"></script>

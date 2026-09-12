@@ -193,8 +193,9 @@ def run_cascade(
     equity_after_shock = book.equity().sum()
 
     adv = np.asarray(adv, dtype=float)
+    n_funds, n_assets = book.units.shape
     breached, defaulted = set(), set()
-    trajectory = [_snapshot(book, 0, [])]
+    trajectory = [_snapshot(book, 0, [], np.zeros((n_funds, n_assets)))]
     rounds, converged = 0, True
 
     for step in range(1, max_rounds + 1):
@@ -211,14 +212,19 @@ def run_cascade(
 
         before = book.prices
         after = before * np.maximum(1.0 - gamma * volume / adv, _FLOOR)
-        book.settle(units_sold, (before + after) / 2.0)  # round VWAP
+        execution = (before + after) / 2.0  # round VWAP
+        # dollars actually raised, per fund per asset, at the price they got.
+        # the flow animation is width-proportional to this, so it has to be
+        # what changed hands rather than what was intended.
+        sold_value = units_sold * execution
+        book.settle(units_sold, execution)
         book.prices = after
 
         for j in wiped:
             book.defaulted[j] = True
             defaulted.add(j)
 
-        trajectory.append(_snapshot(book, step, hit))
+        trajectory.append(_snapshot(book, step, hit, sold_value))
 
     equity_end = book.equity().sum()
     shock_loss = (equity_start - equity_after_shock) / equity_start
@@ -238,10 +244,11 @@ def run_cascade(
     )
 
 
-def _snapshot(book, step, hit):
+def _snapshot(book, step, hit, sold_value):
     lev = book.leverage()
     return {
         "t": step,
+        "sold": np.asarray(sold_value, dtype=float).tolist(),
         "prices": book.prices.tolist(),
         "leverage": [None if np.isinf(x) else x for x in lev],
         "insolvent": [bool(np.isinf(x)) for x in lev],
