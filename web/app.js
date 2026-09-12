@@ -570,6 +570,12 @@ async function defend() {
     setEngine("live", "engine live");
 
     if (!body.found) {
+      // The banner used to be the only thing this branch wrote, so it landed
+      // on top of the previous run's panels — "no single-position cut clears
+      // it" above a before/after comparison that did clear it, stamped with
+      // an identical-shock line naming a shock that is no longer the one we
+      // are solving. Wipe the halves; there is nothing to compare.
+      clearSplit();
       $("fixLine").hidden = false;
       $("fixLine").innerHTML = `<b>No single-position cut clears it.</b> <em>this system needs more than one change</em>`;
       return;
@@ -631,6 +637,17 @@ function normalise(body) {
    comparing two still pictures and taking our word for it. */
 
 const split = { before: null, after: null, layout: null, timers: [] };
+
+function clearSplit() {
+  stopAnimations();
+  split.before = split.after = split.layout = null;
+  $("netBefore").textContent = "";
+  $("netAfter").textContent = "";
+  $("footBefore").textContent = "—";
+  $("footAfter").textContent = "—";
+  $("shockStamp").textContent = "—";
+  $("splitRound").textContent = "—";
+}
 
 function splitFrame(side, svg, t) {
   const run = split[side];

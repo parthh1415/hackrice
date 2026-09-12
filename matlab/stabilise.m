@@ -83,7 +83,18 @@ function result = stabilise(specFile, outFile)
     i = min(max(round(x(2)), 1), N);
     r = min(max(x(3), 0), 1);
 
+    % Echo the spec's fingerprint back. Without it the bridge can only fall
+    % back to comparing file mtimes to decide whether this result still answers
+    % the question on screen — which works, but an exact match is better and
+    % this is the one line that provides it.
+    if isfield(spec, 'fingerprint')
+        fingerprint = spec.fingerprint;
+    else
+        fingerprint = '';
+    end
+
     result = struct( ...
+        'fingerprint', fingerprint, ...
         'fund_index',  j - 1, ...        % python is 0-indexed
         'asset_index', i - 1, ...
         'reduction',   r, ...

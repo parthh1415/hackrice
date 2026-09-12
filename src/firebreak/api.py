@@ -261,32 +261,34 @@ def _scenario(data, params):
     (amp 27+) and the demo looks rigged, which it would be.
     """
     m = len(data["funds"])
-    lev = float(params.get("leverage", 5.0))
+    knobs = _guarded(params, m)
+    lev = knobs["leverage"]
     return dict(
         holdings=np.array(data["holdings"]),
         leverage=np.full(m, lev),
         max_leverage=np.full(m, lev * 1.05),
         target_leverage=np.full(m, max(1.0, lev * 0.95)),
-        gamma=float(params.get("gamma", 0.2)),
+        gamma=knobs["gamma"],
         adv=np.array(data["adv"]),
-    )
+    ), knobs
 
 
 def _find(data, params):
-    scenario = _scenario(data, params)
-    condition = at_least_n_breaches(int(params.get("breaches", 2)))
-    return scenario, condition, find_weakest_shock(condition=condition, **scenario)
+    scenario, knobs = _scenario(data, params)
+    condition = at_least_n_breaches(knobs["breaches"])
+    return scenario, condition, find_weakest_shock(condition=condition, **scenario), knobs
 
 
 def _break(params):
     data = load_dataset()
-    scenario, _, found = _find(data, params)
+    scenario, _, found, knobs = _find(data, params)
     if found is None:
-        return {"found": False, **data}
+        return {"found": False, "params": knobs, **data}
 
     result = run_cascade(shock=found.shock, **scenario)
     return {
         "found": True,
+        "params": knobs,
         "asset": data["tickers"][found.asset],
         "asset_index": found.asset,
         "magnitude": found.magnitude,
@@ -298,9 +300,9 @@ def _break(params):
 
 def _stabilise(params):
     data = load_dataset()
-    scenario, condition, found = _find(data, params)
+    scenario, condition, found, knobs = _find(data, params)
     if found is None:
-        return {"found": False, **data}
+        return {"found": False, "params": knobs, **data}
 
     before = run_cascade(shock=found.shock, **scenario)
 
@@ -316,7 +318,7 @@ def _stabilise(params):
         "gamma": scenario["gamma"],
         "adv": scenario["adv"].tolist(),
         "shock": found.shock.tolist(),
-        "breaches": int(params.get("breaches", 2)),
+        "breaches": knobs["breaches"],
     }
     write_spec(spec)  # so matlab/stabilise.m can be run by hand, incl. MATLAB Online
     solved = solve_stabilisation(spec)
@@ -335,6 +337,7 @@ def _stabilise(params):
 
     return {
         "found": True,
+        "params": knobs,
         "asset": data["tickers"][found.asset],
         # the split view rings this. without the index it falls back to 0,
         # which is correct only when the answer happens to be the first name.
@@ -476,3 +479,57 @@ def _boundary(params):
             "overlap": round(mean_overlap(base), 4),
         },
     }
+
+# The sliders can't produce these, but a URL can, and a URL typo returning a
+# confident answer to a different question is the worst failure mode here.
+# Clamp rather than error — a stack trace in front of judges is worse — but
+# never silently: every adjustment is declared in the payload.
+_LIMITS = {
+    "leverage": (1.0, 8.0, 5.0),
+    "gamma": (0.0, 1.0, 0.2),
+}
+
+
+def _guarded(params, n_funds):
+    """Read the knobs, clamp them to what the model means, and say what moved."""
+    clamped, out = [], {}
+
+    for name, (lo, hi, default) in _LIMITS.items():
+        raw = params.get(name)
+        if raw is None:
+            out[name] = default
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            out[name] = default
+            clamped.append({"name": name, "given": raw, "used": default,
+                            "reason": "unreadable"})
+            continue
+        if value != value:  # NaN
+            out[name] = default
+            clamped.append({"name": name, "given": raw, "used": default,
+                            "reason": "unreadable"})
+            continue
+        used = min(max(value, lo), hi)
+        out[name] = used
+        if used != value:
+            clamped.append({"name": name, "given": value, "used": used,
+                            "reason": f"outside {lo}–{hi}"})
+
+    raw = params.get("breaches")
+    top = max(1, n_funds)
+    try:
+        wanted = int(float(raw)) if raw is not None else 2
+    except (TypeError, ValueError):
+        wanted = 2
+        clamped.append({"name": "breaches", "given": raw, "used": 2,
+                        "reason": "unreadable"})
+    used = min(max(wanted, 1), top)
+    out["breaches"] = used
+    if raw is not None and used != wanted:
+        clamped.append({"name": "breaches", "given": wanted, "used": used,
+                        "reason": f"outside 1–{top}"})
+
+    out["clamped"] = clamped
+    return out

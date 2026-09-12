@@ -232,12 +232,31 @@ def test_settings_nowhere_near_a_recording_are_computed_rather_than_faked():
         assert demo.get("magnitude") == live.get("magnitude")
 
 
-def test_a_dead_engine_falls_back_but_names_the_settings_it_fell_back_to():
-    """leverage below 1 makes the engine refuse; there is no live answer to
-    give, so a recording is the right call — as long as it says so."""
-    result = api.handle("/api/break?leverage=0.5&gamma=0.2&breaches=3", {})
+def test_a_dead_engine_falls_back_but_names_the_settings_it_fell_back_to(monkeypatch):
+    """When the engine genuinely cannot answer, a recording is the right call —
+    as long as it says so.
+
+    This used to force the failure with `leverage=0.5`, which made the engine
+    refuse because target leverage fell below 1. Parameter guards now clamp
+    that before it reaches the engine, so the crash path isn't reachable from
+    a URL any more — which is the point of the guards. Break the engine for
+    real instead.
+    """
+    def boom(*args, **kwargs):
+        raise RuntimeError("engine exploded")
+
+    monkeypatch.setattr(api, "run_cascade", boom)
+
+    result = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3", {})
 
     assert result["cached"] is True
-    assert result["cached_exact"] is False
-    assert result["cached_for"]["leverage"] != 0.5
-    assert "leverage" in result["fallback_reason"]
+    assert result["fallback_reason"]
+    assert "engine exploded" in result["fallback_reason"]
+
+
+def test_guards_stop_a_url_from_reaching_the_crash_path():
+    """The old way of killing the engine is now unreachable, deliberately."""
+    result = api.handle("/api/break?leverage=0.5&gamma=0.2&breaches=3", {})
+
+    assert result["cached"] is False, "guards should have made this computable"
+    assert result["params"]["leverage"] >= 1.0

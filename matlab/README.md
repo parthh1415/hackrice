@@ -55,11 +55,18 @@ actually ran.)
 
 ## 4. Why it can't lie
 
-`solve_out.json` is only used if its spec fingerprint matches the parameters
-currently on screen. Move a slider and the offline result is ignored rather
-than shown as though it were live — see `_spec_fingerprint` in
-`src/firebreak/matlab_bridge.py`. A stale answer presented confidently is
-worse than no answer.
+`solve_out.json` is only used if it still answers the question on screen.
+Two guards, in order:
+
+1. **Fingerprint.** `stabilise.m` echoes the spec's `fingerprint` into its
+   result. The bridge compares it to the live request and refuses a mismatch.
+2. **Freshness.** If a result carries no fingerprint (an older run), the bridge
+   falls back to mtime: `solve_spec.json` is only rewritten when the question
+   actually changes, so a `solve_out.json` older than it is stale by
+   construction and is refused.
+
+Either way a mismatch falls through to Python rather than being served. A
+stale answer presented confidently is worse than no answer.
 
 ## 5. If you have MATLAB installed locally
 
