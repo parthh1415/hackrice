@@ -1,5 +1,15 @@
 # Firebreak — demo video script
 
+> **STALE — read `docs/video-shooting-guide.md` first.** This script was written
+> against the single-page institutional app: three sliders, a solver strip, a
+> phase diagram, a split screen and a modal. The frontend is now six linked
+> pages and **12 of the 21 numbered shots point at UI that no longer exists**.
+> The numbers below are still correct *for the institutional endpoints* — they
+> were re-verified — but several of them are no longer things a viewer sees on
+> screen, which is a different claim. The shooting guide says, shot by shot,
+> what survives, what to retarget, and what to cut.
+
+
 **Target length:** 3:42. Hard ceiling 4:00.
 
 > **⚠ The script does not currently fit, and the per-shot timecodes below are a target, not a
@@ -49,7 +59,8 @@
   | boundary title | `amplification · contour at 1.5× · single-name 5% reference · band 1.05` | 1 dp / 2 dp |
   | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0% · <n>ms` | — |
   | solver, after boundary | `parameter sweep` · `cells 256 · <n>ms` | — |
-  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `124 evals · <n>ms · exit 1` | — |
+  | solver card, Model page | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · evals and solve time as shown | — |
+  | | NOTE: `124 evals` is the **>=3 breach** figure. The Model page runs at the session's own breach count, which in portfolio mode is 2, and shows **301**. Read what is on screen. | |
   | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (difference of two searches has to clear 0.01pp) — defends this shock, not the next one` | 2 dp / 3 dp |
   | sliders | `5.0`, `0.20` and `1.05` | 1 dp / 2 dp / 2 dp |
 
@@ -284,7 +295,8 @@ tick is for).
 
 #### Shot 2.9 · 1:57 – 2:08
 **On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
-position scan`, `MATLAB not available on this machine`, `124 evals · <n>ms · exit 1` — unless you have
+position scan`, `MATLAB not available on this machine`, and an evaluation count that depends on the
+breach count the session ran at (301 at 2+, 124 at 3+) — unless you have
 done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
 resolves in about a tenth of a second:
 `Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position · costs 0.0042% of gross assets`
@@ -405,7 +417,8 @@ has been on screen since the fix line landed. It reads, verbatim:
 
 ### Shot 3.2 · 2:52 – 3:02
 **On screen:** `matlab/stabilise.m` open, `patternsearch` call highlighted. Cut to the solver strip
-in the app showing the live solver name, evaluation count and exit flag.
+in the app showing the live solver name, evaluation count and status. It is a CARD on the Model
+page now — "What computed the institutional patch" — not a strip on a rail.
 
 > "The search is the product. Forward, breach count is monotone in shock size, so a grid scan brackets
 > the threshold and bisection refines it. Backwards, the objective is a simulation. No gradient,
