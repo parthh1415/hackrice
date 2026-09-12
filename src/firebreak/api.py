@@ -45,7 +45,13 @@ def handle(path, body):
             return cached
 
     try:
-        payload = ROUTES[route](params)
+        # Portfolio routes are the only ones that read a request body — the
+        # institutional endpoints are entirely described by their query string.
+        # Without this the body was silently dropped and every upload quietly
+        # got the demo portfolio's answer, which is the most expensive possible
+        # way to be wrong on a screen that says "your portfolio".
+        payload = (ROUTES[route](params, body) if route in BODY_ROUTES
+                   else ROUTES[route](params))
     except Exception as exc:
         # a demo never shows a stack trace. if we ever recorded this endpoint,
         # serve that and label it; only re-raise when there's truly nothing.
@@ -120,6 +126,8 @@ KNOBS = {
                       "band": (1.05, 0.5)},
 }
 
+BODY_ROUTES = set()
+
 ROUTES = {
     "/api/health": _health,
     "/api/dataset": _dataset,
@@ -130,9 +138,14 @@ ROUTES = {
 
 
 def _knobs(route, params):
-    """The knob values this request implies, defaults filled in."""
+    """The knob values this request implies, defaults filled in.
+
+    A route with no entry in KNOBS has no sliders — the portfolio endpoints are
+    keyed by a portfolio, not by a knob position — so it reports no knob state
+    rather than inventing defaults it does not use.
+    """
     out = {}
-    for name, (default, _) in KNOBS[route].items():
+    for name, (default, _) in KNOBS.get(route, {}).items():
         try:
             out[name] = float(params.get(name, default))
         except (TypeError, ValueError):
@@ -698,3 +711,164 @@ def _guarded(params, n_funds):
 
     out["clamped"] = clamped
     return out
+
+
+# ── Portfolio Mode ──────────────────────────────────────────────────────────
+#
+# The product loop the app opens into: my portfolio, my limit, my breaking
+# shock, why, the smallest fix, and whether that fix actually helped.
+#
+# These sit outside the KNOBS/golden machinery deliberately. Those exist to let
+# demo mode answer the institutional questions off disk, and they key on the
+# four sliders. A portfolio is not a slider position — the same knobs with a
+# different portfolio is a different question — so caching it by knobs alone
+# would serve one user's answer to another. That is the `cached_for` failure in
+# a far worse costume, and the fix is to not build it.
+#
+# These endpoints are fast enough not to need it: the demo portfolio's whole
+# loop, search and fix and validation, runs in well under a second.
+
+DEMO_PORTFOLIO = [
+    {"symbol": "NVDA", "quantity": 20, "market_value": 3600.0},
+    {"symbol": "MSFT", "quantity": 8, "market_value": 3150.0},
+    {"symbol": "AMZN", "quantity": 10, "market_value": 2250.0},
+    {"symbol": "GOOGL", "quantity": 12, "market_value": 2250.0},
+    {"symbol": "CASH", "quantity": None, "market_value": 1050.0},
+]
+
+_LIMIT_RANGE = (0.01, 0.90, 0.10)
+
+
+def _portfolio_scenario(params):
+    """The institutional network the portfolio is an observer of."""
+    data = load_dataset()
+    scenario, knobs = _scenario(data, params)
+    return data, scenario, knobs
+
+
+def _rows_from(body):
+    rows = (body or {}).get("holdings")
+    if not rows:
+        return list(DEMO_PORTFOLIO), "demo"
+    return rows, (body or {}).get("source", "csv")
+
+
+def _limit_of(params):
+    lo, hi, default = _LIMIT_RANGE
+    try:
+        value = float(params.get("limit", default))
+    except (TypeError, ValueError):
+        value = default
+    return min(max(value, lo), hi)
+
+
+def _solve_portfolio(params, body):
+    """Everything downstream of a portfolio, in one pass.
+
+    One function because the steps share a scenario and a shock, and splitting
+    them across requests would mean re-deriving the shock on every call — which
+    is how the before and after halves of a comparison drift apart.
+    """
+    from .portfolio import (
+        UnknownSymbol, cheapest_portfolio_fix, find_portfolio_firebreak,
+        normalise, portfolio_loss, weight_vector,
+    )
+
+    rows, source = _rows_from(body)
+    data, scenario, knobs = _portfolio_scenario(params)
+    portfolio = normalise(rows, source=source)
+    vector, cash = weight_vector(portfolio, data["tickers"])
+    limit = _limit_of(params)
+
+    found = find_portfolio_firebreak(vector, cash, limit, **scenario)
+    out = {
+        "portfolio": portfolio.as_dict(),
+        "params": dict(knobs, limit=limit),
+        "tickers": data["tickers"],
+        "found": found is not None,
+    }
+    if found is None:
+        # Not "your portfolio is safe". We looked in a range and did not find
+        # one; those are different statements and only one of them is ours to
+        # make.
+        out["reason"] = ("No shock within the tested range pushed this portfolio "
+                         "past the limit under these assumptions.")
+        return out, None, None, scenario, data
+
+    result = run_cascade(shock=found.shock, **scenario)
+    direct = portfolio_loss(vector, cash, 1.0 + found.shock)
+    out.update({
+        "asset": data["tickers"][found.asset],
+        "asset_index": int(found.asset),
+        "pct": found.pct,
+        "magnitude": found.magnitude,
+        "direct_loss": direct,
+        "cascade_loss": portfolio_loss(vector, cash, result.prices),
+        "amplification": (portfolio_loss(vector, cash, result.prices) / direct
+                          if direct > 0 else None),
+        "rounds": result.rounds,
+        "breached": result.breached,
+        "system": result.as_dict()["metrics"],
+    })
+    return out, found, (vector, cash), scenario, data
+
+
+def _portfolio_firebreak(params, body=None):
+    out, found, _vc, _scenario, _data = _solve_portfolio(params, body)
+    return out
+
+
+def _portfolio_full(params, body=None):
+    """Search, fix and validate — the whole loop, because the demo wants it."""
+    from .portfolio import cheapest_portfolio_fix
+    from . import validate as V
+
+    out, found, vc, scenario, data = _solve_portfolio(params, body)
+    if found is None:
+        return out
+
+    vector, cash = vc
+    limit = out["params"]["limit"]
+    total = out["portfolio"]["total_value"]
+    fix = cheapest_portfolio_fix(vector, cash, limit, found.shock, **scenario)
+    if fix is None:
+        out["fix"] = None
+        out["fix_reason"] = ("No single-position change cleared the limit with "
+                             "headroom. A multi-position cut would, and this "
+                             "build does not do those.")
+        return out
+
+    before = {"vector": vector, "cash": cash}
+    after = {"vector": fix["vector"], "cash": fix["cash"]}
+    out["fix"] = {
+        "symbol": data["tickers"][fix["asset"]],
+        "asset_index": int(fix["asset"]),
+        "fraction_of_position": fix["fraction_of_position"],
+        "dollars": fix["weight_moved"] * total,
+        "weight_moved": fix["weight_moved"],
+        "loss_after": fix["loss_after"],
+        "target_loss": fix["target_loss"],
+        "margin": fix["margin"],
+        "note": ("Moved to cash. Your position does not move the market — it "
+                 "decides how much of the market's move lands on you."),
+    }
+    out["validation"] = {
+        "identical_shock": V.replay_identical(before, after, found.shock, limit, **scenario),
+        "new_breaking_point": V.new_breaking_point(before, after, limit, **scenario),
+        "synthetic": V.synthetic_stress(before, after, n=400, **scenario),
+        "historical": V.historical_stress(),
+    }
+    return out
+
+
+BODY_ROUTES.update({"/api/portfolio/firebreak", "/api/portfolio/full"})
+
+ROUTES["/api/portfolio/demo"] = lambda params: {
+    "portfolio": _demo_portfolio_payload(), "source": "demo"}
+ROUTES["/api/portfolio/firebreak"] = _portfolio_firebreak
+ROUTES["/api/portfolio/full"] = _portfolio_full
+
+
+def _demo_portfolio_payload():
+    from .portfolio import normalise
+    return normalise(list(DEMO_PORTFOLIO), source="demo").as_dict()
