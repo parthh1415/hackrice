@@ -63,3 +63,14 @@ def test_break_and_stabilise_agree_on_the_shock():
 
     assert broke["asset_index"] == fixed["asset_index"]
     assert abs(broke["pct"] - fixed["pct"]) < 1e-9
+
+
+def test_stabilise_declares_which_engine_solved_it():
+    result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
+
+    engine = result["engine"]
+    assert engine["kind"] in ("matlab", "matlab-offline", "python")
+    assert engine["name"]
+    # the label must not say MATLAB unless MATLAB actually ran
+    if engine["kind"] == "python":
+        assert "MATLAB" not in engine["name"]

@@ -1,0 +1,153 @@
+"""MATLAB for the stabilisation solve, with an honest fallback.
+
+Why MATLAB here and nowhere else: the objective is a *simulation*. You
+cannot differentiate it, the feasible set is defined by whether a cascade
+crosses a discrete failure condition, and breach events make the landscape
+piecewise constant. That is the problem class `patternsearch` exists for.
+The forward cascade, by contrast, is straight linear algebra and has no
+business being anywhere but Python where it is already tested.
+
+Three paths, tried in order, and the UI is told which one actually ran:
+
+  matlab          MATLAB Engine API for Python — needs a local install
+  matlab-offline  a result file produced by running matlab/stabilise.m,
+                  including from MATLAB Online, which needs no install
+  python          the built-in search in stabilise.py
+
+Never reports 'matlab' unless MATLAB genuinely produced the numbers.
+"""
+
+import hashlib
+import json
+import pathlib
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+MATLAB_DIR = ROOT / "matlab"
+CACHE = ROOT / "data" / "cache"
+SPEC_PATH = CACHE / "solve_spec.json"
+OUT_PATH = CACHE / "solve_out.json"
+
+_FINGERPRINT_KEYS = (
+    "holdings", "leverage", "max_leverage", "target_leverage",
+    "gamma", "adv", "shock", "breaches",
+)
+
+
+def _spec_fingerprint(spec):
+    """Stable hash of everything the solve depends on.
+
+    An offline MATLAB result is only usable if the parameters have not moved
+    since it was produced — otherwise the UI shows a confident answer to a
+    question nobody asked.
+    """
+    payload = json.dumps(
+        {k: spec[k] for k in _FINGERPRINT_KEYS}, sort_keys=True, default=float
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def write_spec(spec, path=SPEC_PATH):
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(spec)
+    payload["fingerprint"] = _spec_fingerprint(spec)
+    path.write_text(json.dumps(payload, indent=2, default=float))
+    return path
+
+
+def _try_engine(spec):
+    """MATLAB Engine API. Absent on most machines; that is fine."""
+    try:
+        import matlab.engine  # noqa: F401
+    except Exception:
+        return None
+    try:
+        import matlab.engine
+
+        started = time.perf_counter()
+        eng = matlab.engine.start_matlab()
+        eng.addpath(str(MATLAB_DIR), nargout=0)
+        spec_file = write_spec(spec)
+        result = eng.stabilise(str(spec_file), str(OUT_PATH), nargout=1)
+        eng.quit()
+        result = {k: result[k] for k in result.keys()}
+        result["engine"] = "matlab"
+        result["solve_ms"] = round((time.perf_counter() - started) * 1000)
+        return result
+    except Exception:
+        return None
+
+
+def _try_offline(spec):
+    """A result file produced by running matlab/stabilise.m by hand.
+
+    This is the MATLAB Online path: no install, you paste the spec in,
+    run it, download the result. The fingerprint check is what stops a
+    stale file being presented as a live answer.
+    """
+    if not OUT_PATH.exists() or not SPEC_PATH.exists():
+        return None
+    try:
+        written = json.loads(SPEC_PATH.read_text())
+        if written.get("fingerprint") != _spec_fingerprint(spec):
+            return None
+        result = json.loads(OUT_PATH.read_text())
+        result["engine"] = "matlab-offline"
+        return result
+    except Exception:
+        return None
+
+
+def _python_fallback(spec):
+    import numpy as np
+
+    from .search import at_least_n_breaches
+    from .stabilise import find_cheapest_fix
+
+    started = time.perf_counter()
+    holdings = np.array(spec["holdings"], dtype=float)
+    fix = find_cheapest_fix(
+        condition=at_least_n_breaches(int(spec["breaches"])),
+        holdings=holdings,
+        shock=np.array(spec["shock"], dtype=float),
+        leverage=np.array(spec["leverage"], dtype=float),
+        max_leverage=np.array(spec["max_leverage"], dtype=float),
+        target_leverage=np.array(spec["target_leverage"], dtype=float),
+        gamma=float(spec["gamma"]),
+        adv=np.array(spec["adv"], dtype=float),
+    )
+    if fix is None:
+        return None
+    return {
+        "fund_index": fix.fund,
+        "asset_index": fix.asset,
+        "reduction": fix.reduction,
+        "cost": fix.cost,
+        "solver": "exhaustive position scan",
+        "evaluations": holdings.shape[0] * holdings.shape[1] * 20,
+        "exit_flag": 1,
+        "solve_ms": round((time.perf_counter() - started) * 1000),
+        "engine": "python",
+    }
+
+
+def solve_stabilisation(spec):
+    for attempt in (_try_engine, _try_offline, _python_fallback):
+        result = attempt(spec)
+        if result is not None:
+            return result
+    return None
+
+
+def engine_label(result):
+    """What the solver readout shows. Never inflates what ran."""
+    if result is None:
+        return "—", "no feasible single-position fix"
+    engine = result.get("engine", "python")
+    solver = result.get("solver", "?")
+    if engine == "matlab":
+        return f"MATLAB · {solver}", "live engine"
+    if engine == "matlab-offline":
+        return f"MATLAB · {solver}", "solved offline, fingerprint matched"
+    return f"SciPy-free Python · {solver}", "MATLAB not available on this machine"

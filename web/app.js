@@ -142,7 +142,7 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
       svg.appendChild(el("line", {
         x1: L.assetPos[i].x, y1: L.assetPos[i].y,
         x2: L.fundPos[j].x, y2: L.fundPos[j].y,
-        stroke: live ? "var(--alert-40)" : "var(--rule-hi)",
+        stroke: live ? "var(--alert-45)" : "var(--rule-hi)",
         "stroke-width": (0.5 + 6 * L.weights[j][i]).toFixed(2),
       }));
     })
@@ -173,9 +173,10 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
     const p = L.assetPos[i];
     const severity = drop[i] / worstDrop;
     const hurt = drop[i] > 0.0005;
+    // luminance first, hue last: dim white -> full white -> red
     const fill = hurt
       ? severity > 0.55 ? "var(--alert)" : "var(--accent)"
-      : "var(--accent-35)";
+      : "var(--accent-30)";
     svg.appendChild(el("circle", { cx: p.x, cy: p.y, r: p.r.toFixed(1), fill }));
     if (i === run.shock.assetIndex) {
       svg.appendChild(el("circle", {
@@ -203,7 +204,7 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
     const now = breachNow.has(j);
     const ever = breachedEver.has(j);
     const dead = defaulted.has(j);
-    const fill = dead ? "var(--alert-40)" : ever ? "var(--alert)" : "var(--accent-35)";
+    const fill = dead ? "var(--alert-45)" : ever ? "var(--alert)" : "var(--accent-30)";
     const s = p.side;
     svg.appendChild(el("rect", {
       x: p.x - s / 2, y: p.y - s / 2, width: s, height: s, fill,
@@ -476,22 +477,25 @@ async function defend() {
       `<b>${f.fund}</b>: cut <b>${f.asset}</b> exposure ${(f.reduction * 100).toFixed(0)}% ` +
       `<em>· costs ${pct2(f.cost)} of gross assets</em>`;
 
-    const before = normalise({ ...body, ...body.before });
-    const after = normalise({ ...body, ...body.after });
-
+    split.before = normalise({ ...body, ...body.before });
+    split.after = normalise({ ...body, ...body.after });
+    // ONE layout, shared by both halves. different node positions either side
+    // would let a judge think the structure changed rather than one position.
     const halfW = $("netBefore").getBoundingClientRect().width || 420;
     const halfH = $("netBefore").getBoundingClientRect().height || 360;
-    const lb = computeLayout(before, halfW, halfH);
-    drawNetwork($("netBefore"), before, before.frames.length - 1, { layoutOverride: lb });
-    drawNetwork($("netAfter"), after, after.frames.length - 1, { layoutOverride: lb });
+    split.layout = computeLayout(split.before, halfW, halfH);
+    playSplit();
 
     const line = (r) =>
-      `${pct1(r.metrics.final_loss)} loss · ${r.breached.length} breaches · amp ${r.metrics.amplification.toFixed(2)}× · same ${body.pct.toFixed(2)}% ${body.asset} shock`;
+      `${pct1(r.metrics.final_loss)} loss · ${r.breached.length} breaches · amp ${r.metrics.amplification.toFixed(2)}×`;
     $("footBefore").textContent = line(body.before);
     $("footAfter").textContent = line(body.after);
+    $("shockStamp").textContent = `identical shock · ${body.pct.toFixed(2)}% ${body.asset}`;
 
-    setSolver("minimum-cost search",
-      `<span>candidates</span> ${(body.funds.length * body.tickers.length)} <span>·</span> ${ms}ms`);
+    const e = body.engine || {};
+    setSolver(e.name || "minimum-cost search",
+      `<span>${e.note || ""}</span><br>${e.evaluations || 0} evals · ${e.solve_ms || ms}ms` +
+      (e.exit_flag !== undefined ? ` · <span>exit</span> ${e.exit_flag}` : ""));
   } catch (err) {
     stop();
     setEngine("cached", "engine unreachable");
@@ -515,6 +519,42 @@ function normalise(body) {
     breached: body.breached,
     converged: body.converged,
   };
+}
+
+/* ──────────────────────── split view: both sides, in lockstep ───────────
+   The point of beat 4 is that the shock is IDENTICAL. So both sides replay
+   at the same tempo from round 0 and you watch them diverge, rather than
+   comparing two still pictures and taking our word for it. */
+
+const split = { before: null, after: null, layout: null, timers: [] };
+
+function splitFrame(side, svg, t) {
+  const run = split[side];
+  const clamped = Math.min(t, run.frames.length - 1);
+  const breachers = clamped > 0 ? run.frames[clamped].breached : [];
+  drawNetwork(svg, run, clamped, {
+    layoutOverride: split.layout,
+    showBreachAt: breachers.length ? breachers : null,
+  });
+}
+
+function playSplit() {
+  split.timers.forEach(clearTimeout);
+  split.timers = [];
+  const longest = Math.max(split.before.frames.length, split.after.frames.length);
+  const step = DUR_BREACH + DUR_FLOW + SETTLE_HOLD;
+
+  const draw = (t) => {
+    splitFrame("before", $("netBefore"), t);
+    splitFrame("after", $("netAfter"), t);
+    $("splitRound").textContent =
+      t === 0 ? "shock applied — identical on both sides" : `round ${t} of ${longest - 1}`;
+  };
+
+  draw(0);
+  for (let t = 1; t < longest; t++) {
+    split.timers.push(setTimeout(() => draw(t), (t - 1) * step + 420));
+  }
 }
 
 /* ───────────────────────────── phase diagram ──────────────────────────── */
@@ -604,7 +644,10 @@ async function boot() {
   })
 );
 $("attackBtn").addEventListener("click", attack);
-$("replayBtn").addEventListener("click", () => state.run && (showScene("network"), playCascade()));
+$("replayBtn").addEventListener("click", () => {
+  if (state.beat === "split" && split.before) return playSplit();
+  if (state.run) { showScene("network"); playCascade(); }
+});
 $("boundaryBtn").addEventListener("click", boundary);
 $("defendBtn").addEventListener("click", defend);
 window.addEventListener("resize", () => {

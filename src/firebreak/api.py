@@ -7,7 +7,8 @@ import numpy as np
 from .dataset import load_dataset
 from .engine import run_cascade
 from .search import at_least_n_breaches, find_weakest_shock
-from .stabilise import find_cheapest_fix
+from .matlab_bridge import engine_label, solve_stabilisation, write_spec
+from .stabilise import Fix
 
 
 class NotFound(Exception):
@@ -86,10 +87,33 @@ def _stabilise(params):
         return {"found": False, **data}
 
     before = run_cascade(shock=found.shock, **scenario)
-    fix = find_cheapest_fix(condition=condition, shock=found.shock, **scenario)
-    if fix is None:
+
+    # hand the solve to MATLAB if it's there. the objective is a simulation
+    # with discrete breach events — non-smooth, non-differentiable, feasible
+    # set defined by a cascade crossing a threshold. that is patternsearch's
+    # problem class. the forward cascade stays in python where it's tested.
+    spec = {
+        "holdings": scenario["holdings"].tolist(),
+        "leverage": scenario["leverage"].tolist(),
+        "max_leverage": scenario["max_leverage"].tolist(),
+        "target_leverage": scenario["target_leverage"].tolist(),
+        "gamma": scenario["gamma"],
+        "adv": scenario["adv"].tolist(),
+        "shock": found.shock.tolist(),
+        "breaches": int(params.get("breaches", 2)),
+    }
+    write_spec(spec)  # so matlab/stabilise.m can be run by hand, incl. MATLAB Online
+    solved = solve_stabilisation(spec)
+    if solved is None:
         return {"found": False, "reason": "no single-position fix clears it", **data}
 
+    fix = Fix(
+        fund=int(solved["fund_index"]),
+        asset=int(solved["asset_index"]),
+        reduction=float(solved["reduction"]),
+        cost=float(solved["cost"]),
+    )
+    name, note = engine_label(solved)
     patched = dict(scenario, holdings=fix.apply(scenario["holdings"]))
     after = run_cascade(shock=found.shock, **patched)
 
@@ -102,6 +126,15 @@ def _stabilise(params):
         "magnitude": found.magnitude,
         "pct": found.pct,
         "fix": fix.as_dict(data["funds"], data["tickers"]),
+        "engine": {
+            "name": name,
+            "note": note,
+            "kind": solved.get("engine", "python"),
+            "solver": solved.get("solver", ""),
+            "evaluations": solved.get("evaluations", 0),
+            "exit_flag": solved.get("exit_flag", 0),
+            "solve_ms": solved.get("solve_ms", 0),
+        },
         "before": before.as_dict(),
         "after": after.as_dict(),
         **data,
