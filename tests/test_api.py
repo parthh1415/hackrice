@@ -45,3 +45,21 @@ def test_stabilise_returns_an_instruction_in_words():
     assert result["fix"]["fund"] in result["funds"]
     assert result["fix"]["asset"] in result["tickers"]
     assert result["after"]["metrics"]["final_loss"] <= result["before"]["metrics"]["final_loss"]
+
+
+def test_stabilise_names_the_shocked_asset_by_index_too():
+    # the split view rings the shocked asset. without an index it falls back
+    # to 0, which is right only by accident when the answer happens to be
+    # the first ticker.
+    result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
+
+    assert "asset_index" in result
+    assert result["tickers"][result["asset_index"]] == result["asset"]
+
+
+def test_break_and_stabilise_agree_on_the_shock():
+    broke = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3", {})
+    fixed = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
+
+    assert broke["asset_index"] == fixed["asset_index"]
+    assert abs(broke["pct"] - fixed["pct"]) < 1e-9

@@ -96,6 +96,10 @@ def _stabilise(params):
     return {
         "found": True,
         "asset": data["tickers"][found.asset],
+        # the split view rings this. without the index it falls back to 0,
+        # which is correct only when the answer happens to be the first name.
+        "asset_index": found.asset,
+        "magnitude": found.magnitude,
         "pct": found.pct,
         "fix": fix.as_dict(data["funds"], data["tickers"]),
         "before": before.as_dict(),
