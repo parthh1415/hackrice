@@ -22,6 +22,7 @@ const state = {
   frame: 0,
   timers: [],
   beat: "idle",
+  request: 0,       // ticket of the action that currently owns the stage
 };
 
 /* ────────────────────────────── formatting ─────────────────────────────
@@ -47,14 +48,15 @@ function params() {
   }).toString();
 }
 
-async function api(path) {
+async function api(path, owns = () => true) {
   const started = performance.now();
   const res = await fetch(path, { cache: "no-store" });
   const ms = Math.round(performance.now() - started);
   if (!res.ok) throw new Error(`${path} → ${res.status}`);
   const body = await res.json();
-  // a recorded answer must never pass for a live one
-  if (body && body.cached) setEngine("cached", cachedLabel(body));
+  // a recorded answer must never pass for a live one — but only the answer
+  // still on the stage gets to say anything about the engine at all
+  if (body && body.cached && owns()) setEngine("cached", cachedLabel(body));
   return { body, ms };
 }
 
@@ -410,6 +412,7 @@ function paintTimeline(current) {
     seg.dataset.state = t === current ? "current" : t < current ? "done" : "idle";
     seg.title = t === 0 ? "shock applied" : `round ${t}`;
     seg.addEventListener("click", () => {
+      claimStage();
       clearTimers();
       // the strip belongs to the cascade. clicking it while boundary or split
       // is up used to redraw a hidden #network — the label changed, nothing
@@ -555,14 +558,36 @@ function showScene(which) {
 
 /* ────────────────────────────── actions ───────────────────────────────── */
 
+/* stopAnimations() only stops what is already on the stage. It cannot stop a
+   request that is already in the air, and the engine is not always fast — one
+   MATLAB solve on a cold laptop is seconds. So the beat the presenter has
+   moved ON from lands anyway, and lands LAST:
+     press Map the boundary, get impatient, press Find weakest shock → the
+     cascade starts, then the boundary answer arrives and puts the phase
+     diagram on the stage while the cascade carries on advancing the round
+     label and the metrics band underneath it, narrating a scene nobody can
+     see. Measured: label ran on from "round 3 · liquidating" to "round 3 / 3"
+     with the boundary on screen.
+     Or the other order → the presenter is talking to the phase diagram and
+     three seconds later the stage yanks itself back to the network.
+   Whichever button was pressed LAST owns the stage. Every action takes a
+   ticket on the way in and an answer that no longer holds it is dropped. */
+function claimStage() {
+  return ++state.request;
+}
+const holdsStage = (ticket) => ticket === state.request;
+
 async function attack() {
   const btn = $("attackBtn");
   btn.disabled = true;
   stopAnimations();
+  const ticket = claimStage();
+  const mine = () => holdsStage(ticket);
   const stop = startElapsed("critical-shock search");
   try {
-    const { body, ms } = await api(`/api/break?${params()}`);
+    const { body, ms } = await api(`/api/break?${params()}`, mine);
     stop();
+    if (!mine()) return;                 // the presenter has moved on
     if (!body.found) {
       clearRun();
       showScene("network");
@@ -578,6 +603,7 @@ async function attack() {
     showScene("network");
     // one frame so the stage has real dimensions before we measure it
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (!mine()) return;
     ensureLayout(state.run, $("network"));
 
     countTo(body.pct);
@@ -591,6 +617,7 @@ async function attack() {
     playCascade();
   } catch (err) {
     stop();
+    if (!mine()) return;
     setEngine("cached", "engine unreachable");
     $("heroSub").textContent = err.message;
   } finally {
@@ -602,20 +629,25 @@ async function boundary() {
   const btn = $("boundaryBtn");
   btn.disabled = true;
   stopAnimations();
+  const ticket = claimStage();
+  const mine = () => holdsStage(ticket);
   settleCount();   // a half-finished count-up must not freeze part-way up
   const stop = startElapsed("boundary sweep");
   try {
-    const { body, ms } = await api(`/api/boundary?${params()}`);
+    const { body, ms } = await api(`/api/boundary?${params()}`, mine);
     stop();
+    if (!mine()) return;                 // the presenter has moved on
     state.boundary = body;
     showScene("boundary");
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (!mine()) return;
     drawBoundary($("boundary"), body);
     engineBadge(body);
     setSolver("parameter sweep",
       `<span>cells</span> ${body.rows * body.cols} <span>·</span> ${ms}ms`);
   } catch (err) {
     stop();
+    if (!mine()) return;
     setEngine("cached", "engine unreachable");
   } finally {
     btn.disabled = false;
@@ -626,11 +658,14 @@ async function defend() {
   const btn = $("defendBtn");
   btn.disabled = true;
   stopAnimations();
+  const ticket = claimStage();
+  const mine = () => holdsStage(ticket);
   settleCount();   // a half-finished count-up must not freeze part-way up
   const stop = startElapsed("minimum-cost stabilisation");
   try {
-    const { body, ms } = await api(`/api/stabilise?${params()}`);
+    const { body, ms } = await api(`/api/stabilise?${params()}`, mine);
     stop();
+    if (!mine()) return;                 // the presenter has moved on
     showScene("split");
     engineBadge(body);
 
@@ -657,6 +692,7 @@ async function defend() {
     // would let a judge think the structure changed rather than one position.
     // let the split grid lay out before measuring either half
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (!mine()) return;
     const half = measure($("netBefore"));
     split.layout = computeLayout(split.before, half.width, half.height);
     playSplit();
@@ -673,6 +709,7 @@ async function defend() {
       (e.exit_flag !== undefined ? ` · <span>exit</span> ${e.exit_flag}` : ""));
   } catch (err) {
     stop();
+    if (!mine()) return;
     setEngine("cached", "engine unreachable");
   } finally {
     btn.disabled = false;
@@ -882,6 +919,7 @@ async function boot() {
 );
 $("attackBtn").addEventListener("click", attack);
 $("replayBtn").addEventListener("click", () => {
+  claimStage();          // a sweep still in the air must not steal this back
   if (state.beat === "split" && split.before) return playSplit();
   if (state.run) { showScene("network"); playCascade(); }
 });
