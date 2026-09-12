@@ -1,5 +1,5 @@
 {
-  "_note": "ADV figures are order-of-magnitude daily dollar volumes in USD millions. They are a declared scenario parameter, not measured data, and are shown as such in the assumptions panel.",
+  "_note": "ADV figures are order-of-magnitude daily dollar volumes in USD millions. They are a declared scenario parameter, not measured data. The cusips map is MANY-TO-ONE: multi-class issuers list every class and they sum into one column.",
   "managers": {
     "Citadel": 1423053,
     "Millennium": 1273087,
@@ -12,7 +12,10 @@
     "03783310": "AAPL",
     "59491810": "MSFT",
     "02313510": "AMZN",
+    "02079K10": "GOOGL",
     "02079K30": "GOOGL",
+    "02079K40": "GOOGL",
+    "02079K60": "GOOGL",
     "30303M10": "META",
     "11135F10": "AVGO",
     "00790310": "AMD",
@@ -20,8 +23,15 @@
     "46625H10": "JPM"
   },
   "adv_usd_millions": {
-    "NVDA": 28000, "AAPL": 11000, "MSFT": 8500, "AMZN": 9500,
-    "GOOGL": 6000, "META": 7500, "AVGO": 6500, "AMD": 7000,
-    "TSLA": 22000, "JPM": 3000
+    "NVDA": 28000,
+    "AAPL": 11000,
+    "MSFT": 8500,
+    "AMZN": 9500,
+    "GOOGL": 6000,
+    "META": 7500,
+    "AVGO": 6500,
+    "AMD": 7000,
+    "TSLA": 22000,
+    "JPM": 3000
   }
 }

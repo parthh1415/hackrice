@@ -7,7 +7,7 @@ are not fetching that live in front of a judge on conference wifi.
 import json
 import pathlib
 
-from .thirteenf import build_holdings, fetch_positions, latest_filing
+from .thirteenf import build_holdings, fetch_positions, latest_filings
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 UNIVERSE = ROOT / "data" / "universe.json"
@@ -45,15 +45,37 @@ def load_dataset(refresh=False):
         return json.loads(CACHE.read_text())
 
     config = json.loads(UNIVERSE.read_text())
-    books, quarter = {}, ""
-    for name, cik in config["managers"].items():
-        _, accession, filed = latest_filing(cik)
-        if not accession:
-            continue
-        books[name] = fetch_positions(cik, accession)
-        quarter = quarter or filed
+    books, periods, missing = {}, {}, []
 
-    data = assemble(books, config["cusips"], config["adv_usd_millions"], quarter)
+    for name, cik in config["managers"].items():
+        _, period, filings = latest_filings(cik)
+        if not filings:
+            missing.append(name)
+            continue
+        # a RESTATEMENT comes back alone; originals plus NEW HOLDINGS
+        # supplements come back together and get summed
+        merged = {}
+        for filing in filings:
+            for cusip, value in fetch_positions(cik, filing["accession"]).items():
+                merged[cusip] = merged.get(cusip, 0.0) + value
+        books[name] = merged
+        periods[name] = period
+
+    if missing:
+        raise RuntimeError(
+            f"no 13F found for {missing} — refusing to build a matrix with a "
+            "manager silently absent"
+        )
+    distinct = set(periods.values())
+    if len(distinct) > 1:
+        raise RuntimeError(
+            f"managers report different periods {periods} — one late filer would "
+            "otherwise mix quarters into a single holdings matrix"
+        )
+
+    data = assemble(
+        books, config["cusips"], config["adv_usd_millions"], distinct.pop()
+    )
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(data, indent=2))
     return data

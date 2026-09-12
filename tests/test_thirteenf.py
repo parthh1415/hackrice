@@ -99,3 +99,29 @@ def test_a_fund_holding_nothing_in_the_universe_is_dropped():
 
     assert funds == ["Alpha"]
     assert matrix.shape == (1, 1)
+
+
+def test_share_classes_of_one_issuer_collapse_into_one_column():
+    # Alphabet files under four CUSIPs. Mapping only one of them captured
+    # 48% of Citadel's position and 15% of Millennium's — heterogeneous, so
+    # it doesn't cancel, it just invents dispersion in the overlap metric.
+    universe = {
+        "02079K10": "GOOGL",  # class A
+        "02079K30": "GOOGL",  # class C
+        "67066G10": "NVDA",
+    }
+    books = {"Alpha": {"02079K10": 900.0, "02079K30": 1070.0, "67066G10": 500.0}}
+
+    funds, tickers, matrix = build_holdings(books, universe)
+
+    assert tickers == ["GOOGL", "NVDA"]
+    np.testing.assert_allclose(matrix, [[1970.0, 500.0]])
+
+
+def test_ticker_column_order_is_first_appearance():
+    universe = {"67066G10": "NVDA", "02079K10": "GOOGL", "02079K30": "GOOGL"}
+    books = {"Alpha": {"67066G10": 1.0, "02079K30": 2.0}}
+
+    _, tickers, _ = build_holdings(books, universe)
+
+    assert tickers == ["NVDA", "GOOGL"]

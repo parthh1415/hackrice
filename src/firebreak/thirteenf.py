@@ -60,16 +60,32 @@ def parse_info_table(xml_text):
 def build_holdings(books, universe):
     """Stack per-fund position dicts into the matrix the engine wants.
 
-    `universe` maps CUSIP prefix -> ticker and fixes the column order.
+    `universe` maps CUSIP prefix -> ticker, MANY-TO-ONE: an issuer with several
+    share classes gets one CUSIP entry per class, all pointing at the same
+    ticker, and they sum into a single column.
+
+    That isn't a nicety. Alphabet files under four CUSIPs, and mapping only
+    Class C captured 48% of Citadel's Alphabet but 15% of Millennium's. The
+    undercount differs per manager, so it doesn't cancel — and because each
+    fund is normalised within the universe, a short column silently reweights
+    that fund's other nine, inventing dispersion in the overlap metric.
+
     Funds with nothing in the universe are dropped rather than carried as a
-    row of zeros, which would break the leverage arithmetic.
+    row of zeros, which would break the leverage arithmetic. The retained fund
+    names come back so callers can filter their per-fund parameter vectors to
+    match — otherwise dropping fund 2 of 5 silently attaches every leverage
+    from index 2 onward to the wrong fund.
     """
-    cusips = list(universe)
-    tickers = [universe[c] for c in cusips]
+    tickers = list(dict.fromkeys(universe.values()))
+    column = {ticker: i for i, ticker in enumerate(tickers)}
 
     funds, rows = [], []
     for name, positions in books.items():
-        row = [positions.get(cusip, 0.0) for cusip in cusips]
+        row = [0.0] * len(tickers)
+        for cusip, value in positions.items():
+            ticker = universe.get(cusip)
+            if ticker is not None:
+                row[column[ticker]] += value
         if sum(row) <= 0:
             continue
         funds.append(name)
@@ -97,18 +113,92 @@ def _fetch(url):
     return raw.decode("utf-8", "replace")
 
 
-def latest_filing(cik):
-    """(manager name, accession without dashes, filing date) for the newest 13F-HR."""
+def choose_filings(records):
+    """Which filings actually make up the latest quarter's book.
+
+    SEC Form 13F FAQ 58. A RESTATEMENT replaces the original outright; a
+    NEW HOLDINGS amendment is a supplement carrying only the added rows and
+    has to be unioned with the original. Apply the wrong one and you get
+    either a 5%-sized portfolio or a double count, silently either way.
+
+    Records need: accession, period, amendment_type (None if not an
+    amendment), filing_date.
+    """
+    if not records:
+        return []
+
+    latest_period = max(r["period"] for r in records)
+    current = [r for r in records if r["period"] == latest_period]
+
+    restatements = [
+        r for r in current if (r["amendment_type"] or "").upper() == "RESTATEMENT"
+    ]
+    if restatements:
+        return [max(restatements, key=lambda r: (r["filing_date"], r["accession"]))]
+
+    # originals plus any additive amendments
+    return [
+        r
+        for r in current
+        if r["amendment_type"] is None
+        or (r["amendment_type"] or "").upper() == "NEW HOLDINGS"
+    ]
+
+
+_PERIOD = re.compile(r"<(?:\w+:)?periodOfReport>\s*([^<\s]+)", re.I)
+_AMEND_TYPE = re.compile(r"<(?:\w+:)?amendmentType>\s*([^<]+)", re.I)
+
+
+def _cover_page(cik, accession):
+    """periodOfReport and amendmentType off a filing's primary_doc.xml."""
+    url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/primary_doc.xml"
+    raw = _fetch(url)
+    period = _PERIOD.search(raw)
+    kind = _AMEND_TYPE.search(raw)
+    return (
+        period.group(1) if period else "",
+        kind.group(1).strip() if kind else None,
+    )
+
+
+def latest_filings(cik, look_back=8):
+    """(manager name, period, [filings]) making up the most recent quarter.
+
+    Scans the most recent 13F-HR *and* 13F-HR/A entries — the old version
+    tested `form == "13F-HR"`, which never matches an amendment, so it read
+    superseded data whenever a manager restated.
+    """
     listing = json.loads(_fetch(f"https://data.sec.gov/submissions/CIK{cik:010d}.json"))
     recent = listing["filings"]["recent"]
+    name = listing.get("name")
+
+    candidates = []
     for i, form in enumerate(recent["form"]):
-        if form == "13F-HR":
-            return (
-                listing.get("name"),
-                recent["accessionNumber"][i].replace("-", ""),
-                recent["filingDate"][i],
-            )
-    return listing.get("name"), None, None
+        if form not in ("13F-HR", "13F-HR/A"):
+            continue
+        accession = recent["accessionNumber"][i].replace("-", "")
+        period, kind = _cover_page(cik, accession)
+        candidates.append(
+            {
+                "accession": accession,
+                "period": _sortable(period),
+                "raw_period": period,
+                "amendment_type": kind,
+                "filing_date": recent["filingDate"][i],
+            }
+        )
+        if len(candidates) >= look_back:
+            break
+
+    chosen = choose_filings(candidates)
+    period = chosen[0]["raw_period"] if chosen else ""
+    return name, period, chosen
+
+
+def _sortable(period):
+    """EDGAR writes MM-DD-YYYY on the cover page; sort as YYYY-MM-DD."""
+    parts = period.split("-")
+    return f"{parts[2]}-{parts[0]}-{parts[1]}" if len(parts) == 3 else period
 
 
 def fetch_positions(cik, accession):
