@@ -290,6 +290,10 @@ MUTATIONS = {
         "src/firebreak/thirteenf.py",
         '    if chosen and all(kind_of(r) == "NEW HOLDINGS" for r in chosen):',
         "    if False:"),
+    "pm_dataset_reaches_for_the_network": (
+        "src/firebreak/dataset.py",
+        "    if CACHE.exists() and not refresh:",
+        "    if False:"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
