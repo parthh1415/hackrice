@@ -353,8 +353,9 @@ Devpost "what's next" bullets.
 ## 7. Sanity tests (must pass before the demo)
 
 All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
-(`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite
-is **97 tests**, all passing.
+(`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite was
+**107 tests, all passing** when this was last reconciled; it is still growing, so read the count off
+`python3 -m pytest tests/ -q | tail -1` rather than quoting this line.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
 2. **Zero impact (γ=0)** → at most one round of breaches **and `amp == 1.0` exactly**.
