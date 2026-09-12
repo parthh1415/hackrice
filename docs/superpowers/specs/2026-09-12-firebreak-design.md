@@ -287,14 +287,24 @@ Find the minimum intervention `δ` such that the *same* shock no longer triggers
 one-dimensional: reduce one fund's exposure to one asset, or reduce one fund's `λ_j`. Report the
 intervention **and its cost** in expected-return terms.
 
-**And report what it does not buy.** Minimising cost subject to surviving *one named shock* produces
-a targeted patch, and the patch can leave the system's critical shock essentially where it was. The
-`/api/stabilise` response carries a `bought` object — `{before_pct, after_pct, delta_pct,
-after_asset, note}` — from re-running `find_weakest_shock` against the patched books. At the demo
-settings it reads **5.2734% → 5.2773%, delta +0.0039pp**: four basis points of GOOGL survives this
-shock and buys ~nothing structurally. Say that before a judge finds it. Nothing in the UI renders
-`bought` yet, and `/api/break` reloads the dataset from disk, so clicking *Find weakest shock* after
-*Stabilise* re-searches the **unpatched** books — it cannot be used to demonstrate this.
+**And report what it does not buy.** Minimising cost subject to clearing the condition under *one
+named shock* produces a targeted patch, and the patch can leave the system's critical shock
+essentially where it was. The `/api/stabilise` response carries a `bought` object —
+`{before_pct, after_pct, delta_pct, resolution_pct, measurable, after_asset, note}` — from re-running
+`find_weakest_shock` against the patched books.
+
+At the demo settings: `before_pct` 5.2734, `after_pct` 5.2773, `delta_pct` +0.0039, against a
+`resolution_pct` of 0.005. The delta is **inside the search's own resolution**, so `measurable` is
+`false` and the note reads *"no measurable change in break point — a targeted patch, not structural
+repair"*. **Report the note, never the delta.** Quoting +0.0039pp as a result would be the same
+fake-precision failure as §2.4 item 8, one level up — a number inside its own error bar presented as
+though it meant something.
+
+Two things not to say alongside it. The patched system does **not** "survive" the shock: Millennium
+and Renaissance still breach, and the fix clears a condition that asks for *three or more*. And
+nothing in the UI renders `bought`, while `/api/break` reloads the dataset from disk — so clicking
+*Find weakest shock* after *Stabilise* re-searches the **unpatched** books and cannot be used to
+demonstrate any of this.
 
 The honest fix is a different objective: **maximise the critical shock**, or minimise cost subject to
 surviving a *family* of shocks, rather than the one already named. That is the top "what's next"
@@ -453,8 +463,11 @@ renders the list below. Until it is, these live in the script and in `docs/devpo
   Our universe is the 10 names above; options rows are filtered out.
 - Price impact is unknowable. `γ` is a slider with a stated functional form. The finding is that the
   boundary *exists and moves predictably*, not any single point estimate.
-- The stabiliser solves **one** shock. What it buys against a re-search is reported (`bought`), and
-  at the demo settings that is +0.00pp.
+- The stabiliser solves **one** shock, and what it clears is the failure condition — *not* "nothing
+  breaks". Two funds still breach at the demo settings; the condition asked for three.
+- What the fix buys against a re-search is reported (`bought`) together with the resolution of the
+  search that measured it. At the demo settings the change is smaller than that resolution, so the
+  honest statement is "no measurable change in break point", not a delta.
 - No number in the UI is presented to more precision than the model supports — which means the
   search tolerance has to resolve the digits the display prints (§2.4 item 8).
 

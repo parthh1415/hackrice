@@ -67,13 +67,19 @@ patched books and the outcome goes from four breaches over three rounds to two b
 final loss 9.12% down to **6.48%**, amplification 1.87 down to **1.33**.
 
 **And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
-against the patched books and reports it. The critical shock moves from **−5.27% to −5.27%** — a
-delta of **+0.00pp**. Four basis points of GOOGL survives *this* shock and buys essentially nothing
-in structural terms. That is not a flaw we are hiding; it is the honest reading of a one-position,
-one-shock optimiser, it is on the payload as `bought`, and a judge who clicks Find-weakest-shock
-straight after Stabilise finds it in ten seconds. We would rather say it first. The genuine next
-version minimises over a *family* of shocks rather than one, and that is a real piece of work, not a
-slider.
+against the patched books and reports it as `bought`. The measured delta is +0.0039pp against a
+search resolution of 0.005pp — *inside its own error bar* — so the payload sets `measurable: false`
+and the note reads **"no measurable change in break point — a targeted patch, not structural
+repair"**. We deliberately do not quote the delta as though it meant something; that would be the
+same fake-precision mistake as the hero number, one level up. Four basis points of GOOGL clears
+*this* failure condition against *this* shock and buys nothing we can measure against the next one.
+That is the honest reading of a one-position, one-shock optimiser, and we would rather be the ones
+to say it. The genuine next version optimises over a *family* of shocks, and that is real work, not
+a slider.
+
+Worth one clarification, because the screen says it plainly: after the fix the system does not
+"survive" in the sense of nothing breaking. Millennium and Renaissance still breach. It clears the
+failure condition we set, which is *three or more*. Two is fewer than three.
 
 The intervention is in GOOGL, not NVDA. That is the point of solving it rather than guessing. GOOGL is
 the third most crowded name in the system, behind NVDA and AMZN, and Millennium is one of the two
@@ -211,8 +217,8 @@ breath.
 
 Every number on screen is derivable, and we shipped honest magnitudes: amplification 1.87, not the
 11.8 we could have had by leaving the broken metric in; a hero that prints only the digits the search
-resolves; and a `bought` figure of +0.00pp on our own headline intervention, said out loud rather
-than left for a judge to find.
+resolves; and a `bought` readout that says "no measurable change" about our own headline
+intervention rather than quoting a delta smaller than the error bar around it.
 
 ## What we learned
 
@@ -247,10 +253,10 @@ cannot be forced to sell, but still eats the price impact. Import a broker CSV, 
 measurement. Exposure, never a prediction.
 
 Robust defence, and this is the one that matters most. Our stabiliser minimises cost subject to
-surviving *one named shock*, which is why the fix it finds buys +0.00pp of critical-shock headroom.
-The right objective is to maximise the critical shock itself, or to minimise cost subject to
-surviving a whole family of shocks. That turns a targeted patch into structural repair, and it is the
-first thing we would build next.
+clearing the failure condition under *one named shock*, which is why the fix it finds buys no
+measurable critical-shock headroom. The right objective is to maximise the critical shock itself, or
+to minimise cost subject to surviving a whole family of shocks. That turns a targeted patch into
+structural repair, and it is the first thing we would build next.
 
 ## Built With
 
@@ -283,7 +289,10 @@ predictably with leverage, not any single point estimate on it. Where that bound
 depends on the band as much as on anything we measured, so "you are here, right on the edge" is a
 statement about a configuration we declared, not a discovery about the funds.
 
-The fix solves one shock. `bought` reports what it buys against a re-run of the search, and at the
-demo settings that is +0.00pp. A targeted patch, not structural repair.
+The fix solves one shock. `bought` reports what it buys against a re-run of the search, along with
+the resolution of the search that measured it; at the demo settings the change is smaller than that
+resolution, so we report "no measurable change" rather than a number. A targeted patch, not
+structural repair. And "clears the failure condition" is not "nothing breaks" — two funds still
+breach, which is fewer than the three we asked about.
 
 No number is shown to more precision than the model supports.

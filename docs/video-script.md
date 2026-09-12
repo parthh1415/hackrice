@@ -176,7 +176,8 @@ climbing. The instruction line resolves:
 `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets`
 
 > "Now run it backwards again. Same failure condition, same shock. What is the smallest change
-> anywhere in this system that survives it?"
+> anywhere in this system that gets us under it?"
+
 >
 > ⏸ *(let the instruction render)*
 >
@@ -206,15 +207,20 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 >
 > "After: two funds, one round, six point five. Amplification one point eight seven down to one point
 > three three. For four basis points."
+>
+> *Say "two funds", never "it survives". Millennium and Renaissance still breach — the fix clears the
+> condition we asked about, which was three or more. If you say "survives" over a panel reading
+> "2 breaches", you are contradicting your own screen.*
+
 
 #### Shot 2.12 · 2:30 – 2:42  — **NEW. Do not cut this one.**
 **On screen:** Hold on the split and cut to a slide reading
-`critical shock before fix −5.27%  ·  after fix −5.28%  ·  bought +0.00pp`.
+`critical shock before fix −5.27%  ·  after the fix: no measurable change`.
 
 > "And here's the part we'd rather say than have you find. The stabiliser re-runs the search against
-> the patched books. The smallest shock that breaks us goes from five point two seven to five point
-> two eight. One hundredth of a percent. Four basis points of Alphabet survives *this* shock and buys
-> us essentially nothing against the next one."
+> the patched books. The smallest shock that breaks us doesn't measurably move. Four basis points of
+> Alphabet clears *this* failure condition against *this* shock, and buys us nothing we can measure
+> against the next one."
 >
 > ⏸ *(beat)*
 >
@@ -223,8 +229,13 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 > maximise the smallest shock that breaks you, instead of minimising the cost of surviving one you
 > already named. That's the next build."
 
-> *Where the numbers come from: the `bought` object on `/api/stabilise` — `before_pct` 5.2734,
-> `after_pct` 5.2773, `delta_pct` +0.0039, `note: "a targeted patch, not structural repair"`.*
+> *Where this comes from: the `bought` object on `/api/stabilise` — `before_pct` 5.2734,
+> `after_pct` 5.2773, `delta_pct` +0.0039, `resolution_pct` 0.005, `measurable: false`, note
+> `"no measurable change in break point — a targeted patch, not structural repair"`.*
+>
+> **Do not say "it goes from 5.27 to 5.28".** The delta is +0.0039pp and the search resolves
+> 0.005pp, so that movement is inside its own error bar — quoting it is the same fake-precision
+> mistake as the old hero number, one level up. "No measurable change" is the claim that survives.*
 >
 > **Do not demonstrate this by clicking Find weakest shock after Stabilise.** `/api/break` reloads
 > the dataset from disk, so it re-searches the **unpatched** books — it would print −5.27% again for
@@ -314,8 +325,10 @@ impact · bystander exposure view.
   never; Point72 2.8% / 0.75% / 5.70%; fix `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross
   assets` (reduction 0.05, cost 0.000441); after 6.5% (6.482%) and 1.33× (1.3289), 2 breaches in
   1 round; shock stamp `5.27% NVDA`; boundary marker `L 5.0 · overlap 0.71` (0.7117).
-- `bought` on `/api/stabilise`: before 5.2734%, after 5.2773%, delta **+0.0039pp**. Shot 2.12 is the
-  only place this reaches the audience, because nothing renders it.
+- `bought` on `/api/stabilise`: before 5.2734%, after 5.2773%, delta +0.0039pp against
+  `resolution_pct` 0.005 → **`measurable: false`**, note "no measurable change in break point — a
+  targeted patch, not structural repair". Quote the note, not the delta. Shot 2.12 is the only place
+  this reaches the audience, because nothing renders it.
 - The solver strip will read **"SciPy-free Python · exhaustive position scan"** unless someone has
   run `matlab/stabilise.m` and dropped `solve_out.json` into `data/cache/` first — see
   `matlab/README.md`. Shot 3.2's line about MATLAB pattern search is only true if you do that step.
