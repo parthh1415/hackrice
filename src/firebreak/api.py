@@ -26,6 +26,8 @@ def handle(path, body):
         return _break(params)
     if route == "/api/stabilise":
         return _stabilise(params)
+    if route == "/api/boundary":
+        return _boundary(params)
 
     raise NotFound(route)
 
@@ -99,4 +101,118 @@ def _stabilise(params):
         "before": before.as_dict(),
         "after": after.as_dict(),
         **data,
+    }
+
+
+def blend_toward_mean(holdings, blend):
+    """Dial the system's crowding without changing anyone's size.
+
+    blend=0 leaves the books exactly as filed. blend=+1 gives every fund the
+    average book (maximum crowding). blend=-1 sharpens each fund onto its own
+    biggest positions, which pulls them apart.
+
+    Negative blend interpolates toward a disjoint assignment — fund j parked
+    entirely in asset j — which is the genuinely uncrowded end of the axis.
+    (Sharpening each fund onto its own biggest names was the obvious
+    alternative and it's wrong: nearly every one of these funds has NVDA as a
+    top position, so sharpening *concentrates* them into the shocked name and
+    the axis stops measuring structure. Extrapolating past the mean is also
+    out — it hands funds negative positions.)
+
+    Each fund keeps its own gross assets throughout, so the only thing moving
+    along this axis is *how alike* the portfolios are.
+    """
+    holdings = np.asarray(holdings, dtype=float)
+    totals = holdings.sum(axis=1, keepdims=True)
+    weights = np.divide(holdings, totals, out=np.zeros_like(holdings), where=totals > 0)
+
+    if blend >= 0:
+        mean = weights.mean(axis=0, keepdims=True)
+        mixed = (1.0 - blend) * weights + blend * mean
+    else:
+        disjoint = np.zeros_like(weights)
+        for j in range(weights.shape[0]):
+            disjoint[j, j % weights.shape[1]] = 1.0
+        mixed = (1.0 + blend) * weights + (-blend) * disjoint
+
+    return mixed * totals
+
+
+def mean_overlap(holdings):
+    """Average pairwise cosine similarity of the funds' weight vectors."""
+    holdings = np.asarray(holdings, dtype=float)
+    totals = holdings.sum(axis=1, keepdims=True)
+    w = np.divide(holdings, totals, out=np.zeros_like(holdings), where=totals > 0)
+    norms = np.linalg.norm(w, axis=1)
+    pairs = []
+    for a in range(len(w)):
+        for b in range(a + 1, len(w)):
+            denom = norms[a] * norms[b]
+            pairs.append(float(w[a] @ w[b] / denom) if denom > 0 else 0.0)
+    return float(np.mean(pairs)) if pairs else 0.0
+
+
+_ROWS, _COLS = 16, 16
+_REF_SHOCK = -0.05
+
+
+def _boundary(params):
+    """Sweep leverage against crowding and record amplification in each cell.
+
+    The reference shock is market-wide (every name down the same percent),
+    not single-name, and that matters. With a single-name shock, sharpening a
+    fund onto its biggest positions tends to *concentrate* it into the shocked
+    name — so the axis ends up measuring exposure rather than structure, and
+    the grid comes out non-monotonic. A uniform shock costs every fund the same
+    fraction of assets no matter how its weights are arranged, which leaves
+    overlap as the only thing varying along the x axis.
+
+    Caccioli et al. (2014) show a critical leverage that falls as crowding
+    rises. If this grid is right you should be able to see that curve.
+    """
+    data = load_dataset()
+    base = np.array(data["holdings"])
+    adv = np.array(data["adv"])
+    gamma = float(params.get("gamma", 0.2))
+
+    shock = np.zeros(base.shape[1])
+    shock[0] = _REF_SHOCK
+
+    levs = np.linspace(1.5, 8.0, _ROWS)
+    blends = np.linspace(-1.0, 1.0, _COLS)
+
+    grid, overlaps = [], []
+    for lev in levs:
+        row = []
+        for blend in blends:
+            holdings = blend_toward_mean(base, blend)
+            m = holdings.shape[0]
+            result = run_cascade(
+                holdings=holdings,
+                leverage=np.full(m, lev),
+                max_leverage=np.full(m, lev * 1.05),
+                target_leverage=np.full(m, lev * 0.95),
+                gamma=gamma,
+                adv=adv,
+                shock=shock,
+            )
+            row.append(round(float(result.amplification), 4))
+        grid.append(row)
+
+    for blend in blends:
+        overlaps.append(round(mean_overlap(blend_toward_mean(base, blend)), 4))
+
+    return {
+        "grid": grid,
+        "rows": _ROWS,
+        "cols": _COLS,
+        "leverage_axis": [round(float(x), 3) for x in levs],
+        "overlap_axis": overlaps,
+        "gamma": gamma,
+        "reference_shock": _REF_SHOCK,
+        "reference_kind": "single-name",
+        "here": {
+            "leverage": float(params.get("leverage", 5.0)),
+            "overlap": round(mean_overlap(base), 4),
+        },
     }
