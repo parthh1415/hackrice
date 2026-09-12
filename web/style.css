@@ -91,6 +91,13 @@ svg .pulse{transform-box:fill-box;transform-origin:center}
 .hero-meta{display:flex;flex-direction:column;gap:3px;max-width:30ch}
 .hero-label{font:400 11px/1 var(--mono);letter-spacing:.02em;color:var(--ink-2)}
 .hero-sub{font-size:12.5px;color:var(--ink-1);line-height:1.4}
+/* A number that has stopped being the answer to the question on screen still
+   looks exactly like a number. The badge in the corner is 11px and nobody
+   reads it mid-sentence, so say it on the hero's own line of sight and dim
+   what it refers to — dimmed digits read as "not current" before anyone has
+   finished the words. */
+.hero-note{font:400 11px/1.4 var(--mono);letter-spacing:.02em;color:var(--alert)}
+.hero-val[data-stale],.band[data-stale] .v{opacity:.34}
 
 .badge{
   display:flex;align-items:center;gap:7px;flex:none;

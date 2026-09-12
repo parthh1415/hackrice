@@ -538,6 +538,46 @@ function setSolver(name, stats) {
   $("solverStats").innerHTML = stats;
 }
 
+/* One line under the hero for anything that makes the numbers on screen less
+   than a current answer, and a dimming of the numbers it refers to. Kinds so
+   that clearing one reason cannot clear another: a failed sweep must not be
+   wiped off the screen by nudging a slider. */
+let noteKind = null;
+
+function setNote(kind, text, stale) {
+  noteKind = kind;
+  const note = $("heroNote");
+  note.textContent = text;
+  note.hidden = false;
+  if (stale) { $("heroVal").dataset.stale = ""; $("band").dataset.stale = ""; }
+  else undim();
+}
+
+function clearNote(kind) {
+  if (kind && noteKind !== kind) return;
+  noteKind = null;
+  $("heroNote").hidden = true;
+  $("heroNote").textContent = "";
+  undim();
+}
+
+function undim() {
+  delete $("heroVal").dataset.stale;
+  delete $("band").dataset.stale;
+}
+
+/* A beat that failed used to change one 11px word in the masthead and nothing
+   else. Press Map the boundary or Stabilise with the engine down and the
+   stage does not move, the hero, the sub-line and the solver panel all still
+   describe the run before it, and the progress readout is frozen mid-count at
+   "boundary sweep · elapsed 0.8s" as though it were still working. From the
+   floor that is indistinguishable from a button that does nothing. */
+function failed(label, note, stale = false) {
+  setEngine("cached", "engine unreachable");
+  setSolver(label, "<span>failed</span> engine unreachable");
+  setNote("failed", note, stale);
+}
+
 /* Any action that can exceed 3s shows incremental progress within 500ms.
    No indeterminate spinners exist in this app — a spinner says "we don't
    know what's happening", which is the opposite of what we want a judge
@@ -595,6 +635,7 @@ async function attack() {
     if (!mine()) return;                 // the presenter has moved on
     if (!body.found) {
       clearRun();
+      clearNote();
       showScene("network");
       engineBadge(body, "no break found");
       $("heroVal").setAttribute("data-idle", "");
@@ -605,6 +646,7 @@ async function attack() {
     }
     state.run = normalise(body);
     state.layout = null;
+    clearNote();
     showScene("network");
     // one frame so the stage has real dimensions before we measure it
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -623,7 +665,10 @@ async function attack() {
   } catch (err) {
     stop();
     if (!mine()) return;
-    setEngine("cached", "engine unreachable");
+    failed("critical-shock search",
+           state.run ? "engine unreachable — this is the previous run, not a new answer"
+                     : "engine unreachable — no answer to show",
+           Boolean(state.run));
     $("heroSub").textContent = err.message;
   } finally {
     btn.disabled = false;
@@ -642,6 +687,7 @@ async function boundary() {
     const { body, ms } = await api(`/api/boundary?${params()}`, mine);
     stop();
     if (!mine()) return;                 // the presenter has moved on
+    clearNote("failed");
     state.boundary = body;
     showScene("boundary");
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -653,7 +699,7 @@ async function boundary() {
   } catch (err) {
     stop();
     if (!mine()) return;
-    setEngine("cached", "engine unreachable");
+    failed("boundary sweep", "the boundary sweep did not run — engine unreachable");
   } finally {
     btn.disabled = false;
   }
@@ -671,6 +717,7 @@ async function defend() {
     const { body, ms } = await api(`/api/stabilise?${params()}`, mine);
     stop();
     if (!mine()) return;                 // the presenter has moved on
+    clearNote("failed");
     showScene("split");
     engineBadge(body);
 
@@ -715,7 +762,7 @@ async function defend() {
   } catch (err) {
     stop();
     if (!mine()) return;
-    setEngine("cached", "engine unreachable");
+    failed("minimum-cost stabilisation", "stabilise did not run — engine unreachable");
   } finally {
     btn.disabled = false;
   }
