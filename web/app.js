@@ -898,12 +898,25 @@ async function defend() {
       return;
     }
     const f = body.fix;
-    $("fixLine").hidden = false;
-    $("fixLine").innerHTML =
-      `<b>${f.fund}</b>: sell <b>${usd(f.sell_usd)}</b> of <b>${f.asset}</b> ` +
-      `<em>· ${pctSig(f.reduction)} of a ${usd(f.position_usd)} position ` +
-      `· costs ${pctSig(f.cost)} of gross assets</em>`;
-    showBought(body.bought);
+    // In Portfolio Mode the split view is borrowed to show the user's OWN
+    // before/after, and the fix line above it already holds the user's own
+    // recommendation. Overwriting it here put a hedge fund's trade in place of
+    // the user's — "Citadel: sell $1.7M of NVDA" where the screen had just
+    // said "Reduce NVDA by $478" — about 300ms after the click, so the
+    // product's entire deliverable was on screen for a fraction of a second.
+    //
+    // The UI harness passed throughout, because it waited on the synchronous
+    // write and asserted before the fetch landed. Thirty checks green against
+    // a screen that no longer existed. That is the failure its own header
+    // warns about, one layer up.
+    if (!pm.result) {
+      $("fixLine").hidden = false;
+      $("fixLine").innerHTML =
+        `<b>${f.fund}</b>: sell <b>${usd(f.sell_usd)}</b> of <b>${f.asset}</b> ` +
+        `<em>· ${pctSig(f.reduction)} of a ${usd(f.position_usd)} position ` +
+        `· costs ${pctSig(f.cost)} of gross assets</em>`;
+      showBought(body.bought);
+    }
 
     split.before = normalise({ ...body, ...body.before });
     split.after = normalise({ ...body, ...body.after });
@@ -1471,9 +1484,33 @@ async function runFirebreak() {
   const { body } = await api(`/api/portfolio/full?limit=${pm.limit}`, () => true, payload);
   pm.result = body;
 
+  // A REFUSAL and a NEGATIVE RESULT are different answers and must not share a
+  // branch. This tested only `!body.found`, so an error payload — where `found`
+  // is undefined and therefore falsy — rendered as "we searched and found
+  // nothing", with `body.reason` undefined so the sub-line was blank. Nothing
+  // had been searched. A holding had been refused. And the input that gets you
+  // there is VOO or SPY in a brokerage CSV.
+  if (body.refused || body.error) {
+    const missing = (body.unmodelled || []).join(", ");
+    $("resultHero").textContent = "can't model this";
+    $("resultSub").textContent = missing
+      ? `${missing} ${body.unmodelled.length > 1 ? "are" : "is"} outside the modelled universe.`
+      : (body.reason || body.error || "This portfolio could not be analysed.");
+    $("resultPlain").textContent = missing
+      ? `Firebreak models contagion through ${(body.modelled || []).length - 1} large-cap ` +
+        `names drawn from institutional 13F filings, plus cash. ${missing} ` +
+        `${body.unmodelled.length > 1 ? "are" : "is"} not among them, so there is no ` +
+        `crowding network to reason about — and rather than drop the holding and quietly ` +
+        `renormalise everything else, we stop. Modelled names: ` +
+        `${(body.modelled || []).join(", ")}.`
+      : (body.reason || "");
+    $("resultGrid").innerHTML = "";
+    return;
+  }
+
   if (!body.found) {
     $("resultHero").textContent = "none found";
-    $("resultSub").textContent = body.reason;
+    $("resultSub").textContent = body.reason || "";
     $("resultPlain").textContent =
       "That is not the same as safe. We searched a range of single-name shocks and " +
       "none of them crossed your limit under these assumptions.";

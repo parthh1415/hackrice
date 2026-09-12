@@ -158,6 +158,19 @@ MUTATIONS = {
         '        "available": False,',
         '        "available": True, "worst_loss": 0.182,'),
 
+    "pm_unknown_symbol_dropped": (
+        "src/firebreak/portfolio.py",
+        "    if unknown:\n        raise UnknownSymbol(unknown, tickers)",
+        "    if False:\n        raise UnknownSymbol(unknown, tickers)"),
+    "pm_zero_value_scored": (
+        "src/firebreak/portfolio.py",
+        "    if total <= 0:",
+        "    if False:"),
+    "pm_refusal_looks_like_a_null_result": (
+        "src/firebreak/api.py",
+        '            "found": False,\n            "refused": True,',
+        '            "found": False,\n            "refused": False,'),
+
     # Frontend mutations. These need the UI harnesses, not pytest — run them
     # with --ui, which drives tests/ui/provenance.js against the mutated web/
     # and the real server. All five of these once scored 47/47 green while

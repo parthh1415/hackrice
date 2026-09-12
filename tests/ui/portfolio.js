@@ -121,10 +121,28 @@ catch (e) { console.log("throw at eval: " + e.message); process.exit(1); }
   console.log("\nSTEP 5 — the fix");
   click("fixBtn");
   await until("the fix line", () => !d.getElementById("fixLine").hidden && /Reduce/.test(text("fixLine")));
+
+  /* Wait for the SPLIT to finish before believing the fix line.
+   *
+   * This used to assert the moment "Reduce" appeared, which is the synchronous
+   * write inside renderFix(). The defend() fetch landed about 300ms later and
+   * replaced the line with the institutional recommendation — "Citadel: sell
+   * $1.7M of NVDA" where the user's screen had just said "Reduce NVDA by $478".
+   * Thirty checks passed against a screen that no longer existed.
+   *
+   * So: let everything settle, then check the line is STILL the user's. A
+   * value that is briefly correct is not correct. */
+  await until("the split to render", () => /shock applied|round/.test(text("splitRound")));
+  await sleep(1200);
+
   const fix = payload.fix;
-  check("the fix names the payload's symbol", text("fixLine").includes(fix.symbol), text("fixLine"));
+  check("the fix still names the payload's symbol after the split renders",
+        text("fixLine").includes(fix.symbol), text("fixLine"));
   check("and its dollar amount", text("fixLine").includes("$478"), text("fixLine"));
   check("it says the money went to cash", /moved to cash/i.test(text("fixLine")));
+  check("it is the USER's recommendation, not the institutional one",
+        /Reduce/.test(text("fixLine")) && !/Citadel|gross assets/.test(text("fixLine")),
+        text("fixLine"));
   check("and that a retail position does not move the market",
         /does not move the market/i.test(text("boughtLine")), text("boughtLine"));
 

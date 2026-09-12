@@ -138,6 +138,19 @@ def weight_vector(portfolio, tickers):
     a price path applied to the vector plus cash held at par is the whole
     portfolio — no residual, nothing renormalised behind your back.
     """
+    total = portfolio.total_value
+    if total <= 0:
+        # Otherwise weights() returns {} and this function hands back a vector
+        # of zeros with zero cash — silently breaking the invariant three lines
+        # below that the vector and cash sum to 1. portfolio_loss then computes
+        # 1 - 0 = a 100% loss, which is >= every limit, so the search's
+        # zero-shock guard fires and the app reports a break point of 0.00%:
+        # "your portfolio is destroyed by a shock of nothing at all."
+        raise ValueError(
+            f"portfolio is worth {total:g}. A portfolio with no value has no "
+            "weights, and a loss on nothing is not a number worth showing."
+        )
+
     weights = portfolio.weights()
     known = set(tickers) | {CASH}
     unknown = [s for s in weights if s not in known]
@@ -145,7 +158,16 @@ def weight_vector(portfolio, tickers):
         raise UnknownSymbol(unknown, tickers)
 
     vector = np.array([weights.get(t, 0.0) for t in tickers], dtype=float)
-    return vector, float(weights.get(CASH, 0.0))
+    cash = float(weights.get(CASH, 0.0))
+    # The invariant this function exists to maintain, checked rather than
+    # asserted in a docstring.
+    residual = abs(vector.sum() + cash - 1.0)
+    if residual > 1e-9:
+        raise ValueError(
+            f"weights sum to {vector.sum() + cash:.12g}, not 1. Something is "
+            "being held that is neither a modelled name nor cash."
+        )
+    return vector, cash
 
 
 def portfolio_loss(vector, cash, prices):

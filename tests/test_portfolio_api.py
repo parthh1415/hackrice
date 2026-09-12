@@ -92,3 +92,54 @@ def test_portfolio_routes_do_not_claim_knob_state_they_do_not_have():
     """They are keyed by a portfolio, not by four sliders."""
     out = api.handle("/api/portfolio/demo", {})
     assert out["cached_for"] == {}
+
+
+def test_an_unmodellable_holding_is_a_refusal_not_a_clean_bill_of_health():
+    """The worst bug this file exists to prevent.
+
+    `weight_vector` raised, `handle` let it escape, the server wrapped it as
+    `{"error": ...}` with a 200, and the frontend's `if (!body.found)` branch
+    caught it — because `undefined` is falsy — and rendered "no shock in the
+    tested range crossed your limit. That is not the same as safe."
+
+    Nothing had been searched. A holding had been refused. The screen said the
+    opposite, in the exact register this project reserves for honest negatives.
+
+    And the input is VOO, or SPY, or VTI: the single most likely line in a real
+    brokerage CSV.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10",
+                     {"holdings": [{"symbol": "VOO", "market_value": 10000.0}]})
+
+    assert out["found"] is False
+    assert out["refused"] is True, "a refusal must be distinguishable from a null result"
+    assert out["unmodelled"] == ["VOO"]
+    assert "VOO" in out["reason"]
+    assert "pct" not in out, "nothing was searched, so nothing may be reported"
+
+
+def test_a_refusal_names_what_it_can_model_so_the_user_can_act():
+    out = api.handle("/api/portfolio/full?limit=0.10",
+                     {"holdings": [{"symbol": "SPY", "market_value": 5000.0},
+                                   {"symbol": "NVDA", "market_value": 5000.0}]})
+
+    assert out["refused"] is True
+    assert "NVDA" in out["modelled"] and "CASH" in out["modelled"]
+
+
+@pytest.mark.parametrize("value", [0.0, -500.0])
+def test_a_portfolio_worth_nothing_is_refused_not_scored(value):
+    """It reported a 100% loss at a 0.00% shock.
+
+    weights() returns {} when the total is <= 0, so the vector was zeros with
+    zero cash — breaking the invariant that they sum to 1 — and the loss came
+    out as 1 - 0 = 100%. That is >= every limit, so the search's zero-shock
+    guard fired and the app announced a break point of nothing at all:
+    "your portfolio is destroyed by a shock of zero."
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10",
+                     {"holdings": [{"symbol": "NVDA", "market_value": value}]})
+
+    assert out["found"] is False and out["refused"] is True
+    assert "worth" in out["reason"]
+    assert "pct" not in out

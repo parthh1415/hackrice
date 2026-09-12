@@ -776,9 +776,37 @@ def _solve_portfolio(params, body):
 
     rows, source = _rows_from(body)
     data, scenario, knobs = _portfolio_scenario(params)
-    portfolio = normalise(rows, source=source)
-    vector, cash = weight_vector(portfolio, data["tickers"])
     limit = _limit_of(params)
+
+    # A refusal is a RESULT, not an exception to be stringified upstream.
+    #
+    # This used to raise, `server._api` wrapped it as {"error": ...} with a 200,
+    # and the frontend's `if (!body.found)` branch caught it — because
+    # `undefined` is falsy — and rendered "no shock in the tested range crossed
+    # your limit. That is not the same as safe." Nothing had been searched. The
+    # holding had been refused. The screen said the opposite, in the exact
+    # register this repo reserves for honest negatives.
+    #
+    # And the input that triggers it is VOO, or SPY, or VTI — the single most
+    # likely line in a real brokerage CSV.
+    try:
+        portfolio = normalise(rows, source=source)
+        vector, cash = weight_vector(portfolio, data["tickers"])
+    except UnknownSymbol as exc:
+        return {
+            "found": False,
+            "refused": True,
+            "reason": str(exc),
+            "unmodelled": exc.symbols,
+            "modelled": data["tickers"] + ["CASH"],
+            "params": dict(knobs, limit=limit),
+            "tickers": data["tickers"],
+        }, None, None, scenario, data
+    except ValueError as exc:
+        return {
+            "found": False, "refused": True, "reason": str(exc),
+            "params": dict(knobs, limit=limit), "tickers": data["tickers"],
+        }, None, None, scenario, data
 
     found = find_portfolio_firebreak(vector, cash, limit, **scenario)
     out = {
