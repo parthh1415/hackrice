@@ -6,9 +6,14 @@
 > measurement.** Counted at the stated 150 wpm, the spoken lines alone run **7:08**; with the marked
 > ⏸ silences it is about **7:25** — twice the ceiling. *Every single shot* is over its slot. The
 > worst are 2.12 (12s allotted, 42s of words), 3.3 (10s / 34s), 2.6 (13s / 30s), 2.2 (6s / 27s),
-> 4.2 (12s / 26s), 3.1 (10s / 24s), 4.1 (12s / 23s), 3.2 (10s / 22s). Roughly **half the words have
-> to come out** before this is recordable. That is a writing decision, not a pacing one — do not try
-> to solve it by speaking faster, and do not solve it by cutting Shot 2.12.
+> 4.2 (12s / 26s), 3.1 (10s / 24s), 4.1 (12s / 23s), 3.2 (10s / 22s). **51% of the words have to come
+> out** before this is recordable. That is a writing decision, not a pacing one — do not try to solve
+> it by speaking faster, and do not solve it by cutting Shot 2.12.
+>
+> Full accounting, timed 2026-09-12: spoken lines **7:08** at the script's own 150 wpm, plus **10s**
+> of marked ⏸ silences, plus **3.4s** of clicking and animation that the app makes you wait for —
+> **7:22 end to end** against a 3:42 claim and a 4:00 ceiling. Note where that time is *not*: the
+> app costs under four seconds in total. Every second over is narration.
 
 **Required HackRice structure:** 30s intro · 2min demo · 30s technical design · 30s impact and future.
 

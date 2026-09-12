@@ -357,12 +357,16 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
       "font-size": 12, "font-weight": 500,
       fill: ever ? "var(--ink-0)" : "var(--ink-2)",
     }, name));
+    // The frame SAYS who is insolvent. The null leverage sitting next to it is
+    // only how +inf survives JSON — read the statement, not the side effect, or
+    // the label quietly disappears the day that number serialises as a number.
     const lev = frame.leverage[j];
+    const broke = frame.insolvent ? Boolean(frame.insolvent[j]) : lev === null;
     svg.appendChild(el("text", {
       x: labelX, y: p.y + 15, "font-family": "var(--mono)", "font-size": 11,
       fill: dead ? "var(--alert)" : ever ? "var(--alert)" : "var(--ink-2)",
       style: "font-variant-numeric:tabular-nums",
-    }, lev === null ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
+    }, broke ? "INSOLVENT" : `L ${lev.toFixed(2)}`));
   });
 
   svg.appendChild(el("text", {
