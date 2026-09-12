@@ -297,7 +297,9 @@ tick is for).
 **On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
 position scan`, `MATLAB not available on this machine`, and an evaluation count that depends on the
 breach count the session ran at (301 at 2+, 124 at 3+) — unless you have
-done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
+done the MATLAB step, in which case it reads `MATLAB · patternsearch` — or `MATLAB · fmincon`
+if your licence has Optimization Toolbox but not Global Optimization Toolbox, which is what Rice's
+published bundle lists. Read what is on the card. The instruction line
 resolves in about a tenth of a second:
 `Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position · costs 0.0042% of gross assets`
 and the `bought` line lands **immediately underneath it, at the same moment** — see Shot 2.12. You

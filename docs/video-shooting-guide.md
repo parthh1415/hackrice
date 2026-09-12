@@ -105,3 +105,9 @@ it is safe to rehearse against.
 - The MATLAB line unless you have run the MATLAB step. Otherwise it honestly
   reads `SciPy-free Python · exhaustive position scan` /
   `MATLAB not available on this machine`.
+- The word "pattern search" unless the card actually says `patternsearch`.
+  Rice's published TAH bundle lists Optimization Toolbox and not Global
+  Optimization Toolbox, so the likely readout is `MATLAB · fmincon`. The card
+  reports whichever solver ran; the narration has to match it. See
+  `matlab/README.md` — the "why MATLAB" argument is a direct-search argument
+  and `fmincon` does not get to make it.

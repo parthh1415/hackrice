@@ -402,7 +402,8 @@ structural repair, and it is the first thing we would build next.
 
 ## Built With
 
-Python 3.13, numpy, pytest. MATLAB with the Global Optimization Toolbox (`patternsearch`) for the
+Python 3.13, numpy, pytest. MATLAB with the Global Optimization Toolbox (`patternsearch`), or
+Optimization Toolbox alone (`fmincon`), for the
 stabilisation solve. Python stdlib `http.server` for the API. Vanilla JavaScript and inline SVG for the
 frontend, no framework and no build step. SEC EDGAR 13F-HR filings for holdings.
 

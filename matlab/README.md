@@ -7,14 +7,53 @@ not available on this machine. Do this once and it reads
 
 ## 1. Get MATLAB (free, you already have it)
 
-Rice has a campus-wide licence. Go to **mathworks.com**, create an account
-with your **@rice.edu** address, and it associates automatically. Then open
-**MATLAB Online** — it runs in the browser, nothing to install.
+Rice has a Total Academic Headcount licence. Two links, in this order:
 
-<https://www.mathworks.com/products/matlab-online.html>
+1. **Rice's MATLAB portal** — sign in with your NetID@rice.edu:
+   <https://www.mathworks.com/academia/tah-portal/rice-university-40580441.html>
+2. **MATLAB Online**, which runs in the browser with nothing installed:
+   <https://matlab.mathworks.com/>
+
+(The marketing page this used to point at, `/products/matlab-online.html`, is
+not a reliable entry point — go straight to `matlab.mathworks.com`.)
 
 If the association doesn't work, MathWorks runs hackathon access directly:
 <hackathon@mathworks.com>.
+
+### Check which toolboxes you actually got
+
+`patternsearch` is **Global Optimization Toolbox**. `fmincon` is
+**Optimization Toolbox**. Rice's published TAH bundle lists Optimization
+Toolbox and **does not list Global Optimization Toolbox**, so the likely
+outcome is that `fmincon` runs and the card reads **MATLAB · fmincon**, not
+`MATLAB · patternsearch`.
+
+In MATLAB, before anything else:
+
+    ver                              % everything you are licensed for
+    exist('patternsearch', 'file')   % non-zero if you have GOT
+    exist('fmincon', 'file')         % non-zero if you have Optimization Toolbox
+
+`stabilise.m` handles either and reports which one ran — the readout is built
+from the result, never from an assumption, so it cannot claim patternsearch
+when fmincon did the work.
+
+**But say the right thing on camera.** The argument for MATLAB here is that
+the objective is a simulation: non-differentiable, piecewise constant across
+breach events. That is the case for a *direct search* method, and it is an
+argument `fmincon` does not get to make — a gradient method on a piecewise
+constant landscape is exactly the mismatch `patternsearch` exists to avoid.
+So:
+
+* **With Global Optimization Toolbox** the pitch is the one in the next
+  section, unchanged.
+* **With only `fmincon`** the honest line is narrower: "we posed it to a
+  constrained optimiser as a mixed-integer program and it landed on the same
+  position our own search did" — the agreement is the result, not the method.
+  Do not describe it as pattern search.
+
+If you want the full argument, ask hackathon@mathworks.com for Global
+Optimization Toolbox; hackathon licences routinely include everything.
 
 ## 2. What MATLAB is actually doing here
 
