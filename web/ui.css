@@ -32,6 +32,24 @@
 
   --mono:"Geist Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
   --sans:"Geist Mono","SF Mono",Menlo,Consolas,monospace;
+
+  /* The terminal recolour renamed these and the markup was never swept, so
+     five `var(--positive)` on verify.html, the signed CHANGE column on
+     defend.html and two of the three provenance labels on assumptions.html
+     were resolving to nothing and rendering plain body text.
+
+     The effect was worse than flat: defend showed a fixed loss in green while
+     verify, one click later, showed the same improvement in white, so the app
+     disagreed with itself about what "better" looks like. And the one page
+     built entirely on a colour-coded provenance taxonomy — measured, declared,
+     limit — had two of its three colours missing.
+
+     Aliased rather than swept, because the semantic names are the right thing
+     to read in the markup. `up`/`down` are the market words; `positive`/
+     `destructive` are what a status means. */
+  --positive:var(--up);
+  --destructive:var(--down);
+  --muted-foreground:var(--text-dim);
 }
 
 *,*::before,*::after{box-sizing:border-box}
@@ -49,6 +67,10 @@ body{
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .up{color:var(--up)}.down{color:var(--down)}.acc{color:var(--accent)}
 .dim{color:var(--text-dim)}.warn{color:var(--warn)}
+/* 21 uses across five pages and no rule behind any of them, so every piece of
+   secondary text in every table was rendering at full body weight — which is
+   most of why the tables read as flat. */
+.muted{color:var(--text-dim)}
 
 /* ── top bar (OT: h-8, 11px, panel-2, bordered) ─────────────────────────── */
 .nav{
@@ -156,6 +178,10 @@ td b{font-weight:700;color:var(--text)}
 .btn:hover,.btn.active{border-color:var(--accent);color:var(--accent)}
 .btn[disabled]{opacity:.4;pointer-events:none}
 .btn-primary{background:var(--accent-bg);border-color:var(--accent-dim);color:var(--accent)}
+/* the quiet sibling of btn-primary: same geometry, no fill. Used five times
+   and undefined, so a secondary action looked identical to a plain one. */
+.btn-outline{background:transparent;border-color:var(--border);color:var(--text-dim)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
 .btn-primary:hover{border-color:var(--accent);background:rgba(34,211,238,.18)}
 .btn-lg{padding:6px 16px;font-size:11.5px}
 .btn-sm{padding:2px 8px;font-size:10.5px}
