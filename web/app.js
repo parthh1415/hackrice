@@ -23,6 +23,7 @@ const state = {
   timers: [],
   beat: "idle",
   request: 0,       // ticket of the action that currently owns the stage
+  knobs: null,      // the slider positions the run on screen actually answers
 };
 
 /* ────────────────────────────── formatting ─────────────────────────────
@@ -40,12 +41,37 @@ function el(tag, attrs = {}, text) {
   return node;
 }
 
+function knobs() {
+  return {
+    leverage: Number($("leverage").value),
+    gamma: Number($("gamma").value),
+    breaches: Number($("breaches").value),
+  };
+}
+
 function params() {
   return new URLSearchParams({
     leverage: $("leverage").value,
     gamma: $("gamma").value,
     breaches: $("breaches").value,
   }).toString();
+}
+
+/* Dragging a slider costs nothing and answers nothing — the engine is not
+   consulted until a button is pressed. So the knobs say one scenario while
+   every number on the stage answers a different one, and the screen gives no
+   hint which. Reproduced: leverage dragged 8 → 1.5 and impact 0.20 → 1.00
+   with the hero still reading 2.41% and the band still 3.6% / 11.1% / 3.12×,
+   all of it from the run before. Replay then re-animates that disowned run
+   under the new slider labels, which is the same lie with motion on it.
+   Say which settings the numbers belong to, and dim them. */
+function checkKnobs() {
+  if (!state.run || !state.knobs) return;
+  const now = knobs(), was = state.knobs;
+  const moved = now.leverage !== was.leverage || now.gamma !== was.gamma ||
+                now.breaches !== was.breaches;
+  if (moved) setNote("knobs", `showing ${knobLabel(was)} — press Find weakest shock`, true);
+  else clearNote("knobs");
 }
 
 async function api(path, owns = () => true) {
@@ -460,6 +486,7 @@ function clearRun() {
   stopAnimations();
   cancelCount();
   state.run = null;
+  state.knobs = null;
   state.layout = null;
   state.frame = 0;
   $("network").textContent = "";
@@ -566,6 +593,21 @@ function undim() {
   delete $("band").dataset.stale;
 }
 
+/* api.py clamps a knob it cannot honour rather than erroring — a stack trace
+   in front of judges is worse — and declares every adjustment in
+   params.clamped so the front end can say so. We were dropping it on the
+   floor. The sliders cannot reach a clamped value, but a URL can, and a URL
+   typo that comes back with a confident answer to a different question is the
+   one failure here worth more than a crash. */
+function declareClamped(body) {
+  const moved = (body.params && body.params.clamped) || [];
+  if (!moved.length) return clearNote();
+  const c = moved[0];
+  setNote("clamped",
+    `${c.name} ${c.given} is ${c.reason} — answered at ${c.used}` +
+    (moved.length > 1 ? ` (+${moved.length - 1} more)` : ""), false);
+}
+
 /* A beat that failed used to change one 11px word in the masthead and nothing
    else. Press Map the boundary or Stabilise with the engine down and the
    stage does not move, the hero, the sub-line and the solver panel all still
@@ -635,7 +677,7 @@ async function attack() {
     if (!mine()) return;                 // the presenter has moved on
     if (!body.found) {
       clearRun();
-      clearNote();
+      declareClamped(body);
       showScene("network");
       engineBadge(body, "no break found");
       $("heroVal").setAttribute("data-idle", "");
@@ -646,7 +688,8 @@ async function attack() {
     }
     state.run = normalise(body);
     state.layout = null;
-    clearNote();
+    state.knobs = knobs();
+    declareClamped(body);
     showScene("network");
     // one frame so the stage has real dimensions before we measure it
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -967,8 +1010,10 @@ async function boot() {
   $(id).addEventListener("input", (e) => {
     $(id + "Val").textContent =
       id === "gamma" ? Number(e.target.value).toFixed(2) : Number(e.target.value).toFixed(1);
+    checkKnobs();
   })
 );
+$("breaches").addEventListener("change", checkKnobs);
 $("attackBtn").addEventListener("click", attack);
 $("replayBtn").addEventListener("click", () => {
   claimStage();          // a sweep still in the air must not steal this back
