@@ -62,7 +62,13 @@
       </div>
       <div class="card-body tight">
         <table>
-          <thead><tr><th>Holding</th><th class="r">Value</th><th class="r">Weight</th><th style="width:34%"></th></tr></thead>
+          <!-- the fourth column was a bar restating the Weight beside it: a
+               third of the table's width spent saying one thing twice. It
+               carries how crowded each name is instead, which is the property
+               that decides how hard the cascade hits you and which the page
+               otherwise never mentions. -->
+          <thead><tr><th>Holding</th><th class="r">Value</th><th class="r">Weight</th>
+            <th class="r">Held by the 5 books</th><th style="width:22%"></th></tr></thead>
           <tbody id="pfRows"></tbody>
         </table>
       </div>
@@ -92,6 +98,22 @@
 <script>
 paintNav("portfolio");
 paintStatusBar("portfolio");
+
+/* How much of each name the five modelled books hold, in days of that name's
+   own average volume. Loaded once; the table reads it when it renders. */
+const CROWDING = { days: null };
+(async () => {
+  try {
+    const d = await api("/api/dataset");
+    const days = {};
+    d.tickers.forEach((t, i) => {
+      const held = d.holdings.reduce((a, row) => a + row[i], 0);
+      if (d.adv[i] > 0) days[t] = held / d.adv[i];
+    });
+    CROWDING.days = days;
+    if (FB.state.portfolio) render(FB.state.portfolio);
+  } catch { /* the table renders without the column */ }
+})();
 bindKeys("portfolio");
 
 function render(p) {
@@ -107,13 +129,22 @@ function render(p) {
   document.getElementById("pfMeta").textContent =
     `${p.holdings.length} holdings · modelled against SEC 13F institutional books, Q2 2026`;
   document.getElementById("pfTotal").textContent = usdExact(p.total_value);
-  document.getElementById("pfRows").innerHTML = p.holdings.map((h) => `
+  /* Institutional dollars in each name, expressed in days of its own average
+     volume — the honest unit, because $7.6B of NVDA is easier to sell than
+     $5.4B of GOOGL. It is why GOOGL falls 5.31% on a shock to a name it is
+     not, while NVDA's own contagion is 1.05%. */
+  const days = CROWDING.days || {};
+  const worst = Math.max(0.001, ...Object.values(days));
+  document.getElementById("pfRows").innerHTML = p.holdings.map((h) => {
+    const d = days[h.symbol];
+    return `
     <tr>
       <td><b>${h.symbol}</b></td>
       <td class="r num">${usdExact(h.market_value)}</td>
       <td class="r num muted">${pct(h.weight, 1)}</td>
-      <td><div class="bar"><span style="width:${(h.weight * 100).toFixed(1)}%"></span></div></td>
-    </tr>`).join("");
+      <td class="r num ${d >= 0.7 ? "warn" : "muted"}">${d == null ? "—" : d.toFixed(1) + " days of volume"}</td>
+      <td>${d == null ? "" : `<div class="bar"><span style="width:${(d / worst * 100).toFixed(0)}%"></span></div>`}</td>
+    </tr>`; }).join("");
   paintNav("portfolio");
 }
 

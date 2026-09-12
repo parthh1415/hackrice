@@ -353,6 +353,10 @@ MUTATIONS = {
         "web/cascade.html",
         "      const share = usd / maxSold;",
         "      const share = usd / Math.max(1, ...(f.sold || []).flat());"),
+    "crowding_is_dollars_not_days": (
+        "web/index.html",
+        "      if (d.adv[i] > 0) days[t] = held / d.adv[i];",
+        "      if (d.adv[i] > 0) days[t] = held / 1e9;"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -398,7 +402,7 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "one_frame_cascade_pretends_to_play",
                 "attribution_uses_direct_not_cascade",
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
-                "flow_scaled_per_frame"}
+                "flow_scaled_per_frame", "crowding_is_dollars_not_days"}
 
 
 def build(name):

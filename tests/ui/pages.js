@@ -154,6 +154,30 @@ function visibleText(d) {
     check("weights are not printed as raw fractions",
           Math.abs(firstW - 1) > 1e-9 ? cells[2].textContent.trim() !== `${firstW.toFixed(1)}%` : true);
 
+    /* The fourth column used to be a bar restating the Weight beside it. It
+       carries how much of each name the five modelled books hold, in days of
+       that name's own average volume — the property that decides how hard the
+       cascade lands, and the reason GOOGL falls 5.31% on a shock to a
+       different name. */
+    const ds = await (await fetch(ORIGIN + "/api/dataset")).json();
+    const daysOf = (sym) => {
+      const i = ds.tickers.indexOf(sym);
+      if (i < 0 || !ds.adv[i]) return null;
+      return ds.holdings.reduce((a, row) => a + row[i], 0) / ds.adv[i];
+    };
+    await until(() => /days of volume/.test(visibleText(p.d)), 4000);
+    const crowdRows = [...p.d.querySelectorAll("#pfRows tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+    let checkedOne = false;
+    for (const row of crowdRows) {
+      const want = daysOf(row[0]);
+      if (want == null) { eq(`${row[0]} has no volume figure to show`, row[3], "—"); continue; }
+      eq(`${row[0]}'s crowding is its institutional holdings over its own ADV`,
+         row[3], `${want.toFixed(1)} days of volume`);
+      checkedOne = true;
+    }
+    check("at least one holding was checked against the dataset", checkedOne);
+
     var store = p.dump();
   }
 
