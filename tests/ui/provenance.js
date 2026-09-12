@@ -74,21 +74,33 @@ const settled = async () => {
 
 const QS = "leverage=5&gamma=0.2&breaches=3";
 
-(async () => {
-  await sleep(1000);
+const setKnob = (id, v) => {
+  const e = d.getElementById(id);
+  e.value = v;
+  e.dispatchEvent(new window.Event("input"));
+};
+
+/* Drive the sliders to a scenario, let the cascade finish, then check every
+   number the settled stage shows against a second fetch of the same query. */
+async function checkRun(label, knobs) {
+  const qs = `leverage=${knobs.leverage}&gamma=${knobs.gamma}&breaches=${knobs.breaches}`;
+  console.log(`\n${label}  (${qs})`);
+  setKnob("leverage", String(knobs.leverage));
+  setKnob("gamma", String(knobs.gamma));
+  d.getElementById("breaches").value = String(knobs.breaches);
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  await sleep(1200);
   await settled();
-  const run = await api(`/api/break?${QS}`);
+
+  const run = await api(`/api/break?${qs}`);
   const last = run.trajectory[run.trajectory.length - 1];
   const rounds = run.trajectory.length - 1;
+  const m = run.metrics, bd = band();
 
-  console.log("HERO");
   eq("hero percentage is payload pct", text("heroVal"), `${run.pct.toFixed(2)}%`);
   check("hero subtitle counts funds from the payload",
         text("heroSub").startsWith(`${run.asset} · ${run.breached.length} of ${run.funds.length} funds`),
         text("heroSub"));
-
-  console.log("\nMETRICS BAND — each cell against run.metrics");
-  const m = run.metrics, bd = band();
   eq("shock loss", bd[0], pct1(m.shock_loss));
   eq("final loss", bd[1], pct1(m.final_loss));
   eq("amplification", bd[2], mult(m.amplification));
@@ -99,7 +111,6 @@ const QS = "leverage=5&gamma=0.2&breaches=3";
   eq("round counter equals the engine's round count", bd[4], `${rounds} / ${rounds}`);
   eq("engine's own `rounds` matches the frame count", rounds, run.rounds);
 
-  console.log("\nNETWORK READOUTS — derived in JS, checked against frame data");
   const netText = texts("network");
   /* drawNetwork renders `1 - frame.prices[i]`, which is only a price drop
      because engine.py normalises prices to 1.0 at t0. Assert the invariant
@@ -114,6 +125,33 @@ const QS = "leverage=5&gamma=0.2&breaches=3";
   check("per-fund leverage readouts equal frame.leverage",
         wantLev.every((s) => netText.includes(s)),
         wantLev.filter((s) => !netText.includes(s)).join(" ") || "ok");
+  check("defaulted funds read INSOLVENT rather than a stale multiple",
+        run.defaulted.every((j) => last.leverage[j] === null),
+        `defaulted ${JSON.stringify(run.defaulted)}`);
+  return run;
+}
+
+(async () => {
+  await sleep(1000);
+  await settled();
+
+  const run = await checkRun("DEMO SCENARIO — hero, band, network readouts",
+                             { leverage: 5, gamma: 0.2, breaches: 3 });
+  const m = run.metrics;
+
+  /* A run where funds actually die: leverage counts go null, the band's
+     breach union has to survive funds dropping out of over_limit(), and
+     `1 - price` has to stay a price drop when prices hit the floor. */
+  const dead = await checkRun("DEFAULTING SCENARIO — every fund insolvent",
+                              { leverage: 8, gamma: 1, breaches: 5 });
+  check("this scenario really did default funds", dead.defaulted.length > 0,
+        `defaulted ${JSON.stringify(dead.defaulted)}`);
+
+  setKnob("leverage", "5"); setKnob("gamma", "0.2");
+  d.getElementById("breaches").value = "3";
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  await sleep(1200);
+  await settled();
 
   console.log("\nBOUNDARY — the marker must sit on its own data");
   d.getElementById("boundaryBtn").dispatchEvent(new window.Event("click"));
