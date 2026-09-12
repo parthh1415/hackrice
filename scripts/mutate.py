@@ -314,6 +314,15 @@ MUTATIONS = {
         "web/analysis.html",
         "      const contagion = total - direct;",
         "      const contagion = total;"),
+    # the original bug: edges drawn from static positions, identical every frame
+    "flow_is_static_positions": (
+        "web/cascade.html",
+        "    (f.sold || []).forEach((row, j) => row.forEach((usd, i) => {",
+        "    (body.holdings || []).forEach((row, j) => row.forEach((usd, i) => {"),
+    "flow_scaled_per_frame": (
+        "web/cascade.html",
+        "      const share = usd / maxSold;",
+        "      const share = usd / Math.max(1, ...(f.sold || []).flat());"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => { at = Math.min(frames.length - 1, at + 1); draw(at); };',
@@ -358,7 +367,7 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "negative_holding_accepted", "stepping_does_not_stop_the_timer",
                 "one_frame_cascade_pretends_to_play",
                 "attribution_uses_direct_not_cascade",
-                "contagion_column_is_the_whole_fall"}
+                "contagion_column_is_the_whole_fall", "flow_is_static_positions"}
 
 
 def build(name):

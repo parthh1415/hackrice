@@ -90,16 +90,42 @@ if (r) (async () => {
   const ay = (i) => 46 + i * ((H - 92) / (T.length - 1));
   const fy = (j) => 80 + j * ((H - 160) / (F.length - 1));
   const maxPos = Math.max(...body.holdings.flat());
+  /* The busiest round, so flow widths are comparable ACROSS rounds — scaling
+     each frame to its own maximum would make the last round's trickle look
+     like the first round's flood. */
+  const maxSold = Math.max(1, ...frames.map(f =>
+    Math.max(0, ...(f.sold || []).flat())));
 
   let at = 0, timer = null;
 
   function draw(t) {
     const f = frames[Math.min(t, frames.length - 1)];
     svg.textContent = "";
+    /* Two layers, because the picture has two things to say.
+
+       The substrate is who owns what — the crowding itself, static, faint. It
+       is the reason a shock to one name reaches a book that never held it.
+
+       The flow is what was SOLD in this round, and it is the thing that was
+       missing: the edges used to be drawn from position sizes in a fixed grey,
+       so they came out identical on every frame. Fifty lines redrawn each tick
+       to look exactly the same, while `sold` sat in the payload carrying
+       $8.72B, then $2.49B, then $0.82B. The cascade was in hand and not drawn.
+
+       Now round 1 lights up thick, round 2 thinner, round 3 a trickle, and the
+       diagram shows deleveraging chasing itself down to nothing — which is the
+       one idea this page exists to land. */
     body.holdings.forEach((row, j) => row.forEach((v, i) => {
       if (v <= 0) return;
       svg.appendChild(mk("line", { x1: LX, y1: ay(i), x2: RX, y2: fy(j),
-        stroke: "hsl(0 0% 22%)", "stroke-width": Math.max(.4, (v / maxPos) * 3.4) }));
+        stroke: "hsl(0 0% 15%)", "stroke-width": Math.max(.4, (v / maxPos) * 2.6) }));
+    }));
+    (f.sold || []).forEach((row, j) => row.forEach((usd, i) => {
+      if (usd <= 0) return;
+      const share = usd / maxSold;
+      svg.appendChild(mk("line", { x1: LX, y1: ay(i), x2: RX, y2: fy(j),
+        stroke: "hsl(359 100% 61%)", "stroke-opacity": (0.25 + 0.6 * share).toFixed(3),
+        "stroke-width": Math.max(.6, share * 5.0), "stroke-linecap": "round" }));
     }));
     T.forEach((sym, i) => {
       const drop = 1 - f.prices[i];
@@ -140,6 +166,9 @@ if (r) (async () => {
          as a contradiction one click apart. */
       ["Books over limit this round", String((f.breached || []).length), (f.breached || []).length ? "bad" : ""],
       ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],
+      /* the size of the fire in this round, which is what the red edges are
+         drawing. Without the number beside them the picture is impressionistic. */
+      ["Forced selling this round", usd((f.sold || []).flat().reduce((a, b) => a + b, 0)), ""],
       ["Your limit", pct(r.params.limit, 0), ""],
     ].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
   }

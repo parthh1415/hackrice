@@ -290,6 +290,15 @@ function visibleText(d) {
 
       eq("it opens on the shock, before any selling", tile("round"),
          `0 / ${cas.trajectory.length - 1}`);
+
+      /* The diagram's edges used to be drawn from static position sizes in a
+         fixed grey, so every frame came out identical — fifty lines redrawn
+         each tick to look exactly the same, while `sold` sat in the payload
+         carrying the actual cascade. The flow layer has to move with it. */
+      const flow = () => [...c.d.querySelectorAll("#net line")]
+        .filter((l) => (l.getAttribute("stroke") || "").includes("359"));
+      const soldAt = (t) => (cas.trajectory[t].sold || []).flat().filter((v) => v > 0).length;
+      eq("no forced selling is drawn on the shock frame", flow().length, soldAt(0));
       for (let t = 0; t < cas.trajectory.length; t++) {
         if (t > 0) {
           c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
@@ -301,7 +310,20 @@ function visibleText(d) {
            tile("over limit"), String((cas.trajectory[t].breached || []).length));
         eq(`round ${t}: the loss shown is the loss at that frame's prices`,
            tile("loss so far"), `${(lossAt(cas.trajectory[t].prices) * 100).toFixed(2)}%`);
+        eq(`round ${t}: one flow edge per sale the engine actually made`,
+           flow().length, soldAt(t));
       }
+      /* Deleveraging chasing itself down to nothing is the one idea this page
+         exists to land, so the picture has to get quieter as it goes. */
+      const widest = [];
+      for (let t = 0; t < cas.trajectory.length; t++) {
+        const total = (cas.trajectory[t].sold || []).flat().reduce((a, b) => a + b, 0);
+        widest.push(total);
+      }
+      check("the forced selling peaks in the first round and decays after it",
+            widest[1] > 0 && widest.slice(1).every((v, i, a) => i === 0 || v < a[i - 1]),
+            widest.map((v) => (v / 1e9).toFixed(2) + "B").join(" -> "));
+
       /* the last frame has to be the answer the rest of the app reports, or the
          animation is telling a different story from every other page. */
       check("the final round's loss is the cascade loss the engine returned",
