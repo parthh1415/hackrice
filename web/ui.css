@@ -191,6 +191,12 @@ td.r,th.r{text-align:right}
 /* a prose cell keeps the row pitch when it is one line (3+15+3=21) and
    grows in 15px steps when it wraps, so the grid never drifts. */
 td.t,th.t{text-align:left;white-space:normal;height:auto;padding:3px 8px;line-height:15px}
+/* Two-column label/value tables. Left to fill the panel they render as
+   "label · six hundred pixels of black · value", and the wider the window the
+   worse it reads — the eye has to travel the whole panel to pair them. Capping
+   the table keeps the pair together; the panel's own width is still the
+   panel's. */
+table.pairs{max-width:620px}
 td b{font-weight:500;color:var(--text)}
 
 /* ── buttons (OT: .term-btn) ────────────────────────────────────────────── */
