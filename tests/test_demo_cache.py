@@ -205,3 +205,39 @@ def test_recordings_are_stored_with_the_flag_already_flipped():
     payload = json.loads(path.read_text())
 
     assert payload["cached"] is True
+
+
+# --- nearest-match has to stay honest about what it matched ---------------
+
+
+def test_a_recording_says_which_sliders_produced_it():
+    """`cached: true` tells you it came off disk, not what it came off disk for."""
+    result = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3&demo=1", {})
+
+    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "breaches": 3.0}
+    assert result["cached_exact"] is True
+
+
+def test_settings_nowhere_near_a_recording_are_computed_rather_than_faked():
+    """Dragging leverage to 40 and asking for 5 breaches used to serve the
+    leverage-7 / 3-breach recording, hero number and all, with nothing in the
+    payload saying the answer belonged to a different question."""
+    live = api.handle("/api/break?leverage=40&gamma=9&breaches=5", {})
+    demo = api.handle("/api/break?leverage=40&gamma=9&breaches=5&demo=1", {})
+
+    if demo["cached"]:
+        assert demo["cached_for"] != {"leverage": 40.0, "gamma": 9.0, "breaches": 5.0}
+        assert demo["cached_exact"] is False
+    else:
+        assert demo.get("magnitude") == live.get("magnitude")
+
+
+def test_a_dead_engine_falls_back_but_names_the_settings_it_fell_back_to():
+    """leverage below 1 makes the engine refuse; there is no live answer to
+    give, so a recording is the right call — as long as it says so."""
+    result = api.handle("/api/break?leverage=0.5&gamma=0.2&breaches=3", {})
+
+    assert result["cached"] is True
+    assert result["cached_exact"] is False
+    assert result["cached_for"]["leverage"] != 0.5
+    assert "leverage" in result["fallback_reason"]

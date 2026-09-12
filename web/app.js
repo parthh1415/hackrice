@@ -279,14 +279,17 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
           fill: "forwards", iterations: 1 }
       );
     }
+    // clear the BREACH RING, not just the node — the ring reaches s/2+7 and a
+    // label at s/2+12 left only 3px on the widest fund.
+    const labelX = p.x + s / 2 + 18;
     svg.appendChild(el("text", {
-      x: p.x + s / 2 + 12, y: p.y + 1, "font-family": "var(--mono)",
+      x: labelX, y: p.y + 1, "font-family": "var(--mono)",
       "font-size": 12, "font-weight": 500,
       fill: ever ? "var(--ink-0)" : "var(--ink-2)",
     }, name));
     const lev = frame.leverage[j];
     svg.appendChild(el("text", {
-      x: p.x + s / 2 + 12, y: p.y + 15, "font-family": "var(--mono)", "font-size": 11,
+      x: labelX, y: p.y + 15, "font-family": "var(--mono)", "font-size": 11,
       fill: dead ? "var(--alert)" : ever ? "var(--alert)" : "var(--ink-2)",
       style: "font-variant-numeric:tabular-nums",
     }, lev === null ? "INSOLVENT" : `L ${lev.toFixed(2)}`));

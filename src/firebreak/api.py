@@ -37,9 +37,11 @@ def handle(path, body):
 
     if demo:
         cached = load_golden(route, params)
-        if cached is not None:
+        # nothing recorded, or the nearest recording is for a different
+        # question — computing is better than a 404 and much better than
+        # answering the question we happen to have on disk.
+        if cached is not None and cached["cached_exact"]:
             return cached
-        # nothing recorded for this endpoint — computing is better than a 404
 
     try:
         payload = ROUTES[route](params)
@@ -49,10 +51,12 @@ def handle(path, body):
         cached = load_golden(route, params)
         if cached is None:
             raise
-        cached["fallback_reason"] = _reason(exc)
+        cached["fallback_reason"] = _fallback_note(exc, cached["cached_for"])
         return cached
 
     payload["cached"] = False
+    payload["cached_for"] = _knobs(route, params)
+    payload["cached_exact"] = True
     return payload
 
 
@@ -70,6 +74,14 @@ def _demo_requested(query):
 
 def _reason(exc):
     return f"{type(exc).__name__}: {exc}"[:160]
+
+
+def _fallback_note(exc, cached_for):
+    """Why we fell back, and to which recording. Both, or neither is useful."""
+    settings = ", ".join("%s=%g" % kv for kv in sorted(cached_for.items()))
+    if not settings:
+        return _reason(exc)
+    return f"{_reason(exc)} — serving the recording at {settings}"
 
 
 # --- the golden path ------------------------------------------------------
@@ -146,6 +158,13 @@ def _recorded(route):
     return out
 
 
+# how far a request can sit from a recording and still be the same question.
+# _distance is the sum of squared slider-span fractions, so this is an rms
+# deviation of a quarter of a slider — comfortably wider than the half-step
+# between two recordings, and nowhere near "leverage 40, five breaches".
+_SAME_SCENARIO = 0.25 ** 2
+
+
 def _distance(route, wanted, knobs):
     total = 0.0
     for name, (default, scale) in KNOBS[route].items():
@@ -163,7 +182,7 @@ def load_golden(route, params):
     if not candidates:
         return None
     wanted = _knobs(route, params)
-    path, _ = min(candidates, key=lambda c: (_distance(route, wanted, c[1]), c[0].name))
+    path, knobs = min(candidates, key=lambda c: (_distance(route, wanted, c[1]), c[0].name))
     try:
         payload = json.loads(path.read_text())
     except (OSError, ValueError):
@@ -171,6 +190,12 @@ def load_golden(route, params):
     if not isinstance(payload, dict):
         return None
     payload["cached"] = True
+    # what the recording is actually of. the hero number, the phase-diagram
+    # "you are here" dot and the assumptions panel all come out of the file,
+    # so if it was recorded somewhere else the payload has to say where.
+    payload["cached_for"] = {name: knobs.get(name, default)
+                             for name, (default, _) in KNOBS[route].items()}
+    payload["cached_exact"] = _distance(route, wanted, knobs) <= _SAME_SCENARIO
     payload.pop("fallback_reason", None)
     return payload
 
@@ -216,6 +241,8 @@ def record_golden(specs=None, out=None):
         seen.add(name)
         payload = ROUTES[route](params)
         payload["cached"] = True
+        payload["cached_for"] = _knobs(route, params)
+        payload["cached_exact"] = True
         path = out / (name + ".json")
         path.write_text(json.dumps(payload))
         written.append(path)
