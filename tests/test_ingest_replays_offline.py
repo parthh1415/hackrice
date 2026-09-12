@@ -3,7 +3,7 @@
 (Provenance note: these fixtures, this test and scripts/record_edgar_mirror.py
 were written by a review agent and landed in commit ac6fda0, whose message is
 about the devpost and does not mention them — a `git add -A` of mine swept an
-agent's in-progress work into an unrelated commit. See commit ce0d0e1 for the
+agent's in-progress work into an unrelated commit. See commit c9aae10 for the
 record. Nothing here is my work but the apology.)
 
 `scripts/refresh_dataset.py` was the one thing in this repo that every printed
