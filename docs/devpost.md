@@ -206,7 +206,8 @@ the reason the headline amplification number is 1.87 rather than something flatt
 
 **We mapped one class of Alphabet and dropped the rest.** Our GOOGL entry was `02079K30`, which the
 filings label `CAP STK CL A`. Alphabet's Class C is `02079K10` (`CAP STK CL C`), and there are two
-depositary-share lines besides. All three were being silently dropped. In Citadel's Q2-2026 table the
+depositary-share lines besides (`DEP SHS RP1/20 A` and `…B`). Citadel and Renaissance both file both
+classes and both label them the same way, so this is not one filer's idiosyncrasy. All three were being silently dropped. In Citadel's Q2-2026 table the
 mapped class is **$1.069B of a $2.229B Alphabet position — 47.9% captured, 52.1% missing**, and because
 managers hold different class mixes the undercount was heterogeneous fund by fund. That is the nastiest
 category of data bug: nothing errors, nothing looks wrong, and it quietly renormalises every other
@@ -221,16 +222,28 @@ and every name is held by at least two managers.
 > agent went back to the filings and read `titleOfClass` instead of trusting the write-up. Every figure
 > above is now taken from Citadel's actual information table, accession 0001104659-26-104387.
 
-**One firm, two registrants.** Two Sigma Investments and Two Sigma Advisers are separate CIKs filing
-separate 13Fs for the same quarter, and our manager map held one CIK per name. A manager now maps to a
-list of CIKs and the holdings are summed.
+**One firm, two registrants.** A firm can file under several registrants — Two Sigma Investments and
+Two Sigma Advisers are separate CIKs — and our manager map held one CIK per name, so we were reading
+whichever registrant we happened to have picked. A manager now maps to a list of CIKs and the books are
+summed.
 
-> And this one bought us nothing, which we would rather say than let the number next to it imply
-> otherwise. For *this* quarter Two Sigma Advisers filed a single placeholder row — issuer "No Issuer",
-> CUSIP 000000000, value $0 — so reading one CIK per manager gives byte-identical output. The
-> `$38.4B → $40.9B` move that used to sit in this paragraph is **entirely** the Alphabet class fix
-> above. The multi-CIK handling is correct and stays, because a quarter where Advisers files a real
-> book would otherwise lose it silently; it just is not a save we get to claim here.
+> For *this* quarter it changes nothing, and the `$38.4B → $40.9B` move that used to sit in this
+> paragraph belongs entirely to the Alphabet class fix above. But it is not decorative either. Two
+> Sigma Advisers ran a real book until very recently and then consolidated into the Investments
+> registrant — cover-page totals, whole book:
+>
+> | quarter | Advisers | Investments |
+> |---|---|---|
+> | 2025-09-30 | $50.0B | $67.2B |
+> | 2025-12-31 | $51.4B | $70.9B |
+> | 2026-03-31 | **$0** (1 placeholder row) | $123.9B |
+> | 2026-06-30 | **$0** (1 placeholder row) | $138.1B |
+>
+> Advisers stopped filing a real table in Q1 2026 exactly as Investments jumped by $53B. So against
+> Q4 2025 this fix would have been the difference between $70.9B and $122.3B of Two Sigma, and a
+> one-CIK map would have read whichever registrant we happened to have picked. (Those are whole-book
+> totals including options and debt, not the ten-name restriction — they are here to show Advisers was
+> a real book, not to be compared with our $40.9B.)
 
 **`13F-HR` did not match `13F-HR/A`.** Our "latest filing" filter was an exact string match on form
 type, so a Citadel *restatement* of Q2 2026 was skipped and we read superseded data as if it were
