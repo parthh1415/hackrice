@@ -169,7 +169,13 @@ h2{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
 .card-desc{color:var(--text-dim);font-weight:400;letter-spacing:.02em;
   text-transform:none;font-size:var(--fs-0);line-height:14px}
 .card-body{padding:8px}
-.card-body.tight{padding:0}
+/* Tables are nowrap by design — a column of figures must not reflow. That
+   makes a narrow window clip them, and `.card{overflow:hidden}` meant the
+   clipped part was unreachable rather than merely off-screen: at 390px the
+   whole "Costs you" column of the attribution table could not be seen by any
+   means. Wide content scrolls inside its own container; the page body still
+   never scrolls sideways. */
+.card-body.tight{padding:0;overflow-x:auto}
 .card-footer{padding:6px 8px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:center}
 
 /* ── data table (OT: 11px, 2px 6px, right-aligned) ──────────────────────── */
@@ -297,7 +303,26 @@ svg.viz{width:100%;max-height:min(470px,48vh);display:block;background:var(--pan
 @media (max-width:860px){
   .nav-links a{padding:0 7px}
   .grid-2{grid-template-columns:1fr}
-  .figure .big{font-size:30px}
+  .figure .big{font-size:22px}
+}
+
+/* Below this the nav and the status bar are wider than the window — one
+   non-wrapping flex row of six links plus five status fields needs about
+   880px — so the whole document scrolled sideways on every page, which is the
+   one layout rule with no exceptions. They scroll inside themselves instead,
+   and the status fields that repeat information already in the nav step
+   aside first. */
+@media (max-width:900px){
+  .nav,.statusbar{overflow-x:auto;scrollbar-width:none}
+  .nav::-webkit-scrollbar,.statusbar::-webkit-scrollbar{display:none}
+  .nav-right{gap:10px}
+  .statusbar .right{gap:10px}
+}
+@media (max-width:640px){
+  /* the clock and the dataset line are the first things a narrow screen can
+     do without: neither is an answer. */
+  #navClock,.statusbar .right .sep,.statusbar .right .k:last-child{display:none}
+  .wrap{padding:0 8px}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms!important;transition-duration:.001ms!important}

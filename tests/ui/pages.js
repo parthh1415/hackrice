@@ -178,6 +178,18 @@ function visibleText(d) {
     }
     check("at least one holding was checked against the dataset", checkedOne);
 
+    /* A <label for> is never in the tab order and the file input it wraps is
+       display:none, so one of the two ways to load a portfolio could not be
+       operated without a mouse. */
+    const importLabel = p.d.getElementById("csvLabel");
+    check("the CSV import is reachable by keyboard", !!importLabel &&
+          importLabel.tabIndex >= 0, importLabel ? `tabIndex ${importLabel.tabIndex}` : "no label");
+    let opened = 0;
+    p.d.getElementById("csvFile").click = () => { opened++; };
+    importLabel.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    importLabel.dispatchEvent(new p.window.KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    eq("and Enter and Space both open the file picker", opened, 2);
+
     var store = p.dump();
   }
 

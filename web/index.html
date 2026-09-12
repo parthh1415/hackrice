@@ -43,7 +43,12 @@
       </div>
       <div class="card-body row gap-3" style="flex-wrap:wrap">
         <button class="btn btn-primary" id="useDemo">Use demo portfolio</button>
-        <label class="btn btn-outline" for="csvFile">Import CSV
+        <!-- A <label for> is never in the tab order, and the input it wraps is
+             display:none and so unfocusable. Measured tab order skipped
+             straight from "Use demo portfolio" to the limit buttons: one of
+             the two ways to load a portfolio could not be operated without a
+             mouse. tabindex plus Enter/Space is the standard pattern. -->
+        <label class="btn btn-outline" for="csvFile" id="csvLabel" tabindex="0" role="button">Import CSV
           <input type="file" id="csvFile" accept=".csv,text/csv" hidden></label>
         <button class="btn btn-outline" id="connectBtn" disabled>Connect brokerage</button>
         <span class="small muted" style="flex-basis:100%;margin-top:2px" id="loadNote">
@@ -278,6 +283,13 @@ function parseCsv(text) {
   if (!rows.length) throw new Error("header row only — no holdings in that file");
   return { rows, skipped };
 }
+
+document.getElementById("csvLabel").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === " ") {
+    ev.preventDefault();
+    document.getElementById("csvFile").click();
+  }
+});
 
 document.getElementById("csvFile").addEventListener("change", async (ev) => {
   const file = ev.target.files && ev.target.files[0];

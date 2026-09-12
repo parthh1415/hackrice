@@ -369,6 +369,10 @@ MUTATIONS = {
         "web/index.html",
         "      if (d.adv[i] > 0) days[t] = held / d.adv[i];",
         "      if (d.adv[i] > 0) days[t] = held / 1e9;"),
+    "csv_import_off_the_tab_order": (
+        "web/index.html",
+        'for="csvFile" id="csvLabel" tabindex="0" role="button"',
+        'for="csvFile" id="csvLabel"'),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -414,7 +418,7 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "one_frame_cascade_pretends_to_play",
                 "attribution_uses_direct_not_cascade",
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
-                "flow_scaled_per_frame", "crowding_is_dollars_not_days"}
+                "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order"}
 
 
 def build(name):

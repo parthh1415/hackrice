@@ -255,6 +255,14 @@ if (r) (async () => {
     if (timer) { stop("Play"); return; }
     playBtn.textContent = "Pause";
     at = 0; draw(at);
+    /* Someone who has asked the operating system for less motion should not
+       get a three-second animation because we only zeroed the CSS durations —
+       the movement here is a 900ms setInterval, which no media query touches.
+       They get the end state, which is the information; the animation is the
+       decoration. */
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      at = frames.length - 1; draw(at); playBtn.textContent = "Replay"; return;
+    }
     /* A single-frame cascade has nothing to play through. Without this the
        interval fires once, clamps, and relabels — a 900ms pause pretending to
        be an animation. */
