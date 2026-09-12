@@ -67,6 +67,30 @@ const texts = (id) => [...svg(id).querySelectorAll("text")].map((t) => t.textCon
 // the frontend's own formatters, restated so a change to either side shows up
 const pct1 = (x) => `${(x * 100).toFixed(1)}%`;
 const pct2 = (x) => `${(x * 100).toFixed(2)}%`;
+const pctSig = (x) => {
+  const v = x * 100;
+  if (!isFinite(v) || v === 0) return "0%";
+  const dp = Math.min(6, Math.max(0, 1 - Math.floor(Math.log10(Math.abs(v)))));
+  return `${v.toFixed(dp)}%`;
+};
+const usd = (x) => {
+  const a = Math.abs(x);
+  if (a >= 1e12) return `$${(x / 1e12).toFixed(1)}T`;
+  if (a >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `$${(x / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `$${(x / 1e3).toFixed(0)}K`;
+  return `$${x.toFixed(0)}`;
+};
+
+/* A regex that stops matching must fail as a failed check, not as a
+   TypeError on null. This harness died outright at "exposure (\d+)%" once
+   the fix line was reworded — one throw, and every assertion after it went
+   unrun. */
+const grab = (name, id, re) => {
+  const m = text(id).match(re);
+  if (!m) { check(name, false, `no match for ${re} in ${JSON.stringify(text(id))}`); return null; }
+  return m[1];
+};
 const mult = (x) => `${x.toFixed(2)}×`;
 
 const band = () => [...d.querySelectorAll("#band .v")].map((e) => e.textContent);
@@ -140,7 +164,25 @@ async function checkRun(label, knobs) {
   return run;
 }
 
+/* The README has warned about this for weeks: "with no server on 8765 every
+   fetch fails and the output is noise, so check the server is up before
+   believing a red run." It cost an hour anyway — eight checks failed with a
+   hero reading "—", which looks exactly like a rendering regression and is
+   not one. A warning in a README is not a check. This is. */
+async function requireServer() {
+  try {
+    const res = await fetch(ORIGIN + "/api/break?asset=NVDA&leverage=5&gamma=0.2&breaches=3");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+  } catch (e) {
+    console.log(`\nNO SERVER at ${ORIGIN} — ${e.message}`);
+    console.log("Every check below would fail for that reason alone. Start it with:");
+    console.log("  FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server");
+    process.exit(2);
+  }
+}
+
 (async () => {
+  await requireServer();
   await sleep(1000);
   await settled();
 
@@ -163,9 +205,20 @@ async function checkRun(label, knobs) {
   await settled();
 
   console.log("\nBOUNDARY — the marker must sit on its own data");
+  /* Deliberately NOT the default band. At 1.05 the caption's old fallback
+     (`b.band || 1.05`) printed the right answer by accident, so every check
+     here passed while the caption was in fact ignoring the payload. A knob
+     is only tested at a setting where being wrong looks different. */
+  const BBAND = 1.3;
+  const bandSlider = d.getElementById("breachBand");
+  bandSlider.value = String(BBAND);
+  bandSlider.dispatchEvent(new window.Event("input"));
+  await sleep(200);
   d.getElementById("boundaryBtn").dispatchEvent(new window.Event("click"));
   await sleep(12000);
-  const b = await api(`/api/boundary?leverage=5&gamma=0.2`);
+  const b = await api(`/api/boundary?leverage=5&gamma=0.2&band=${BBAND}`);
+  check("the boundary ran at the band the slider asked for",
+        b.params.band === BBAND, `payload ${b.params.band} vs slider ${BBAND}`);
   const bsvg = svg("boundary");
   const vb = (bsvg.getAttribute("viewBox") || "0 0 0 0").split(" ").map(Number);
   const W = vb[2], H = vb[3];
@@ -192,11 +245,31 @@ async function checkRun(label, knobs) {
   /* The cell under the dot is the amplification a judge reads off this map.
      It has to be in the same ballpark as the number the cascade just showed,
      or the two screens contradict each other. (Not equal: the map uses a
-     fixed −5% single-name reference shock, the run uses the critical one.) */
-  const cellAmp = b.grid[row][col];
-  check("amplification under the marker agrees with the run",
-        Math.abs(cellAmp - m.amplification) < 0.25,
-        `map cell ${cellAmp.toFixed(2)}× vs run ${m.amplification.toFixed(2)}×`);
+     fixed −5% single-name reference shock, the run uses the critical one.)
+
+     This is a fair comparison only when the run's critical shock is close to
+     the map's reference shock, and that is a property of the settings, not an
+     invariant. It was asserted unconditionally and passed for one reason: at
+     the default band the critical shock is 5.27% and the reference is 5%, so
+     the two land inside the tolerance by coincidence. At band 1.30 the
+     critical shock is 27.33% while the map still sweeps at 5% — nothing
+     cascades there, so the cell reads 1.00 against a run at 1.43 and the
+     check reports a contradiction that is really two different questions.
+     Matching the bands does not fix it; that was my first attempt and it
+     failed the same way. State the precondition, check it, then compare. */
+  const refPct = Math.abs(b.reference_shock * 100);
+  const cmpMap = await api(`/api/boundary?leverage=5&gamma=0.2&band=1.05`);
+  const cmpRun = await api(`/api/break?leverage=5&gamma=0.2&band=1.05&breaches=3`);
+  const nearest = (axis, v) => axis.reduce(
+    (bi, x, i) => (Math.abs(x - v) < Math.abs(axis[bi] - v) ? i : bi), 0);
+  check("the comparison run's critical shock is near the map's reference shock",
+        Math.abs(cmpRun.pct - refPct) < 1.0,
+        `critical ${cmpRun.pct.toFixed(2)}% vs reference ${refPct.toFixed(2)}%`);
+  const cellAmp = cmpMap.grid[nearest(cmpMap.leverage_axis, cmpMap.here.leverage)]
+                            [nearest(cmpMap.overlap_axis, cmpMap.here.overlap)];
+  check("amplification under the marker agrees with the run, where the shocks match",
+        Math.abs(cellAmp - cmpRun.metrics.amplification) < 0.25,
+        `map cell ${cellAmp.toFixed(2)}× vs run ${cmpRun.metrics.amplification.toFixed(2)}× at band 1.05`);
 
   const btext = texts("boundary");
   check("callout repeats here.leverage and here.overlap",
@@ -214,11 +287,28 @@ async function checkRun(label, knobs) {
   check("reference shock label is the payload's",
         caption.includes(`${b.reference_kind} ${Math.abs(b.reference_shock * 100).toFixed(0)}% reference`),
         caption || "missing");
-  const bband = b.params && b.params.band != null ? b.params.band : 1.05;
+  /* No fallback here. This line used to read `b.params.band != null ? ... :
+     1.05`, mirroring the drawing code's own `b.band || 1.05` — so when the
+     bare `band` field was removed from /api/boundary and the caption silently
+     started printing 1.05 at every setting, the check computed 1.05 too and
+     passed. A test that applies the same default as the code it checks cannot
+     see that default being wrong. The payload must state the band. */
+  check("the boundary payload states its breach band",
+        b.params && typeof b.params.band === "number",
+        JSON.stringify(b.params));
   check("caption's breach band is the payload's",
-        caption.includes(`band ${bband.toFixed(2)}`), caption);
+        caption.includes(`band ${b.params.band.toFixed(2)}`), caption);
   eq("solver readout cell count", text("solverStats").replace(/\s+/g, " ").trim().split(" ")[1],
      String(b.rows * b.cols));
+
+  /* Back to the default before anything downstream. The boundary section
+     deliberately runs at 1.30; every section after it fetches its expected
+     payload at the default, so leaving the slider moved makes the UI right
+     and the expectations wrong — ten failures that all say "the band works". */
+  bandSlider.value = "1.05";
+  bandSlider.dispatchEvent(new window.Event("input"));
+  d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  await settled();
 
   console.log("\nSPLIT VIEW — footers and fix line against /api/stabilise");
   d.getElementById("defendBtn").dispatchEvent(new window.Event("click"));
@@ -232,10 +322,14 @@ async function checkRun(label, knobs) {
   check("stamp and hero quote the same shock", text("shockStamp").includes(run.pct.toFixed(2)),
         `${text("shockStamp")} vs hero ${run.pct.toFixed(2)}%`);
   const fx = s.fix;
-  eq("fix reduction", text("fixLine").match(/exposure (\d+)%/)[1], (fx.reduction * 100).toFixed(0));
-  eq("fix cost", text("fixLine").match(/costs ([\d.]+%)/)[1], pct2(fx.cost));
+  eq("fix sell amount", grab("fix sell amount", "fixLine", /sell (\$[\d.]+[KMBT]?) of/), usd(fx.sell_usd));
+  eq("fix reduction", grab("fix reduction", "fixLine", /· ([\d.]+%) of a/), pctSig(fx.reduction));
+  eq("fix position size", grab("fix position size", "fixLine", /of a (\$[\d.]+[KMBT]?) position/),
+     usd(fx.position_usd));
+  eq("fix cost", grab("fix cost", "fixLine", /costs ([\d.]+%)/), pctSig(fx.cost));
   check("fix names the payload's fund and asset",
-        text("fixLine").startsWith(`${fx.fund}: cut ${fx.asset} `), text("fixLine"));
+        text("fixLine").startsWith(`${fx.fund}: sell `) && text("fixLine").includes(` of ${fx.asset} `),
+        text("fixLine"));
 
   console.log("\nPRECISION — stated decimals, and no borrowed rounding");
   const bd = band();   // still the demo cascade's; the split has its own footers
@@ -245,11 +339,23 @@ async function checkRun(label, knobs) {
   check("losses are 1dp everywhere", /^\d+\.\d%$/.test(bd[0]) && /^\d+\.\d%$/.test(bd[1]) &&
         /^\d+\.\d% loss/.test(text("footBefore")) && /^\d+\.\d% loss/.test(text("footAfter")),
         `${bd[0]} ${bd[1]} / ${text("footBefore")} / ${text("footAfter")}`);
-  check("cost is 2dp", /costs \d+\.\d{2}% of gross assets/.test(text("fixLine")), text("fixLine"));
-  /* The reduction grid is 1/20ths, so 0dp is exact rather than rounded —
-     if that ever stops being true, 0dp starts hiding a real difference. */
-  check("reduction lands exactly on the solver's 5% grid",
-        Math.abs(fx.reduction * 20 - Math.round(fx.reduction * 20)) < 1e-9, String(fx.reduction));
+  /* Not 2dp any more. The cost is significant-figure formatted because the
+     answer moved three orders of magnitude when the stabiliser started
+     bisecting, and a fixed 2dp rendered it as "0.00%". What matters is that
+     it carries real digits, not how many places it uses to do it. */
+  check("cost renders with real precision, never as zero",
+        /costs 0?\.?\d*[1-9]\d*% of gross assets/.test(text("fixLine")), text("fixLine"));
+  /* This used to assert the reduction lands exactly on the solver's 5% grid,
+     with a comment warning that "if that ever stops being true, 0dp starts
+     hiding a real difference". It stopped being true, the 0dp did hide a real
+     difference — beat 4 read "cut NVDA exposure 0%" — and this check sat
+     behind a crash two hundred lines up, so nobody heard it. Inverted: the
+     answer must NOT be quantised to the grid, because resolving the depth is
+     the whole point of the search. */
+  check("the reduction is not pinned to the solver's 5% grid",
+        Math.abs(fx.reduction * 20 - Math.round(fx.reduction * 20)) > 1e-9, String(fx.reduction));
+  check("the rendered reduction keeps enough precision to be non-zero",
+        /· 0?\.?\d*[1-9]\d*% of a/.test(text("fixLine")), text("fixLine"));
 
   console.log("\nUNITS — fractions vs percentages");
   check("pct is a percentage, metrics are fractions",

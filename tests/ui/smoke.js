@@ -65,7 +65,25 @@ const check = (name, cond, detail = "") => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const svg = (id) => d.getElementById(id);
 
+/* The README has warned about this for weeks: "with no server on 8765 every
+   fetch fails and the output is noise, so check the server is up before
+   believing a red run." It cost an hour anyway — eight checks failed with a
+   hero reading "—", which looks exactly like a rendering regression and is
+   not one. A warning in a README is not a check. This is. */
+async function requireServer() {
+  try {
+    const res = await fetch(ORIGIN + "/api/break?asset=NVDA&leverage=5&gamma=0.2&breaches=3");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+  } catch (e) {
+    console.log(`\nNO SERVER at ${ORIGIN} — ${e.message}`);
+    console.log("Every check below would fail for that reason alone. Start it with:");
+    console.log("  FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server");
+    process.exit(2);
+  }
+}
+
 (async () => {
+  await requireServer();
   await sleep(6000);
 
   console.log("BEAT 1+2 — attack and cascade");
@@ -462,6 +480,27 @@ const svg = (id) => d.getElementById(id);
   await sleep(4000);
   check("and on an honest clock it still lands on the real answer",
         /^\d+\.\d{2}%$/.test(text("heroVal")), text("heroVal"));
+
+  console.log("\nCOUNT-UP — the hero when the frame clock never advances");
+  // Clamping the interpolation turned "-85.66%" into "0.00%" — the same
+  // failure, quieter, and a screenshot of 0.00% in 48px type looks like a
+  // finished render rather than a stalled one. Reproduce the stall exactly:
+  // hand the animation one frame, then freeze. A throttled background tab
+  // does this, and so does headless Chrome under a virtual-time budget.
+  // Freeze the CLOCK, not the frames. Withholding the callbacks themselves
+  // also stalls the rAF-await inside attack(), so the run never reaches the
+  // count-up at all and the test measures a deadlock it caused. Frames keep
+  // arriving here; every one of them just reports the same timestamp, which
+  // is exactly what headless Chrome does under a virtual-time budget and what
+  // a throttled tab does to a judge's laptop.
+  const liveRaf = window.requestAnimationFrame;
+  window.requestAnimationFrame = (cb) => liveRaf(() => cb(1000));
+  click("attackBtn");
+  await sleep(2500);
+  window.requestAnimationFrame = liveRaf;
+  check("the number still arrives when the animation cannot run",
+        /^\d+\.\d{2}%$/.test(text("heroVal")) && text("heroVal") !== "0.00%",
+        text("heroVal"));
 
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
