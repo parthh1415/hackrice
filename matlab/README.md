@@ -1,7 +1,9 @@
 # Running the MATLAB solve
 
-Five minutes, no install. Do this once and the app stops saying "Python"
-and starts saying "MATLAB".
+Five minutes, no install. Until you do this, the solver strip reads
+**"SciPy-free Python · exhaustive position scan"** with a note saying MATLAB is
+not available on this machine. Do this once and it reads
+**"MATLAB · patternsearch"** instead.
 
 ## 1. Get MATLAB (free, you already have it)
 
@@ -34,6 +36,8 @@ The app writes a spec every time you press **Stabilise**:
 
     data/cache/solve_spec.json
 
+(written by `write_spec` on every `/api/stabilise` call — `api.py:294`.)
+
 In MATLAB Online:
 
 1. Upload `matlab/cascade.m`, `matlab/stabilise.m`, and `data/cache/solve_spec.json`
@@ -44,7 +48,10 @@ In MATLAB Online:
 3. Download `solve_out.json` back into `data/cache/`
 
 Reload the app. The engine readout now reads **MATLAB · patternsearch** with
-the real evaluation count, exit flag and wall time.
+the real evaluation count, exit flag and wall time. (`engine_label` and
+`solve_stabilisation` in `src/firebreak/matlab_bridge.py` pick between three
+paths — `matlab`, `matlab-offline`, `python` — and the UI is told which one
+actually ran.)
 
 ## 4. Why it can't lie
 

@@ -119,10 +119,64 @@ def _try_offline(spec):
             # result next to it is.
             return None
 
+        if not _usable(result, spec):
+            return None
         result["engine"] = "matlab-offline"
         return result
     except Exception:
         return None
+
+
+def _usable(result, spec):
+    """Does this dict describe a fix that exists and actually works?
+
+    patternsearch can exit on an infeasible point and still hand back an `x`,
+    and the offline path is a file a human downloaded and dropped in a folder.
+    So nothing that comes back here is trusted until it has been re-simulated
+    in the Python engine that everything else in this project is measured by.
+
+    Untrusted in particular: a negative index, which numpy would quietly read
+    as "the last fund"; a reduction outside [0, 1], which turns the position
+    negative rather than smaller; and NaN, which propagates into every number
+    in the response and leaves the frontend with a body it cannot parse.
+    """
+    import numpy as np
+
+    from .engine import run_cascade
+    from .search import at_least_n_breaches
+    from .stabilise import Fix
+
+    try:
+        holdings = np.array(spec["holdings"], dtype=float)
+        n_funds, n_assets = holdings.shape
+        fund, asset = int(result["fund_index"]), int(result["asset_index"])
+        reduction, cost = float(result["reduction"]), float(result["cost"])
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+    if not (0 <= fund < n_funds and 0 <= asset < n_assets):
+        return False
+    if not (np.isfinite(reduction) and 0.0 <= reduction <= 1.0):
+        return False
+    if not (np.isfinite(cost) and cost >= 0.0):
+        return False
+
+    try:
+        after = run_cascade(
+            holdings=Fix(fund, asset, reduction, cost).apply(holdings),
+            shock=np.array(spec["shock"], dtype=float),
+            leverage=np.array(spec["leverage"], dtype=float),
+            max_leverage=np.array(spec["max_leverage"], dtype=float),
+            target_leverage=np.array(spec["target_leverage"], dtype=float),
+            gamma=float(spec["gamma"]),
+            adv=np.array(spec["adv"], dtype=float),
+        )
+    except Exception:
+        return False
+
+    # a "firebreak" the fire walks straight through is worse than admitting
+    # we haven't got one
+    return not at_least_n_breaches(int(spec["breaches"]))(after)
 
 
 def _python_fallback(spec):
@@ -159,9 +213,14 @@ def _python_fallback(spec):
 
 
 def solve_stabilisation(spec):
+    """First path that produces a fix which survives re-simulation.
+
+    A MATLAB result that doesn't hold up isn't an error to surface — it's a
+    reason to try the next path, which is the whole point of having three.
+    """
     for attempt in (_try_engine, _try_offline, _python_fallback):
         result = attempt(spec)
-        if result is not None:
+        if result is not None and _usable(result, spec):
             return result
     return None
 

@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-12-firebreak-design.md`
 
+> **Status 2026-09-12.** This is the plan as written, kept for the record. Tasks 1–6 and 8 shipped;
+> **Task 7 (Scene 4 — CSV import / bystander view) was cut** and is a Devpost "what's next" bullet.
+> Code blocks below are the plan's *intended* implementations and several drifted during the build —
+> where that happened it is flagged inline. The spec is the document that has been reconciled against
+> the running code; read that for current behaviour.
+
 ## Global Constraints
 
 - **Deadline:** Sunday 2026-09-13 09:00 CDT. Tasks 1–6 are the minimum winning version; 7–8 are cut first.
@@ -18,8 +24,12 @@
 - **Every number shown in the UI must be derivable.** No fake precision. Amplification is reported to 2 dp, losses to 1 dp.
 - **Real vs declared, stated everywhere:** holdings are real 13F; leverage `λ`, impact `γ`, and ADV are declared parameters and must be visible and adjustable in the UI.
 - **Amplification is `final_loss / shock_loss`, both equity-denominated.** It must equal exactly 1.0 when `γ = 0`. Never redefine this.
-- **Server port 8765**, bound to `127.0.0.1` only.
-- **Colour semantics are fixed:** teal `#55B4C2` structural, green `#3FC29B` stable, amber `#D8A33F` stressed, ember `#E4705C` breached.
+- **Server port 8765**, bound to `127.0.0.1` only. *(As built — `server.py:13`, `server.py:62`.)*
+- ~~**Colour semantics are fixed:** teal `#55B4C2` structural, green `#3FC29B` stable, amber `#D8A33F` stressed, ember `#E4705C` breached.~~
+  **Superseded.** The frontend was restyled as a monochrome risk terminal. State escalates by
+  luminance first, hue last: healthy dim white, stressed full white, breached red `#FF383B` — the
+  only chromatic value in the product. None of the four hexes above appear anywhere in `web/`. See
+  the header comment in `web/style.css`.
 
 ---
 
@@ -158,6 +168,10 @@ git add -A && git commit -m "stabilisation search — cheapest position cut that
 - Produces: `load_dataset(refresh=False) -> dict` with keys `funds: list[str]`, `tickers: list[str]`, `holdings: list[list[float]]`, `adv: list[float]`, `quarter: str`, `source: str`. Cached to `data/cache/dataset.json`.
 
 - [ ] **Step 1: Write `data/universe.json`**
+
+> **Drifted.** As shipped, `Two Sigma` maps to a *list* of CIKs (`[1179392, 1478735]` — Investments
+> and Advisers file separately and both books are summed), and the CUSIP map is many-to-one so all
+> four Alphabet share classes fold into GOOGL. See the real `data/universe.json`.
 
 ```json
 {
@@ -396,6 +410,12 @@ git add -A && git commit -m "scene 1 — find the shock, watch it spread"
 
 - [ ] **Step 1: Add the boundary sweep endpoint**
 
+> **Drifted.** As shipped the grid is **16×16**, not 18×18, and `blends` runs `-1.0 → +1.0` rather
+> than `0.0 → 1.0` — a negative blend sharpens each fund away from the system mean, so the crowding
+> axis sweeps both ways from the books as filed and measured overlap spans 0.00 to 1.00. The response
+> also carries `leverage_axis`, `overlap_axis`, `reference_shock`, `reference_kind` and `here`, and
+> `blend_toward_mean`/`mean_overlap` are module-level helpers in `api.py`.
+
 ```python
 def _boundary(params):
     """Sweep leverage against an overlap-scaling factor and record, for each
@@ -490,7 +510,13 @@ git add -A && git commit -m "scene 4 — you never sold, you still lost"
 
 - [ ] **Step 1: Assumptions panel** listing: quarter, source, λ, γ, ADV values, and the four "what we do not claim" bullets from spec §9. Always reachable, never hidden.
 
-- [ ] **Step 2: Cache the golden path.** Add `?demo=1` which loads `data/cache/golden.json` instead of computing. Generate it once the full loop works:
+- [ ] **Step 2: Cache the golden path.** Add `?demo=1` which loads a recording instead of computing.
+
+> **Drifted (for the better).** Recordings live in `data/cache/golden/` as one file per scenario,
+> named by a canonical knob slug (`break__breaches=3__gamma=0.2__leverage=5.json`), written by
+> `scripts/record_golden.py` and matched by `api.slug()`. `?demo=1` on any request asks for them,
+> `FIREBREAK_DEMO=1` switches the whole process over, and an exploding engine falls back to them.
+> There is no single `golden.json`. The command below is the plan's original one-file version:
 
 ```bash
 PYTHONPATH=src python3 -c "
@@ -510,7 +536,8 @@ git add -A && git commit -m "assumptions panel + cached demo path so wifi can't 
 
 ## Self-Review
 
-**Spec coverage.** §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → already green, 25 passing. Gap found and closed: the spec's §5 Scene 2 needed a server-side sweep, added as `/api/boundary` in Task 5.
+**Spec coverage.** *(Written before the build; Task 7 was subsequently cut.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **97 tests** as of
+2026-09-12, all passing.)* Gap found and closed: the spec's §5 Scene 2 needed a server-side sweep, added as `/api/boundary` in Task 5.
 
 **Placeholders.** None — every code step contains runnable code. Task 4's steps describe rendering rather than pasting 200 lines of SVG, which is a judgement call: the interface (`renderNetwork`, `playCascade`, the trajectory shape) is specified exactly, and the drawing is genuinely free-form.
 
