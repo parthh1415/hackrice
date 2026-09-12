@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boundary · Firebreak</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">FIREBREAK</a>
+  <div class="nav-links">
+    <a href="index.html"    data-page="portfolio">Portfolio</a>
+    <a href="analysis.html" data-page="analysis">Analysis</a>
+    <a href="cascade.html"  data-page="cascade">Cascade</a>
+    <a href="defend.html"   data-page="defend">Defend</a>
+    <a href="verify.html"   data-page="verify">Verify</a>
+    <a href="boundary.html" data-page="boundary">Boundary</a>
+    <a href="assumptions.html" data-page="assumptions">Model</a>
+  </div>
+  <div class="nav-right">
+    <span class="status" id="navPf">BOOK <b>—</b></span>
+    <span class="status" id="navLimit">LIMIT <b>—</b></span>
+    <span class="status" id="navShock">SHOCK <b>—</b></span>
+    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
+    <span class="status num" id="navClock">--:--:--</span>
+  </div>
+</nav>
+<main>
+  <div class="wrap page stack gap-8">
+    <div class="stack gap-3">
+      <span class="eyebrow">Step 6 — Systemic boundary</span>
+      <h1 id="title">Where the system stops absorbing</h1>
+      <p class="lede" id="lede">—</p>
+      <p class="lede" id="clampNote" hidden style="color:var(--warn)"></p>
+    </div>
+
+    <div class="grid-2" id="board" style="grid-template-columns:minmax(0,522px) minmax(0,1fr);align-items:start" hidden>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" id="mapTitle">Amplification</span>
+          <span class="num" id="readout" style="margin-left:auto;color:var(--text)"></span>
+        </div>
+        <div class="card-body tight">
+          <svg class="map" id="map" viewBox="0 0 520 500" tabindex="0" role="img"
+               aria-label="Heatmap of amplification by leverage and crowding. The table beside it lists the same values."></svg>
+        </div>
+        <div class="card-footer small muted" id="legend"></div>
+        <div class="card-footer small muted" id="mapDesc"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Row by row</span>
+          <span class="sub" id="rowSub"></span></div>
+        <div class="card-body tight">
+          <table>
+            <thead><tr><th>Leverage</th><th class="r" id="atCol">At</th>
+              <th class="r">Row min</th><th class="r">Row max</th><th class="r">Over 1.5×</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- five tiles do not fit in a 522px column: they wrapped to two rows and
+         left one tile alone on the second. The strip spans both cards. -->
+    <div class="card" id="statCard" hidden><div class="stats" id="stats"></div></div>
+
+    <div class="card" id="caveatCard" hidden>
+      <div class="card-header"><span class="card-title">What this does not say</span>
+        <span class="card-desc" id="caveatDesc"></span></div>
+      <div class="card-body tight"><table><tbody id="caveats"></tbody></table></div>
+    </div>
+  </div>
+</main>
+<script src="shared.js"></script>
+<script>
+paintNav("boundary");
+paintStatusBar("boundary", [["↑↓←→", "cell"]]);
+(async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
+
+/* One hue, lightness carrying the reading. Amber is already this product's
+   word for contagion — the analysis page's "from contagion" column is
+   var(--warn) — so the map borrows it rather than inventing a scale. Red and
+   green stay reserved: red is a breach, green is within limit, and a heatmap
+   that spent them here would make every other page's colours ambiguous. */
+const BANDS = [
+  [1.0005, "#111111", "1.00 absorbed"],
+  [1.5,    "#603800", "1.00–1.49"],
+  [2.0,    "#a46400", "1.50–1.99"],
+  [2.5,    "#ea9602", "2.00–2.49"],
+  [1e9,    "#ffd083", "≥ 2.50"],
+];
+const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
+
+(async () => {
+  const P = (FB.state.result && FB.state.result.params) || {};
+  const q = `leverage=${P.leverage ?? 5}&gamma=${P.gamma ?? 0.2}&band=${P.band ?? 1.05}`;
+  let b;
+  try { b = await api(`/api/boundary?${q}`); }
+  catch (e) {
+    document.getElementById("title").textContent = "The engine did not answer";
+    document.getElementById("lede").textContent = e.message;
+    return;
+  }
+
+  const grid = b.grid, levs = b.leverage_axis, ovs = b.overlap_axis, here = b.here;
+  const asset = b.reference_asset, nFunds = (b.funds || []).length;
+  const shockPct = Math.abs(b.reference_shock) * 100;
+
+  const clamp = (b.params.clamped || [])[0];
+  if (clamp) {
+    const n = document.getElementById("clampNote");
+    n.hidden = false;
+    n.textContent = `You asked for ${clamp.name} ${clamp.given}; this build accepts ` +
+      `${clamp.reason.replace("outside ", "")}, so it used ${clamp.used}.`;
+  }
+
+  /* The column nearest the real book's crowding. Every reading on this page is
+     taken down that column, because it is the only one that is about the books
+     as they are actually filed. */
+  const jN = ovs.reduce((best, o, j) => Math.abs(o - here.overlap) < Math.abs(ovs[best] - here.overlap) ? j : best, 0);
+  const iN = levs.reduce((best, l, i) => Math.abs(l - here.leverage) < Math.abs(levs[best] - here.leverage) ? i : best, 0);
+  const col = grid.map((r) => r[jN]);
+  const iC = col.findIndex((a) => a >= 1.5);
+
+  document.getElementById("lede").textContent = iC < 0
+    ? `At your crowding (${here.overlap.toFixed(2)}) the ${nFunds} modelled books absorb a ` +
+      `${shockPct.toFixed(2)}% ${asset} shock at every leverage tested, to ${levs[levs.length - 1].toFixed(1)}×. ` +
+      `Every cell is a full cascade at that fixed shock.`
+    : `At your crowding (${here.overlap.toFixed(2)}) the ${nFunds} modelled books absorb a ` +
+      `${shockPct.toFixed(2)}% ${asset} shock up to ${levs[Math.max(0, iC - 1)].toFixed(2)}× leverage ` +
+      `and amplify it ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×. Every cell is a full cascade ` +
+      `at that fixed shock; the white line is where amplification crosses 1.5×.`;
+
+  document.getElementById("mapTitle").textContent = `${asset} −${shockPct.toFixed(2)}%, everywhere`;
+  document.getElementById("mapDesc").textContent =
+    `${grid.length * ovs.length} full cascades · γ ${b.params.gamma} · band ${b.params.band}× · nothing is interpolated`;
+
+  /* ── the map ─────────────────────────────────────────────────────────── */
+  const ns = "http://www.w3.org/2000/svg";
+  const mk = (t, a) => { const e = document.createElementNS(ns, t);
+    for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const svg = document.getElementById("map");
+  const X0 = 56, Y1 = 458, PITCH = 28;
+  const cx = (j) => X0 + PITCH * j;
+  /* rows are drawn bottom-up so leverage rises up the page and the failing
+     region is the top of the map, which is the direction people already read
+     "worse" in. */
+  const cy = (i) => Y1 - PITCH * (i + 1);
+
+  grid.forEach((row, i) => row.forEach((a, j) => {
+    svg.appendChild(mk("rect", { x: cx(j) + 0.5, y: cy(i) + 0.5, width: PITCH - 1, height: PITCH - 1,
+      fill: fillFor(a), "data-i": i, "data-j": j }));
+  }));
+
+  /* The 1.5x line, drawn on cell EDGES. Marching squares would interpolate a
+     curve between cells the model never computed, on a page whose own header
+     says nothing is interpolated. */
+  const over = (i, j) => grid[i][j] >= 1.5;
+  for (let i = 0; i < grid.length; i++)
+    for (let j = 0; j < ovs.length - 1; j++)
+      if (over(i, j) !== over(i, j + 1))
+        svg.appendChild(mk("line", { x1: cx(j + 1), x2: cx(j + 1), y1: cy(i), y2: cy(i) + PITCH,
+          stroke: "#d9d9d9", "stroke-width": 1.5, "stroke-linecap": "square", "pointer-events": "none" }));
+  for (let i = 0; i < grid.length - 1; i++)
+    for (let j = 0; j < ovs.length; j++)
+      if (over(i, j) !== over(i + 1, j))
+        svg.appendChild(mk("line", { y1: cy(i), y2: cy(i), x1: cx(j), x2: cx(j) + PITCH,
+          stroke: "#d9d9d9", "stroke-width": 1.5, "stroke-linecap": "square", "pointer-events": "none" }));
+
+  levs.forEach((l, i) => {
+    const t = mk("text", { x: X0 - 5, y: cy(i) + 17.5, "text-anchor": "end",
+      "font-family": "var(--mono)", "font-size": 10, fill: "#808080" });
+    t.textContent = l.toFixed(1); svg.appendChild(t);
+  });
+  const yt = mk("text", { x: 14, y: 234, "text-anchor": "middle", transform: "rotate(-90 14 234)",
+    "font-family": "var(--mono)", "font-size": 10, fill: "#808080", "letter-spacing": ".08em" });
+  yt.textContent = "GROSS LEVERAGE λ →"; svg.appendChild(yt);
+
+  ovs.forEach((o, j) => {
+    svg.appendChild(mk("line", { x1: cx(j) + 14, x2: cx(j) + 14, y1: Y1, y2: Y1 + 4, stroke: "#262626" }));
+    /* every column would collide at this pitch — 0.99 beside 1.00 */
+    if (![0, 2, 4, 6, 8, 10, 12, ovs.length - 1].includes(j)) return;
+    const t = mk("text", { x: cx(j) + 14, y: 474, "text-anchor": "middle",
+      "font-family": "var(--mono)", "font-size": 10, fill: "#808080" });
+    t.textContent = o.toFixed(2); svg.appendChild(t);
+  });
+  const xt = mk("text", { x: 280, y: 492, "text-anchor": "middle",
+    "font-family": "var(--mono)", "font-size": 10, fill: "#808080", "letter-spacing": ".08em" });
+  xt.textContent = "MEAN PAIRWISE OVERLAP (COSINE) →"; svg.appendChild(xt);
+
+  /* "You are here", placed by VALUE. The real book is not a grid point —
+     5.0x sits between two rows and 0.7117 between two columns — so snapping it
+     to the nearest cell would put the marker somewhere the book is not. */
+  const between = (axis, v, at) => {
+    let k = 0;
+    while (k < axis.length - 2 && axis[k + 1] < v) k++;
+    const span = axis[k + 1] - axis[k];
+    const t = span ? Math.max(0, Math.min(1, (v - axis[k]) / span)) : 0;
+    return at(k, t);
+  };
+  const xm = between(ovs, here.overlap, (k, t) => cx(k) + 14 + PITCH * t);
+  const ym = between(levs, here.leverage, (k, t) => cy(k) + 14 - PITCH * t);
+  [[X0, ym, xm - 9, ym], [xm + 9, ym, X0 + PITCH * ovs.length, ym],
+   [xm, 10, xm, ym - 9], [xm, ym + 9, xm, Y1]].forEach(([x1, y1, x2, y2]) =>
+    svg.appendChild(mk("line", { x1, y1, x2, y2, stroke: "var(--accent)", "stroke-opacity": .4,
+      "stroke-width": 1, "stroke-dasharray": "2 3", "pointer-events": "none" })));
+  svg.appendChild(mk("circle", { cx: xm, cy: ym, r: 5.5, fill: "none",
+    stroke: "var(--accent)", "stroke-width": 1.5 }));
+  svg.appendChild(mk("circle", { cx: xm, cy: ym, r: 1.5, fill: "var(--accent)" }));
+  /* The label sits over its own dashed crosshair and over the brightest cells
+     on the map, so it needs a ground of its own. getBBox() is the obvious way
+     to size that ground and it returns zeros here — the text has not been laid
+     out at the moment it is appended — so the plate is measured from the
+     string instead: 10px of this mono face is 6px per character, which is
+     exact for a monospace and needs no layout to be true. */
+  const text = `YOU · λ ${here.leverage.toFixed(1)} · overlap ${here.overlap.toFixed(2)}`;
+  const w = text.length * 6, right = xm > 300;
+  const lx = right ? xm - 10 - w : xm + 10;
+  svg.appendChild(mk("rect", { x: lx - 4, y: ym - 19, width: w + 8, height: 15,
+    fill: "#000", "fill-opacity": .88, "pointer-events": "none" }));
+  const lbl = mk("text", { x: lx, y: ym - 8, "font-family": "var(--mono)", "font-size": 10,
+    fill: "var(--accent)", "pointer-events": "none" });
+  lbl.textContent = text;
+  svg.appendChild(lbl);
+
+  /* ── hover and keyboard ──────────────────────────────────────────────── */
+  const hl = mk("rect", { fill: "none", stroke: "#d9d9d9", "stroke-width": 1,
+    "pointer-events": "none", width: PITCH - 1, height: PITCH - 1, x: -99, y: -99 });
+  svg.appendChild(hl);
+  const readout = document.getElementById("readout");
+  const say = (i, j, tail) => {
+    readout.textContent = `λ ${levs[i].toFixed(2)}× · overlap ${ovs[j].toFixed(2)} · ` +
+      `${grid[i][j].toFixed(2)}×${tail || ""}`;
+    hl.setAttribute("x", cx(j) + 0.5); hl.setAttribute("y", cy(i) + 0.5);
+  };
+  let ci = iN, cj = jN;
+  const home = () => say(iN, jN, " · nearest cell to you");
+  home();
+  svg.addEventListener("mousemove", (ev) => {
+    const t = ev.target;
+    if (!t || t.dataset.i === undefined) return;
+    ci = +t.dataset.i; cj = +t.dataset.j; say(ci, cj);
+  });
+  svg.addEventListener("mouseleave", () => { ci = iN; cj = jN; home(); });
+  bindKeys("boundary", {
+    ArrowUp: () => { ci = Math.min(levs.length - 1, ci + 1); say(ci, cj); },
+    ArrowDown: () => { ci = Math.max(0, ci - 1); say(ci, cj); },
+    ArrowLeft: () => { cj = Math.max(0, cj - 1); say(ci, cj); },
+    ArrowRight: () => { cj = Math.min(ovs.length - 1, cj + 1); say(ci, cj); },
+  });
+
+  /* ── the tiles ───────────────────────────────────────────────────────── */
+  const flat = grid.flat();
+  const worst = Math.max(...flat);
+  let wi = 0, wj = 0;
+  grid.forEach((r, i) => r.forEach((a, j) => { if (a === worst) { wi = i; wj = j; } }));
+  const step = levs[1] - levs[0];
+  const headroom = iC < 0 ? null : levs[iC] - here.leverage;
+
+  document.getElementById("stats").innerHTML = [
+    ["Amplification here", `${grid[iN][jN].toFixed(2)}×`,
+      `nearest cell: λ ${levs[iN].toFixed(2)}× · overlap ${ovs[jN].toFixed(2)}`,
+      grid[iN][jN] >= 1.5 ? "bad" : ""],
+    ["Critical leverage at your crowding",
+      iC < 0 ? `none to ${levs[levs.length - 1].toFixed(1)}×` : `${levs[iC].toFixed(2)}×`,
+      iC < 0 ? "the shock is absorbed at every row tested"
+             : `${col[Math.max(0, iC - 1)].toFixed(2)}× at ${levs[Math.max(0, iC - 1)].toFixed(2)}× → ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×`, ""],
+    ["Leverage headroom",
+      headroom === null ? "—" : `${headroom >= 0 ? "+" : "−"}${Math.abs(headroom).toFixed(2)}×`,
+      `resolved to one grid step, ${step.toFixed(2)}×`,
+      headroom !== null && headroom <= 0 ? "bad" : ""],
+    ["Cells over 1.5×", `${flat.filter((a) => a >= 1.5).length} / ${flat.length}`,
+      "of leverage–crowding pairs amplify the shock", ""],
+    ["Worst cell", `${worst.toFixed(2)}×`,
+      `λ ${levs[wi].toFixed(1)}× · overlap ${ovs[wj].toFixed(2)}`, ""],
+  ].map(([k, v, s, cls]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div>`
+  ).join("");
+
+  document.getElementById("legend").innerHTML =
+    BANDS.map(([, fill, label]) =>
+      `<span><i class="swatch" style="background:${fill}"></i>${label}</span>`).join("") +
+    `<span><i class="swatch" style="background:#d9d9d9;height:2px"></i>1.5× line</span>` +
+    `<span><i class="swatch" style="background:none;border:1.5px solid var(--accent);border-radius:50%"></i>you</span>`;
+
+  /* ── the table, which is the key ─────────────────────────────────────── */
+  document.getElementById("atCol").textContent = `At ${ovs[jN].toFixed(2)}`;
+  document.getElementById("rowSub").textContent =
+    `at your crowding, ${ovs[jN].toFixed(2)} is the nearest computed column`;
+  document.getElementById("rows").innerHTML = levs.map((l, i) => i).reverse().map((i) => {
+    const r = grid[i];
+    return `<tr${i === iN ? ' style="background:var(--accent-bg)"' : ""}>
+      <td${i === iN ? ' class="acc"' : ""}><b>${levs[i].toFixed(2)}×</b></td>
+      <td class="r num"><i class="cellsw" style="background:${fillFor(r[jN])}"></i>${r[jN].toFixed(2)}×</td>
+      <td class="r num muted">${Math.min(...r).toFixed(2)}×</td>
+      <td class="r num muted">${Math.max(...r).toFixed(2)}×</td>
+      <td class="r num muted">${r.filter((a) => a >= 1.5).length} / ${r.length}</td></tr>`;
+  }).join("");
+
+  /* ── what it does not say ────────────────────────────────────────────── */
+  document.getElementById("caveatDesc").textContent =
+    `${asset} −${shockPct.toFixed(2)}% · λ ${levs[0].toFixed(1)}–${levs[levs.length - 1].toFixed(1)}× · ` +
+    `γ ${b.params.gamma} · band ${b.params.band}×`;
+  document.getElementById("caveats").innerHTML = [
+    ["Not a measurement",
+     `Every cell is this model's own cascade under one declared leverage, one price-impact rule and ` +
+     `one breach band. Nothing here was observed. Change the band and the line moves — where the ` +
+     `boundary sits is a consequence of the band we chose, not a property of the market.`],
+    ["One shock, one name",
+     `The reference shock is ${asset} −${shockPct.toFixed(2)}%, held fixed in every cell. It is not ` +
+     `your break point from Analysis and it is not a market-wide fall. A market-wide shock flattens ` +
+     `this map — true and useless — which is why it was not used.`],
+    ["Not monotone in crowding",
+     `Sharpening the books concentrates them into the shocked name, so amplification can fall as ` +
+     `crowding rises, and cells below the line that sit above it are real, not artefacts. Read the ` +
+     `transition in leverage, where it is sharp` +
+     (iC > 0 ? `: ${col[iC - 1].toFixed(2)}× at ${levs[iC - 1].toFixed(2)}× and ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}× at your crowding.` : ".")],
+    ["The columns are not evenly spaced",
+     `The horizontal axis blends the ${nFunds} real books toward each other or apart in ` +
+     `${ovs.length} equal steps of that blend, not of overlap. The labels say where each column ` +
+     `actually sits.`],
+    ["Resolution is one cell",
+     `The leverage axis steps by ${step.toFixed(2)}× and nothing between two rows was computed. ` +
+     `"Critical leverage ${iC < 0 ? "none" : levs[Math.max(0, iC)].toFixed(2) + "×"}" means the first ` +
+     `computed row over 1.5×, not a threshold to two decimals — and your ${here.leverage.toFixed(1)}× ` +
+     `is not a row, so the marker sits between two.`],
+  ].map(([k, v]) => `<tr><td style="width:180px"><b>${k}</b></td><td class="t small">${v}</td></tr>`).join("");
+
+  document.getElementById("board").hidden = false;
+  document.getElementById("statCard").hidden = false;
+  document.getElementById("caveatCard").hidden = false;
+})();
+</script>
+</body>
+</html>

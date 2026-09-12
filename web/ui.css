@@ -295,6 +295,13 @@ input:focus,select:focus{border-color:var(--accent)}
    and the log have to be read together, so the picture yields: it letterboxes
    inside the viewBox rather than growing past what the window can show. */
 svg.viz{width:100%;max-height:min(470px,48vh);display:block;background:var(--panel)}
+/* A near-square map, which svg.viz's height cap would letterbox to 384px on an
+   800px screen and throw away half the cells. */
+svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--panel)}
+/* legend key, and the same swatch at table size — the table column IS the map's
+   key, so the two have to be the same object at two scales. */
+.swatch{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:5px}
+.cellsw{display:inline-block;width:7px;height:7px;vertical-align:0;margin-right:6px}
 
 /* value flash on update — OT's .flash-white, tuned to the accent */
 .flash{animation:flash 450ms ease-out}

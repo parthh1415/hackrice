@@ -393,6 +393,18 @@ MUTATIONS = {
         "web/cascade.html",
         '<a class="btn btn-primary" href="defend.html">Find the cheapest single-position fix</a>',
         '<a class="btn btn-primary" href="verify.html">Find the cheapest single-position fix</a>'),
+    "boundary_contour_interpolated": (
+        "web/boundary.html",
+        "      if (over(i, j) !== over(i, j + 1))",
+        "      if (grid[i][j] >= 1.4)"),
+    "boundary_marker_snaps_to_a_cell": (
+        "web/boundary.html",
+        "  const xm = between(ovs, here.overlap, (k, t) => cx(k) + 14 + PITCH * t);\n  const ym = between(levs, here.leverage, (k, t) => cy(k) + 14 - PITCH * t);",
+        "  const xm = cx(jN) + 14;\n  const ym = cy(iN) + 14;"),
+    "boundary_colour_ignores_the_value": (
+        "web/boundary.html",
+        "const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];",
+        "const fillFor = (a) => BANDS[2][1];"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -440,7 +452,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
                 "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order",
                 "solver_card_hardcodes_its_scenario",
-                "cta_points_at_the_wrong_page"}
+                "cta_points_at_the_wrong_page", "boundary_contour_interpolated",
+                "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value"}
 
 
 def build(name):

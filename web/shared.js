@@ -63,6 +63,11 @@ function paintNav(current) {
   const has = { portfolio: true, analysis: !!s.result, cascade: !!s.result,
                 defend: !!(s.result && s.result.fix),
                 verify: !!(s.result && s.result.validation),
+                /* Neither of these needs an analysis: the boundary sweeps the
+                   whole configuration space and the model page describes it.
+                   They read the session's knobs when there are some and fall
+                   back to the engine's declared defaults when there are not. */
+                boundary: true,
                 assumptions: true };
   document.querySelectorAll(".nav-links a").forEach((a) => {
     const page = a.dataset.page;
@@ -219,7 +224,8 @@ const FB_PAGES = [
   ["3", "cascade.html", "cascade"],
   ["4", "defend.html", "defend"],
   ["5", "verify.html", "verify"],
-  ["6", "assumptions.html", "assumptions"],
+  ["6", "boundary.html", "boundary"],
+  ["7", "assumptions.html", "assumptions"],
 ];
 
 /* Remembered so a repaint after the data lands keeps this page's own keys. */
@@ -234,7 +240,7 @@ function paintStatusBar(current, extra) {
      of holdings. */
   const bar = document.querySelector(".statusbar") || document.createElement("div");
   bar.className = "statusbar";
-  const keys = [["1–6", "page"], ["?", "keys"]].concat(extra || []);
+  const keys = [[`1–${FB_PAGES.length}`, "page"], ["?", "keys"]].concat(extra || []);
   bar.innerHTML = keys
     .map(([k, label]) => `<span class="k"><kbd>${k}</kbd>${label}</span>`)
     .join('<span class="sep">│</span>') +

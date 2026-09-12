@@ -677,6 +677,12 @@ def _boundary(params):
         "params": {k: v for k, v in knobs.items() if k != "breaches"},
         "reference_shock": _REF_SHOCK,
         "reference_kind": "single-name",
+        # WHICH name, and how many books. The sweep sets shock[0], so the
+        # shocked asset was tickers[0] and a caller had to know that and fetch
+        # /api/dataset to find out — a page drawing this map would otherwise
+        # be inferring the subject of its own headline.
+        "reference_asset": data["tickers"][0],
+        "funds": list(data["funds"]),
         "here": {
             # guarded, not raw: this came off the query string, so a URL could
             # put the "you are here" dot outside the plot it's drawn on

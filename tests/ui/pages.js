@@ -667,6 +667,91 @@ function visibleText(d) {
           navLimit.includes("90"), navLimit);
   }
 
+  /* ---- 6. boundary ---- */
+  {
+    /* /api/boundary computed this grid for the whole life of the project and
+       nothing fetched it. Every number on the page has to come off the payload
+       rather than out of the drawing. */
+    const bd = await load("boundary.html", store);
+    check("boundary.html runs clean", bd.errors.length === 0, bd.errors.join("; "));
+    const drew = await until(() => bd.d.querySelectorAll("#map rect[data-i]").length > 0);
+    check("the map draws", drew, bd.navigated.join(",") || "");
+
+    const kp = full.params;
+    const b = await (await fetch(ORIGIN +
+      `/api/boundary?leverage=${kp.leverage}&gamma=${kp.gamma}&band=${kp.band}`)).json();
+    const cells = [...bd.d.querySelectorAll("#map rect[data-i]")];
+    eq("one cell per computed pair", cells.length, b.grid.length * b.overlap_axis.length);
+
+    /* the fill IS the reading, so it has to follow the value */
+    const band = (a) => a < 1.0005 ? "#111111" : a < 1.5 ? "#603800"
+      : a < 2.0 ? "#a46400" : a < 2.5 ? "#ea9602" : "#ffd083";
+    const wrong = cells.filter((c) =>
+      c.getAttribute("fill") !== band(b.grid[+c.dataset.i][+c.dataset.j]));
+    check("every cell's colour matches its own amplification", wrong.length === 0,
+          wrong.slice(0, 3).map((c) => `[${c.dataset.i},${c.dataset.j}] ${c.getAttribute("fill")}`).join(" "));
+
+    /* the readings down the column the real books actually sit in */
+    const jN = b.overlap_axis.reduce((k, o, j) =>
+      Math.abs(o - b.here.overlap) < Math.abs(b.overlap_axis[k] - b.here.overlap) ? j : k, 0);
+    const col = b.grid.map((r) => r[jN]);
+    const iC = col.findIndex((a) => a >= 1.5);
+    const tile = (k) => [...bd.d.querySelectorAll(".stat")]
+      .find((n) => n.querySelector(".k").textContent.toLowerCase().includes(k))
+      .querySelector(".v").textContent.trim();
+
+    eq("critical leverage is the first computed row over 1.5x",
+       tile("critical leverage"), `${b.leverage_axis[iC].toFixed(2)}×`);
+    eq("the headroom is that row minus where the books actually are",
+       tile("headroom"),
+       `${b.leverage_axis[iC] - b.here.leverage >= 0 ? "+" : "−"}${Math.abs(b.leverage_axis[iC] - b.here.leverage).toFixed(2)}×`);
+    eq("the count of amplifying cells is counted, not asserted",
+       tile("cells over"),
+       `${b.grid.flat().filter((a) => a >= 1.5).length} / ${b.grid.flat().length}`);
+    eq("the worst cell is the maximum of the grid",
+       tile("worst"), `${Math.max(...b.grid.flat()).toFixed(2)}×`);
+
+    /* the table is the map's key, so its column has to be the map's column */
+    const rows = [...bd.d.querySelectorAll("#rows tr")].map((tr) =>
+      [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+    eq("a table row per leverage", rows.length, b.leverage_axis.length);
+    const top = rows[0];
+    check("the table runs top-down from the highest leverage",
+          top[0].startsWith(b.leverage_axis[b.leverage_axis.length - 1].toFixed(2)), top[0]);
+    check("and its middle column is the same column the tiles read",
+          top[1].includes(b.grid[b.grid.length - 1][jN].toFixed(2)), top[1]);
+
+    /* the contour is drawn on cell edges — an interpolated curve would be a
+       line through points the model never computed, on a page whose own
+       header says nothing is interpolated. */
+    let crossings = 0;
+    for (let i = 0; i < b.grid.length; i++)
+      for (let j = 0; j < b.overlap_axis.length - 1; j++)
+        if ((b.grid[i][j] >= 1.5) !== (b.grid[i][j + 1] >= 1.5)) crossings++;
+    for (let i = 0; i < b.grid.length - 1; i++)
+      for (let j = 0; j < b.overlap_axis.length; j++)
+        if ((b.grid[i][j] >= 1.5) !== (b.grid[i + 1][j] >= 1.5)) crossings++;
+    const contour = [...bd.d.querySelectorAll("#map line")]
+      .filter((l) => (l.getAttribute("stroke") || "") === "#d9d9d9");
+    eq("one contour segment per edge the threshold actually crosses",
+       contour.length, crossings);
+
+    /* the marker is placed by value: 5.0x is not a row and 0.7117 is not a
+       column, so snapping it to the nearest cell would put it where the books
+       are not. */
+    const marker = [...bd.d.querySelectorAll("#map circle")]
+      .find((c) => c.getAttribute("r") === "5.5");
+    check("the map marks where the books actually are", !!marker);
+    if (marker) {
+      const my = Number(marker.getAttribute("cy"));
+      const rowY = (i) => 458 - 28 * (i + 1) + 14;
+      const iLo = b.leverage_axis.findIndex((l) => l > b.here.leverage) - 1;
+      check("and places it between two rows rather than on one",
+            my < rowY(iLo) && my > rowY(iLo + 1),
+            `marker at ${my}, rows at ${rowY(iLo)} and ${rowY(iLo + 1)}`);
+    }
+  }
+
   /* ---- the demo path, walked rather than deep-linked ---- */
   {
     /* Every check above seeds sessionStorage and loads one page. This is the

@@ -28,7 +28,18 @@ STYLESHEETS = sorted(WEB.glob("*.css"))
 
 
 def _css():
-    return "\n".join(p.read_text() for p in STYLESHEETS)
+    """Every stylesheet, plus any <style> block a page carries itself.
+
+    Without the second half this reported a page-local rule as a missing one,
+    which is a false positive in the direction that trains you to ignore it.
+    A page-local block is still worth noticing — three of them in this project
+    belonged in ui.css and moved there — but that is a judgement, not a
+    failure.
+    """
+    css = [p.read_text() for p in STYLESHEETS]
+    for page in PAGES:
+        css += re.findall(r"<style[^>]*>(.*?)</style>", page.read_text(), re.S)
+    return "\n".join(css)
 
 
 def _markup():
