@@ -50,11 +50,21 @@ makes this a 2-hour job instead of a 4-hour one.
 
 ### 2.3 The crowding is real — the cascade does not need to be rigged
 
-Five funds, latest `13F-HR` (filed 2026-08-13/14), weights within a 10-name mega-cap universe:
+Five firms, latest `13F-HR`, weights within a 10-name mega-cap universe. Note that five firms is
+**six registrants**: Two Sigma Investments (CIK 1179392) and Two Sigma Advisers (CIK 1478735) file
+separate 13Fs for the same quarter and both books belong to the same firm, so they are summed into
+one row. See `data/universe.json`, where a manager may map to a list of CIKs.
+
+Total book across the five: **$40.9B** (Citadel 14.6, Two Sigma 9.17, Millennium 7.69, Renaissance
+6.33, Point72 3.09).
 
 > **Corrected 2026-09-12** after external review. The first version of this table
 > mapped only Alphabet Class C and used superseded filings. Both are fixed below;
 > GOOGL weights move by up to 9×. See §2.4.
+>
+> **Re-verified 2026-09-12** against `data/cache/dataset.json` after the Two Sigma
+> second-registrant fix. Every cell below matches the live matrix to 1 dp, and the
+> overlap figures below match to 4 dp.
 
 | Fund | NVDA | AAPL | MSFT | AMZN | GOOGL | META | AVGO | AMD | TSLA | JPM |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -68,9 +78,9 @@ Period of report **2026-06-30** for all five (checked, not assumed).
 
 Pairwise overlap (cosine similarity of weight vectors):
 
-- **Mean off-diagonal: 0.712**
-- **Max: 0.92** (Citadel ↔ Two Sigma — near-identical books)
-- **Min: 0.44** (Millennium ↔ Point72)
+- **Mean off-diagonal: 0.712** (0.7117 live)
+- **Max: 0.92** (Citadel ↔ Two Sigma — near-identical books; 0.9187 live)
+- **Min: 0.44** (Millennium ↔ Point72; 0.4433 live)
 
 ### 2.4 What external review caught
 
@@ -81,7 +91,14 @@ Three reviewers went at this independently. Findings that changed the code:
    Damage was non-monotone — AMZN −53% gave 5 breaches, −54% gave 4, on the real
    books at default sliders, in 30 of 32 (leverage, γ) combinations. Fixed:
    insolvency is +inf leverage, full liquidation, marked defaulted. Breach count
-   now monotone across 12,200 runs.
+   is now monotone **at the demo settings** — checked in
+   `tests/test_breach_count_is_monotone_on_the_real_books` over all 10 assets ×
+   0–60% at λ=5.0, γ=0.2. It is **not** monotone everywhere: at λ=3.0, γ=0.5,
+   MSFT −32% gives 5 breaches and −33% gives 4, with no fund insolvent. That
+   residual is a VWAP/round-ordering effect, not the insolvency hole. Do not
+   claim global monotonicity. (Final *loss* is separately non-monotone by
+   design — see `test_loss_is_not_claimed_to_be_monotone`, ~6% of steps across
+   12,200 runs, worst dip 16%.)
 2. **Sales settled at book prices**, so a fund liquidating its whole book took
    *zero* fire-sale loss — the funds causing the crash were the only ones immune.
    Now settles at round VWAP.
@@ -92,7 +109,11 @@ Three reviewers went at this independently. Findings that changed the code:
    ignored and we read superseded data. Now follows Form 13F FAQ 58.
 5. **The search asserted zero shock was safe** rather than testing it, so a
    configuration already in breach bisected to −0.0003% and reported it.
-6. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
+6. **One firm, two registrants.** Two Sigma files under two CIKs for the same
+   quarter and we were reading only Investments (1179392), dropping Advisers
+   (1478735). A manager now maps to a list of CIKs and the books are summed.
+   The total book moved $38.4B → $40.9B.
+7. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
    — portfolios are fixed until default, then fully liquidated — and uses
    exponential impact. **Greenwood, Landier & Thesmar (2015), JFE 115(3) 471–485**
    is the actual ancestor of our deleveraging rule; their `b_n = d/e` gives
@@ -179,7 +200,7 @@ V_i = Σ_j Q[j,i]                          total dollar selling in asset i
 
 ```
 apply shock
-repeat (max 12 rounds):
+repeat (max 24 rounds):
     recompute A, E, L for all funds
     breached = { j : L_j > L_j^max }
     if breached empty: break
@@ -217,11 +238,11 @@ Verified behaviour with the corrected definition: `γ=0 → amp = 1.000000`; dis
 smoothly 1.00 → 1.75 as leverage goes 2 → 7. These are credible magnitudes; the original definition
 produced 11.8×, which was an artefact.
 
-### 3.8 Failure conditions (user-selectable)
+### 3.8 Failure conditions
 
-- ≥ K funds breach leverage (default K=3)
-- system loss > X% (default 15%)
-- amplification > A× (default 1.5, corrected-definition scale)
+- ≥ K funds breach leverage (default K=3) — **built and user-selectable** (2/3/4/5 in the UI)
+- system loss > X% (default 15%) — `system_loss_above` exists in `search.py`, **not exposed in the UI**
+- amplification > A× (default 1.5) — `amplification_above` exists in `search.py`, **not exposed in the UI**
 
 ### 3.9 Reverse stress search
 
@@ -229,9 +250,12 @@ MVP is **single-asset**: for each asset `k`, find the smallest `|s_k|` crossing 
 report the minimum across `k`.
 
 **Important:** the damage function is a *step function* (breaches are discrete). It is monotone
-non-decreasing in `|s_k|` — a larger price decline can never cause fewer breaches — so a threshold
-exists and is well-defined. But pure bisection can stall on flat regions. **Use a coarse grid scan
-(e.g. 0% → 25% in 1% steps) to bracket, then bisect inside the bracket.** Robust and still fast.
+non-decreasing in `|s_k|` at the demo settings — a larger price decline essentially never causes
+fewer breaches — so a threshold exists in practice. It is **not** provably monotone at every
+(λ, γ); see §2.4. `find_weakest_shock` therefore reports the smallest crossing the grid scan
+found, not a proven threshold. But pure bisection can stall on flat regions. **Use a coarse grid scan
+to bracket, then bisect inside the bracket.** Robust and still fast. As built
+(`search.py`): 1% steps out to `_MAX_DROP = 0.60`, then bisection to a tolerance of 5e-4.
 
 Stretch: sparse multi-asset search minimising `‖s‖₁` (encourages few assets shocked) or `‖s‖₂`.
 
@@ -259,19 +283,27 @@ treats it as a black box. This is what lets the optimiser and the UI be built in
 
 **Interface contract** (freeze this early, hand it to everyone):
 
+As shipped (`CascadeResult.as_dict()` in `engine.py`, merged with the dataset by `api.py`):
+
 ```json
 {
-  "assets": ["NVDA", "..."],
+  "tickers": ["NVDA", "..."],
   "funds": ["Citadel", "..."],
-  "rounds": [
-    {"t": 0, "prices": [...], "leverage": [...], "breached": [...],
-     "sold": [[...]], "equity": [...]}
+  "fund_indices": [0, 1, 2, 3, 4],
+  "holdings": [[...]],
+  "trajectory": [
+    {"t": 0, "prices": [...], "leverage": [...], "breached": [1, 4],
+     "insolvent": [false, ...], "defaulted": [], "sold": [[...]], "equity": [...]}
   ],
-  "metrics": {"direct_loss": 0.0, "final_loss": 0.0, "amplification": 0.0,
-              "breaches": 0, "rounds": 0},
-  "assumptions": {"lambda": [...], "gamma": [...], "adv": [...], "quarter": "2026Q2"}
+  "metrics": {"shock_loss": 0.0, "final_loss": 0.0, "amplification": 0.0},
+  "rounds": 0, "breached": [0, 1, 3, 4], "defaulted": [], "converged": true,
+  "adv": [...], "adv_units": "USD", "quarter": "06-30-2026", "source": "SEC 13F-HR"
 }
 ```
+
+Two things to hold onto: `breached` is a list of fund **indices**, not a boolean mask — both at the
+top level (anyone who breached at any round) and per trajectory frame (who breached in that round).
+And `rounds`/`breached` live at the top level, not inside `metrics`.
 
 ---
 
@@ -282,7 +314,10 @@ treats it as a black box. This is what lets the optimiser and the UI be built in
 | **1 — Break** | "What's the smallest thing that kills us?" | `NVDA −X%`, then the cascade animates round by round |
 | **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here" |
 | **3 — Firebreak** | "What's the cheapest way out?" | a priced instruction; same shock re-run; before/after |
-| **4 — Exposure** | "What does this mean for me?" | user's CSV portfolio as an unlevered node that cannot breach but still loses |
+| **4 — Exposure** *(planned, not built)* | "What does this mean for me?" | user's CSV portfolio as an unlevered node that cannot breach but still loses |
+
+**Scene 4 was cut and is not in the shipped app** — there is no CSV import and no bystander node;
+it is a Devpost "what's next" bullet. The rest of this paragraph is the original rationale.
 
 Scene 4 is a **thin fourth act** — ~15% of build, ~20s of video. It is the first thing cut if the
 core loop is late. A retail holder is not a participant in the cascade (no leverage, no forced selling,
@@ -317,7 +352,9 @@ Devpost "what's next" bullets.
 
 ## 7. Sanity tests (must pass before the demo)
 
-All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`.
+All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
+(`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite
+is **97 tests**, all passing.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
 2. **Zero impact (γ=0)** → at most one round of breaches **and `amp == 1.0` exactly**.
@@ -327,8 +364,9 @@ All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`.
    exposed fund may breach. Note it can still run 2 rounds from *self*-impact — that is correct
    and is not cross-fund contagion.
 5. **High overlap + high leverage** → multi-round cascade, amplification > 1.
-6. **Monotonicity** → final loss and breach count non-decreasing in shock size. Verified over
-   31 shock levels; run as a property test over random inputs too.
+6. **Monotonicity** → breach count non-decreasing in shock size. Verified over 31 shock levels on
+   the toy fixture and over 10 assets × 61 shock levels on the real books at λ=5.0, γ=0.2. Final
+   *loss* is deliberately **not** asserted monotone — see §2.4.
 7. **Three regimes reachable** → sweeping λ from 2 to 7 must produce stable (0 breaches),
    contained (1 round) and cascade (≥2 rounds) outcomes. Guards against the demo looking rigged
    in either direction.

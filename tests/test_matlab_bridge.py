@@ -57,3 +57,49 @@ def test_a_stale_matlab_result_is_ignored(tmp_path):
     other = dict(SPEC, gamma=0.9)
 
     assert _spec_fingerprint(SPEC) != _spec_fingerprint(other)
+
+
+def test_a_stale_result_file_is_not_served_as_a_matched_solve(tmp_path, monkeypatch):
+    """The spec file is rewritten on every request, so comparing it to the
+    request it was just written from can only ever agree with itself.
+
+    Real sequence: solve for scenario A in MATLAB Online, download the result,
+    then move a slider. api._stabilise writes the spec for scenario B and asks
+    the bridge, which used to hand back A's answer under scenario B's label.
+    """
+    from firebreak import matlab_bridge as mb
+
+    spec_path, out_path = tmp_path / "solve_spec.json", tmp_path / "solve_out.json"
+    monkeypatch.setattr(mb, "SPEC_PATH", spec_path)
+    monkeypatch.setattr(mb, "OUT_PATH", out_path)
+
+    a = dict(SPEC, gamma=0.9, shock=[-0.40, 0.0, 0.0])
+    mb.write_spec(a, spec_path)
+    out_path.write_text(json.dumps(
+        {"fund_index": 1, "asset_index": 2, "reduction": 0.35, "cost": 0.07,
+         "solver": "patternsearch", "exit_flag": 1}
+    ))
+
+    assert mb._try_offline(a) is not None, "the result it was actually solved for"
+
+    # slider moves; api writes the new spec before asking the bridge
+    mb.write_spec(SPEC, spec_path)
+
+    assert mb._try_offline(SPEC) is None
+
+
+def test_re_asking_the_same_question_keeps_the_offline_answer(tmp_path, monkeypatch):
+    """Rejecting stale results is worthless if it also rejects fresh ones."""
+    from firebreak import matlab_bridge as mb
+
+    spec_path, out_path = tmp_path / "solve_spec.json", tmp_path / "solve_out.json"
+    monkeypatch.setattr(mb, "SPEC_PATH", spec_path)
+    monkeypatch.setattr(mb, "OUT_PATH", out_path)
+
+    mb.write_spec(SPEC, spec_path)
+    out_path.write_text(json.dumps({"fund_index": 0, "asset_index": 1,
+                                    "reduction": 0.2, "cost": 0.03, "solver": "patternsearch"}))
+
+    for _ in range(3):
+        mb.write_spec(SPEC, spec_path)  # every request rewrites it
+        assert mb._try_offline(SPEC) is not None

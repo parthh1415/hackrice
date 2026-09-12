@@ -48,11 +48,20 @@ def _spec_fingerprint(spec):
 
 
 def write_spec(spec, path=SPEC_PATH):
+    """Write the spec MATLAB reads, and leave the file alone if it hasn't moved.
+
+    Not rewriting an identical spec is load-bearing, not tidiness: the file's
+    mtime is how `_try_offline` knows when the question last changed, and
+    every request rewrites this file. Touch it each time and an offline result
+    solved thirty seconds ago looks older than the question it answers.
+    """
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(spec)
     payload["fingerprint"] = _spec_fingerprint(spec)
-    path.write_text(json.dumps(payload, indent=2, default=float))
+    text = json.dumps(payload, indent=2, default=float)
+    if not (path.exists() and path.read_text() == text):
+        path.write_text(text)
     return path
 
 
@@ -89,10 +98,27 @@ def _try_offline(spec):
     if not OUT_PATH.exists() or not SPEC_PATH.exists():
         return None
     try:
+        fingerprint = _spec_fingerprint(spec)
         written = json.loads(SPEC_PATH.read_text())
-        if written.get("fingerprint") != _spec_fingerprint(spec):
+        if written.get("fingerprint") != fingerprint:
             return None
+
         result = json.loads(OUT_PATH.read_text())
+        if not isinstance(result, dict):
+            return None
+        # stabilise.m doesn't echo the fingerprint today, but if a future one
+        # does, it's the exact answer and it wins over the mtime heuristic.
+        stamped = result.get("fingerprint")
+        if stamped is not None and stamped != fingerprint:
+            return None
+        if stamped is None and OUT_PATH.stat().st_mtime < SPEC_PATH.stat().st_mtime:
+            # the spec file was rewritten after this result was produced, which
+            # only happens when the question changed. comparing the spec file
+            # to the request is no help — we wrote it from that request a
+            # moment ago, so it agrees with itself no matter how stale the
+            # result next to it is.
+            return None
+
         result["engine"] = "matlab-offline"
         return result
     except Exception:

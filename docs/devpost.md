@@ -47,10 +47,14 @@ system. The direct hit costs it 0.75% of equity. It ends the cascade down **5.70
 a half times its own exposure, without ever breaching and without selling a share. All of that damage
 arrives through other people's liquidations of names it happens to share with them.
 
-**The boundary.** A phase diagram over gross leverage (1.5 to 8.0) and portfolio crowding (books as
-filed, blended toward the system mean), with amplification computed in every cell rather than sketched.
-It puts a marker on the configuration you are currently looking at: leverage 5.0, overlap 0.712. The
-question it answers is whether you got unlucky or whether you are standing somewhere structurally bad.
+**The boundary.** A 16×16 phase diagram over gross leverage (1.5 to 8.0) and portfolio crowding
+(sweeping both ways from the books as filed — sharpened away from the system mean on one side,
+blended toward it on the other, so measured overlap runs 0.00 to 1.00), with amplification computed
+in every cell rather than sketched.
+It puts a marker on the configuration you are currently looking at: leverage 5.0, overlap 0.712 —
+just past the leverage boundary, where amplification jumps from 1.00 to 1.86 between λ≈4.5 and
+λ≈5.0. The question it answers is whether you got unlucky or whether you are standing somewhere
+structurally bad.
 
 **The defence.** The inverse search. It scans every (fund, asset) position for the smallest reduction
 that survives the *same* shock. The answer at these settings: **Millennium cuts its GOOGL position by
@@ -59,24 +63,28 @@ the outcome goes from four breaches over three rounds to two breaches in one rou
 down to **6.49%**, amplification 1.87 down to **1.33**.
 
 The intervention is in GOOGL, not NVDA. That is the point of solving it rather than guessing. GOOGL is
-the second most crowded name in the system and Millennium is the fund whose breach starts the chain.
-Cutting the shocked name would have been the obvious move and it is not the cheapest one.
+the third most crowded name in the system, behind NVDA and AMZN, and Millennium is one of the two
+funds whose round-one breach starts the chain. Cutting the shocked name would have been the obvious
+move and it is not the cheapest one.
 
 ## How we built it
 
 **Data.** SEC EDGAR, directly. `data.sec.gov/submissions/CIK{cik}.json` for the filing index, then the
-information table XML out of the archive. Five managers, latest 13F-HR as of 2026-08-13/14, period of
-report 2026-06-30 for all five. Cached to disk so we are not pulling 8 MB of XML in front of a judge.
+information table XML out of the archive. Five firms across six registrants — Two Sigma files under
+two CIKs and both books are summed — period of report 2026-06-30 for all of them, $40.9B of gross
+long equity in the ten names. Cached to disk so we are not pulling 8 MB of XML in front of a judge.
 
 **Engine.** Pure Python and numpy, about 250 lines. Prices normalised to 1.0 at t0 so a 13F dollar
 column works as a units vector. A fund over its leverage limit sells `q = A(L − L_target)/L`, pro rata
 across its book, proceeds to debt. Selling pressure `V_i` moves price by `−γ_i · V_i / ADV_i`. Repeat
-until nobody breaches or twelve rounds elapse. The engine is a pure function `(H, λ, γ, s) → trajectory`,
+until nobody breaches or twenty-four rounds elapse. The engine is a pure function `(H, λ, γ, s) → trajectory`,
 which is what let the optimiser, the API and the frontend be built at the same time.
 
-**Search.** Breach count is monotone in shock size, so the critical drop is a genuine threshold. We
-find it with a 1% grid scan to bracket, then bisection inside the bracket. Pure bisection stalls on the
-flat regions between breaches.
+**Search.** Breach count is monotone in shock size at the demo settings, so the critical drop behaves
+like a genuine threshold. We find it with a 1% grid scan to bracket, then bisection inside the
+bracket. Pure bisection stalls on the flat regions between breaches. The search reports the smallest
+crossing the grid found rather than advertising a proven threshold, because monotonicity is checked,
+not proved — see below.
 
 **Stabilisation.** This is the piece that goes to MATLAB. The objective is a simulation, so there is no
 gradient; the feasible set is defined by whether a cascade crosses a discrete condition, so the
@@ -103,8 +111,13 @@ combinations we swept.
 That is not a cosmetic bug. The entire product claim is "the smallest shock that breaks the system",
 and if damage is not monotone then there is no smallest shock, there are several disconnected bands and
 the phrase means nothing. The search was bisecting over a function that had no threshold to find. Fix:
-insolvency is `+inf` leverage, full liquidation, marked defaulted. Breach count is now monotone across
-12,200 runs, which we check rather than assert.
+insolvency is `+inf` leverage, full liquidation, marked defaulted. Breach count is now monotone at the
+demo settings, which we check rather than assert: a test sweeps all ten assets from 0% to 60% at
+λ=5.0 and γ=0.2 and asserts the count never falls. We do not claim it globally — there is still a
+residual case at λ=3.0, γ=0.5 where MSFT −32% gives five breaches and −33% gives four, with nobody
+insolvent, which is a VWAP and round-ordering effect rather than the original hole. Final *loss* is
+non-monotone by design and we have a test that asserts it stays that way, so nobody later "fixes" it
+into a claim we cannot support.
 
 **Fire-sellers were immune to their own fire sale.** Sales were settling at book prices. A fund
 liquidating 100% of its book therefore took exactly zero fire-sale loss, while every bystander ate the
@@ -118,6 +131,12 @@ heterogeneous: 48% of Citadel's Alphabet position missing, 15% of Millennium's, 
 is the nastiest category of data bug, because nothing errors and nothing looks wrong. It just quietly
 renormalises every other column in the weight matrix, per fund, by a different amount. GOOGL weights
 moved by up to 9× when we fixed it, and the CUSIP map is many-to-one now.
+
+**One firm, two registrants.** Two Sigma Investments and Two Sigma Advisers are separate CIKs filing
+separate 13Fs for the same quarter, and our manager map held one CIK per name, so we were reading
+half the firm. Nothing errored — we just had a smaller, differently-weighted Two Sigma book than the
+real one. A manager now maps to a list of CIKs and the holdings are summed. Total book across the
+five went from $38.4B to $40.9B.
 
 **`13F-HR` did not match `13F-HR/A`.** Our "latest filing" filter was an exact string match on form
 type, so a Citadel *restatement* of Q2 2026 was skipped and we spent a while reading superseded data as
@@ -141,7 +160,7 @@ exponential impact. The actual ancestor is Greenwood, Landier & Thesmar (2015), 
 `b_n = d/e` gives `q = (λ−1)·loss`, identical to ours. Caccioli is cited for overlapping-portfolio
 contagion and the critical-leverage boundary, which is what it is actually about.
 
-Five of these seven came out of handing the project to independent reviewers who had no stake in it
+Five of these eight came out of handing the project to independent reviewers who had no stake in it
 being right.
 
 ## Accomplishments that we're proud of
