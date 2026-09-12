@@ -66,6 +66,18 @@ function clearTimers() {
 }
 const later = (fn, ms) => state.timers.push(setTimeout(fn, ms));
 
+/* Only one animation may own the stage. The cascade and the split each keep
+   their own queue, and neither used to stop when the other started — click
+   Stabilise halfway through a cascade and the cascade kept advancing the
+   round label, the timeline and the metrics band underneath the split view,
+   so the strip at the bottom contradicted the scene above it for four
+   seconds. Every action calls this before it takes the stage. */
+function stopAnimations() {
+  clearTimers();
+  split.timers.forEach(clearTimeout);
+  split.timers = [];
+}
+
 /* ─────────────────────────── deterministic layout ───────────────────────
    Not force-directed. Force layout jitters on every mount and is the
    clearest tell of a student project. Positions are sorted once and frozen,
@@ -357,7 +369,7 @@ function showRound(t, { animate = false } = {}) {
 }
 
 function playCascade() {
-  clearTimers();
+  stopAnimations();
   const run = state.run;
   showRound(0);
   const step = DUR_BREACH + DUR_FLOW + SETTLE_HOLD;
@@ -462,6 +474,7 @@ function showScene(which) {
 async function attack() {
   const btn = $("attackBtn");
   btn.disabled = true;
+  stopAnimations();
   const stop = startElapsed("critical-shock search");
   try {
     const { body, ms } = await api(`/api/break?${params()}`);
@@ -502,6 +515,7 @@ async function attack() {
 async function boundary() {
   const btn = $("boundaryBtn");
   btn.disabled = true;
+  stopAnimations();
   const stop = startElapsed("boundary sweep");
   try {
     const { body, ms } = await api(`/api/boundary?${params()}`);
@@ -524,6 +538,7 @@ async function boundary() {
 async function defend() {
   const btn = $("defendBtn");
   btn.disabled = true;
+  stopAnimations();
   const stop = startElapsed("minimum-cost stabilisation");
   try {
     const { body, ms } = await api(`/api/stabilise?${params()}`);
@@ -605,8 +620,7 @@ function splitFrame(side, svg, t) {
 }
 
 function playSplit() {
-  split.timers.forEach(clearTimeout);
-  split.timers = [];
+  stopAnimations();
   const longest = Math.max(split.before.frames.length, split.after.frames.length);
   const step = DUR_BREACH + DUR_FLOW + SETTLE_HOLD;
 
