@@ -184,6 +184,94 @@ function play() {
   }, 850);
 }
 
+/* ------------------------------------------------- the phase diagram (scene 2) */
+
+/* Leverage up the side, crowding across the bottom, amplification as the fill.
+   The boundary isn't drawn on — it's wherever the cells cross the threshold,
+   which is the whole point. */
+function drawBoundary(svg, b, here) {
+  svg.textContent = "";
+  const W = 520, H = 340, L = 58, R = W - 18, T = 18, B = H - 44;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  const rows = b.rows, cols = b.cols;
+  const cw = (R - L) / cols, chh = (B - T) / rows;
+
+  const band = (a) =>
+    a < 1.05 ? ["var(--stable)", 0.85]
+    : a < 1.3 ? ["var(--stable)", 0.4]
+    : a < 1.8 ? ["var(--stress)", 0.5]
+    : a < 3   ? ["var(--breach)", 0.5]
+    :           ["var(--breach)", 0.9];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const [fill, opacity] = band(b.grid[r][c]);
+      svg.appendChild(el("rect", {
+        x: (L + c * cw).toFixed(2),
+        y: (T + (rows - 1 - r) * chh).toFixed(2),
+        width: (cw + 0.5).toFixed(2), height: (chh + 0.5).toFixed(2),
+        fill, opacity,
+      }));
+    }
+  }
+
+  svg.appendChild(el("rect", {
+    x: L, y: T, width: R - L, height: B - T,
+    fill: "none", stroke: "var(--rule-2)", "stroke-width": 1,
+  }));
+
+  // where the real system sits
+  const lo = b.leverage_axis[0], hi = b.leverage_axis[rows - 1];
+  const ox = b.overlap_axis, omin = ox[0], omax = ox[cols - 1];
+  const mx = L + ((here.overlap - omin) / (omax - omin)) * (R - L);
+  const my = T + ((hi - here.leverage) / (hi - lo)) * (B - T);
+  svg.appendChild(el("circle", { cx: mx, cy: my, r: 6, fill: "none",
+    stroke: "var(--ink)", "stroke-width": 1.8 }));
+  svg.appendChild(el("circle", { cx: mx, cy: my, r: 2, fill: "var(--ink)" }));
+  svg.appendChild(el("text", {
+    x: Math.min(mx + 10, R - 100), y: my - 6, "font-family": "var(--mono)",
+    "font-size": 9, fill: "var(--ink)", "letter-spacing": "0.8",
+  }, "YOU ARE HERE"));
+  svg.appendChild(el("text", {
+    x: Math.min(mx + 10, R - 100), y: my + 6, "font-family": "var(--mono)",
+    "font-size": 8, fill: "var(--muted)",
+  }, `L ${here.leverage.toFixed(1)} · overlap ${here.overlap.toFixed(2)}`));
+
+  const tick = (x, y, t, anchor) => svg.appendChild(el("text", {
+    x, y, "text-anchor": anchor || "middle", "font-family": "var(--mono)",
+    "font-size": 8, fill: "var(--muted)",
+  }, t));
+  tick(L - 6, B + 2, lo.toFixed(1), "end");
+  tick(L - 6, T + 6, hi.toFixed(1), "end");
+  tick(L, B + 13, omin.toFixed(2));
+  tick(R, B + 13, omax.toFixed(2));
+  tick((L + R) / 2, B + 28, "PORTFOLIO OVERLAP  \u2192");
+  const ylab = el("text", {
+    "text-anchor": "middle", "font-family": "var(--mono)",
+    "font-size": 8, fill: "var(--muted)",
+  }, "GROSS LEVERAGE  \u2192");
+  ylab.setAttribute("transform", `translate(16,${(T + B) / 2}) rotate(-90)`);
+  svg.appendChild(ylab);
+}
+
+async function loadBoundary() {
+  const btn = $("boundaryBtn");
+  btn.disabled = true; btn.textContent = "sweeping\u2026";
+  try {
+    const b = await api(`/api/boundary?${params()}`);
+    $("scene2").hidden = false;
+    drawBoundary($("boundary"), b, b.here);
+    $("boundaryNote").textContent =
+      `${b.rows}\u00d7${b.cols} runs of the engine, ${Math.abs(b.reference_shock * 100).toFixed(0)}% ` +
+      `reference shock on ${state.data ? state.data.tickers[0] : "the first name"}, \u03b3 ${b.gamma}`;
+  } catch (err) {
+    $("boundaryNote").textContent = `error: ${err.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = "map the boundary";
+  }
+}
+
 /* ------------------------------------------------------------------ actions */
 
 async function findWeakestShock() {
@@ -309,5 +397,6 @@ async function boot() {
 $("breakBtn").addEventListener("click", findWeakestShock);
 $("stabiliseBtn").addEventListener("click", stabilise);
 $("replayBtn").addEventListener("click", () => state.data && play());
+$("boundaryBtn").addEventListener("click", loadBoundary);
 
 boot();

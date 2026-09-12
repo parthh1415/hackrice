@@ -48,6 +48,7 @@
     </div>
     <button class="primary" id="breakBtn">find weakest shock</button>
     <button id="replayBtn">replay</button>
+    <button id="boundaryBtn">map the boundary</button>
     <button id="stabiliseBtn" disabled>stabilise</button>
   </section>
 
@@ -73,6 +74,31 @@
         <p class="hint">A fund turns red the round it breaches its limit. Watch for one
            that breaches without holding the shocked name at all — that's contagion
            through shared positions, not through the shock.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="scene2" hidden>
+    <div class="scene-head">
+      <span class="scene-n">02</span>
+      <h2>Boundary</h2>
+      <p class="q">bad luck, or is our structure the problem?</p>
+    </div>
+    <div class="grid-2">
+      <div class="net-wrap"><svg id="boundary" role="img"
+           aria-label="Phase diagram: portfolio overlap across the bottom, gross leverage up the side, shaded by amplification, with the real system marked."></svg></div>
+      <div class="panel">
+        <h3>Reading it</h3>
+        <p class="hint" style="margin-top:0">Green is stable — a shock dies out. Red is
+           where forced selling feeds itself. The edge between them is the critical
+           leverage, and it <em>falls as crowding rises</em>: the more alike these books
+           are, the less leverage it takes to tip over.</p>
+        <p class="hint">Nothing about the assets changes across this map. Only the
+           structure does.</p>
+        <p class="hint">Caccioli, Shrestha, Moore &amp; Farmer (<em>J. Banking &amp;
+           Finance</em>, 2014) derive this boundary analytically. This one is computed
+           from filed positions.</p>
+        <p class="hint" id="boundaryNote" style="color:var(--muted)"></p>
       </div>
     </div>
   </section>
