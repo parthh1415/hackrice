@@ -235,7 +235,7 @@ def test_recorder_writes_one_file_per_endpoint_and_says_so():
 def test_recordings_are_stored_with_the_flag_already_flipped():
     import json
 
-    path = api.GOLDEN / "break__breaches=3__gamma=0.2__leverage=5.json"
+    path = api.GOLDEN / "break__band=1.05__breaches=3__gamma=0.2__leverage=5.json"
     payload = json.loads(path.read_text())
 
     assert payload["cached"] is True
@@ -248,7 +248,7 @@ def test_a_recording_says_which_sliders_produced_it():
     """`cached: true` tells you it came off disk, not what it came off disk for."""
     result = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3&demo=1", {})
 
-    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "breaches": 3.0}
+    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "band": 1.05, "breaches": 3.0}
     assert result["cached_exact"] is True
 
 
@@ -319,4 +319,4 @@ def test_a_recording_of_the_asked_for_settings_is_exact():
 
     assert result["cached"] is True
     assert result["cached_exact"] is True
-    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "breaches": 3.0}
+    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "band": 1.05, "breaches": 3.0}

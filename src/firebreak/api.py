@@ -100,12 +100,24 @@ GOLDEN = ROOT / "data" / "cache" / "golden"
 # per endpoint: the knobs it actually reads, each as (default, scale). The
 # scale is the slider's usable span, so nearest-match compares a leverage
 # step against a gamma step fairly instead of letting leverage dominate.
+# (default, slider span) per knob. The span normalises distance so one
+# parameter can't swamp another in the nearest-match search.
+#
+# `band` must be here. It was added to the model later and left out of this
+# table, so demo mode served one recording for every band value and still
+# reported cached_exact — while band is the single most influential parameter
+# there is (1.05 → −5.27%, 1.30 → −27.33%). Its span is 0.5, much tighter than
+# leverage's 6.5, so a tenth of a band counts for a lot more than a tenth of a
+# turn of leverage. That is correct: it moves the answer a lot more.
 KNOBS = {
     "/api/health": {},
     "/api/dataset": {},
-    "/api/break": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0), "breaches": (2.0, 4.0)},
-    "/api/stabilise": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0), "breaches": (2.0, 4.0)},
-    "/api/boundary": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0)},
+    "/api/break": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
+                   "band": (1.05, 0.5), "breaches": (2.0, 4.0)},
+    "/api/stabilise": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
+                       "band": (1.05, 0.5), "breaches": (2.0, 4.0)},
+    "/api/boundary": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
+                      "band": (1.05, 0.5)},
 }
 
 ROUTES = {
@@ -220,13 +232,17 @@ def load_golden(route, params):
 
 # the demo runs at 5 / 0.2 / 3; the rest are where a hand on the slider ends up
 GOLDEN_SPOTS = [
-    {"leverage": 5, "gamma": 0.2, "breaches": 3},
-    {"leverage": 5, "gamma": 0.2, "breaches": 2},
-    {"leverage": 4, "gamma": 0.2, "breaches": 3},
-    {"leverage": 6, "gamma": 0.2, "breaches": 3},
-    {"leverage": 7, "gamma": 0.2, "breaches": 3},
-    {"leverage": 5, "gamma": 0.1, "breaches": 3},
-    {"leverage": 5, "gamma": 0.4, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.05, "breaches": 2},
+    {"leverage": 4, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 6, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 7, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 0.1, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 0.4, "band": 1.05, "breaches": 3},
+    # the band is the knob most worth showing on stage, so record the ends
+    {"leverage": 5, "gamma": 0.2, "band": 1.02, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.15, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.30, "breaches": 3},
 ]
 
 
@@ -235,7 +251,11 @@ def golden_specs():
     for spot in GOLDEN_SPOTS:
         specs.append(("/api/break", spot))
         specs.append(("/api/stabilise", spot))
-        specs.append(("/api/boundary", {"leverage": spot["leverage"], "gamma": spot["gamma"]}))
+        # the boundary grid depends on the band too — dropping it here meant
+        # every band recorded the same sweep and demo mode had no boundary
+        # for the band ends, which are the ones worth showing on stage
+        specs.append(("/api/boundary", {k: spot[k] for k in ("leverage", "gamma", "band")
+                                        if k in spot}))
     return specs
 
 

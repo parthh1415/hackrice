@@ -106,8 +106,9 @@ def _try_offline(spec):
         result = json.loads(OUT_PATH.read_text())
         if not isinstance(result, dict):
             return None
-        # stabilise.m doesn't echo the fingerprint today, but if a future one
-        # does, it's the exact answer and it wins over the mtime heuristic.
+        # stabilise.m echoes the spec fingerprint into its result, so this is
+        # an exact match and it wins over the mtime heuristic. The mtime path
+        # below still covers results produced by an older stabilise.m.
         stamped = result.get("fingerprint")
         if stamped is not None and stamped != fingerprint:
             return None
