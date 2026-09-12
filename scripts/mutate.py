@@ -217,6 +217,14 @@ MUTATIONS = {
         "src/firebreak/api.py",
         "    used = min(max(value, lo), hi)\n    if used != value:",
         "    used = min(max(value, lo), hi)\n    if False:"),
+    "pm_settles_at_the_close": (
+        "src/firebreak/engine.py",
+        "        execution = (before + after) / 2.0  # round VWAP",
+        "        execution = after  # round VWAP"),
+    "pm_deleverages_too_far": (
+        "src/firebreak/engine.py",
+        "            raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j], 0.0, assets[j]))",
+        "            raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j] * 1.1, 0.0, assets[j]))"),
     "pm_hero_pct_inflated": (
         "src/firebreak/search.py",
         "        return abs(self.magnitude) * 100.0",
