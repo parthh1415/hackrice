@@ -1,47 +1,115 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Firebreak</title>
-<style>
-  :root{--ground:#0A1013;--surface:#121A1D;--ink:#E2EAEB;--muted:#7E9297;
-        --rule:#223034;--accent:#55B4C2;--breach:#E4705C;}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--ground);color:var(--ink);
-       font:15px/1.6 "IBM Plex Sans",-apple-system,system-ui,sans-serif}
-  header{padding:2.5rem 2rem 1.25rem;border-bottom:2px solid var(--ink)}
-  h1{font:700 3.2rem/0.95 "IBM Plex Sans Condensed","Arial Narrow",sans-serif;
-     text-transform:uppercase;letter-spacing:-.02em;margin:0 0 .5rem}
-  .sub{color:var(--muted);max-width:52ch;margin:0}
-  main{padding:2rem;max-width:60rem}
-  .status{display:flex;gap:.5rem;align-items:center;margin-top:1rem;
-          font:500 .7rem/1 "IBM Plex Mono",monospace;letter-spacing:.12em;
-          text-transform:uppercase;color:var(--muted)}
-  .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--breach)}
-  .dot.up{background:var(--accent)}
-  .scaffold{border:1px dashed var(--rule);padding:1.5rem;margin-top:1.5rem;
-            color:var(--muted);font:.85rem/1.6 "IBM Plex Mono",monospace}
-</style></head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
 <body>
-<header>
-  <h1>Firebreak</h1>
-  <p class="sub">Reverse stress testing for crowded, leveraged portfolios.
-     Finds the smallest shock that breaks the system — then the cheapest way to stop it.</p>
-  <div class="status"><span class="dot" id="dot"></span><span id="state">connecting…</span></div>
-</header>
-<main>
-  <div class="scaffold" id="scaffold">scenes land here as they're built</div>
-</main>
-<script>
-async function ping(){
-  try{
-    const r = await fetch('/api/health',{cache:'no-store'});
-    const j = await r.json();
-    document.getElementById('dot').className='dot up';
-    document.getElementById('state').textContent='engine connected';
-  }catch(e){
-    document.getElementById('state').textContent='server down';
-  }
-}
-ping(); setInterval(ping, 4000);
-</script>
-</body></html>
+<div class="shell">
+
+  <header class="mast">
+    <div class="mast-id">
+      <h1>Firebreak</h1>
+      <p>Every stress test asks what if this happens. This one asks the opposite —
+         what's the smallest thing that has to happen to break us.</p>
+      <div class="status"><span class="dot" id="dot"></span><span id="state">connecting…</span></div>
+    </div>
+    <div class="hero">
+      <span class="val idle" id="heroVal">—</span>
+      <span class="meta">
+        <span class="label">Critical shock distance</span>
+        <span class="sub" id="heroSub">press find weakest shock</span>
+      </span>
+    </div>
+  </header>
+
+  <section class="controls">
+    <div class="knob">
+      <label for="leverage">Gross leverage <b id="leverageVal">5.0</b></label>
+      <input type="range" id="leverage" min="1.5" max="8" step="0.1" value="5">
+    </div>
+    <div class="knob">
+      <label for="gamma">Price impact γ <b id="gammaVal">0.20</b></label>
+      <input type="range" id="gamma" min="0" max="1" step="0.05" value="0.2">
+    </div>
+    <div class="knob">
+      <label for="breaches">Failure condition</label>
+      <select id="breaches">
+        <option value="2">2 or more funds breach</option>
+        <option value="3" selected>3 or more funds breach</option>
+        <option value="4">4 or more funds breach</option>
+        <option value="5">5 or more funds breach</option>
+      </select>
+    </div>
+    <button class="primary" id="breakBtn">find weakest shock</button>
+    <button id="replayBtn">replay</button>
+    <button id="stabiliseBtn" disabled>stabilise</button>
+  </section>
+
+  <section class="scene" id="scene1" hidden>
+    <div class="scene-head">
+      <span class="scene-n">01</span>
+      <h2>Break</h2>
+      <p class="q">what's the smallest thing that kills us?</p>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="grid-2" style="margin-top:1.25rem">
+      <div>
+        <div class="net-wrap"><svg id="network" role="img"
+             aria-label="Contagion network: assets on the left, funds on the right, coloured by state as the cascade runs."></svg></div>
+        <div class="round-strip">
+          <span id="pips" style="display:flex;gap:.25rem"></span>
+          <span id="roundLabel">—</span>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Funds</h3>
+        <div class="funds" id="fundRows"></div>
+        <p class="hint">A fund turns red the round it breaches its limit. Watch for one
+           that breaches without holding the shocked name at all — that's contagion
+           through shared positions, not through the shock.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene" id="scene3" hidden>
+    <div class="scene-head">
+      <span class="scene-n">03</span>
+      <h2>Firebreak</h2>
+      <p class="q">what's the cheapest way out?</p>
+    </div>
+    <div class="fix" id="fixCard"></div>
+    <div class="ba" id="beforeAfter" style="margin-top:1rem"></div>
+    <p class="hint">Identical shock on both sides. The only thing that changed is one
+       position size.</p>
+  </section>
+
+  <details class="assume">
+    <summary>Assumptions &amp; what this does not claim</summary>
+    <ul>
+      <li><b>Holdings are real.</b> <span id="provenance">loading…</span>. Anyone can
+          reproduce them from EDGAR.</li>
+      <li><b>Leverage is not.</b> No fund discloses it. It's the slider above, applied
+          uniformly, and every number on this page moves when you change it.</li>
+      <li><b>Price impact is a model, not a measurement.</b>
+          <code>Δp/p = −γ · (dollars sold) / ADV</code>, linear in participation.
+          γ is the second slider. At γ=0 there is no contagion and amplification is
+          exactly 1.00 — that's the control.</li>
+      <li><b>ADV figures are order-of-magnitude:</b> <span id="advList">…</span></li>
+      <li><b>13F is long-only US equity</b>, quarterly, filed 45 days late. Options and
+          bond principal rows are filtered out. Shorts and derivatives are invisible to us.</li>
+      <li><b>We do not predict market moves.</b> This computes a stability property of a
+          declared configuration. The shock it finds is the smallest one <em>our search
+          found</em> under <em>these</em> assumptions.</li>
+    </ul>
+  </details>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

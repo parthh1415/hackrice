@@ -1,0 +1,208 @@
+/* Firebreak — instrument, not dashboard.
+   Three semantic colours and one structural accent. Nothing else saturated,
+   so a single ember node reads instantly. */
+
+:root {
+  --ground: #0A1013;
+  --surface: #121A1D;
+  --surface-2: #1A2428;
+  --ink: #E2EAEB;
+  --ink-2: #B0C2C5;
+  --muted: #7E9297;
+  --rule: #223034;
+  --rule-2: #3A4C51;
+
+  --accent: #55B4C2;
+  --stable: #3FC29B;
+  --stress: #D8A33F;
+  --breach: #E4705C;
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --cond: "IBM Plex Sans Condensed", "Arial Narrow", var(--sans);
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell { max-width: 78rem; margin: 0 auto; padding: 0 1.75rem 5rem; }
+
+/* ---------- masthead ---------- */
+
+.mast {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem 2.5rem;
+  padding: 2.25rem 0 1.25rem; border-bottom: 2px solid var(--ink);
+}
+.mast-id { flex: 1 1 20rem; }
+.mast h1 {
+  font: 700 clamp(2.6rem, 6vw, 3.9rem)/0.92 var(--cond);
+  text-transform: uppercase; letter-spacing: -.02em; margin: 0 0 .45rem;
+}
+.mast p { margin: 0; color: var(--muted); max-width: 44ch; font-size: .92rem; }
+
+.status {
+  display: flex; align-items: center; gap: .45rem;
+  font: 500 .66rem/1 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); margin-top: .8rem;
+}
+.dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--breach); }
+.dot.up { background: var(--stable); }
+
+/* ---------- hero number ---------- */
+
+.hero {
+  display: flex; align-items: baseline; gap: 1rem;
+  border-left: 3px solid var(--breach); padding: .1rem 0 .1rem 1.1rem;
+}
+.hero .val {
+  font: 700 clamp(3rem, 8vw, 4.6rem)/0.85 var(--cond);
+  color: var(--breach); font-variant-numeric: tabular-nums;
+}
+.hero .val.idle { color: var(--rule-2); }
+.hero .meta { display: flex; flex-direction: column; gap: .2rem; }
+.hero .label {
+  font: 500 .64rem/1.3 var(--mono); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.hero .sub { font-size: .86rem; color: var(--ink-2); max-width: 22ch; }
+
+/* ---------- controls ---------- */
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;
+  padding: 1.25rem 0; border-bottom: 1px solid var(--rule);
+}
+.knob { display: flex; flex-direction: column; gap: .35rem; min-width: 11rem; }
+.knob label {
+  font: 500 .64rem/1 var(--mono); letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+  display: flex; justify-content: space-between; gap: 1rem;
+}
+.knob label b { color: var(--accent); font-weight: 600; }
+.knob input[type=range] { width: 100%; accent-color: var(--accent); }
+.knob select {
+  background: var(--surface-2); color: var(--ink); border: 1px solid var(--rule-2);
+  border-radius: 2px; padding: .4rem .5rem; font: 500 .8rem var(--mono);
+}
+
+button {
+  font: 600 .72rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  padding: .78rem 1.1rem; border-radius: 2px; cursor: pointer;
+  border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  transition: background .15s, color .15s;
+}
+button:hover:not(:disabled) { background: var(--accent); color: var(--ground); }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: var(--accent); color: var(--ground); }
+button.primary:hover:not(:disabled) { filter: brightness(1.12); }
+button:focus-visible { outline: 2px solid var(--stable); outline-offset: 2px; }
+
+/* ---------- scenes ---------- */
+
+.scene { padding-top: 2.5rem; }
+.scene-head {
+  display: flex; align-items: baseline; gap: .85rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--rule-2); padding-bottom: .45rem; margin-bottom: 1.25rem;
+}
+.scene-n { font: 600 .68rem/1 var(--mono); letter-spacing: .12em; color: var(--accent); }
+.scene-head h2 {
+  font: 600 1.5rem/1.1 var(--cond); text-transform: uppercase;
+  letter-spacing: .01em; margin: 0;
+}
+.scene-head .q { font-size: .88rem; color: var(--muted); font-style: italic; margin: 0; }
+
+.grid-2 { display: grid; gap: 1.25rem; }
+@media (min-width: 60rem) { .grid-2 { grid-template-columns: 1.35fr 1fr; align-items: start; } }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); padding: 1.1rem 1.25rem; }
+.panel h3 {
+  font: 500 .64rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 .8rem;
+}
+
+/* ---------- metrics ---------- */
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.metric { background: var(--surface); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .15rem; }
+.metric .m-val {
+  font: 700 1.5rem/1 var(--cond); font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.metric .m-lab { font: 500 .6rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.metric.hot .m-val { color: var(--breach); }
+.metric.good .m-val { color: var(--stable); }
+
+/* ---------- network ---------- */
+
+.net-wrap { background: var(--surface); border: 1px solid var(--rule); padding: .5rem; }
+.net-wrap svg { width: 100%; height: auto; display: block; }
+
+.round-strip {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  margin-top: .7rem; font: 500 .66rem/1 var(--mono);
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+.pip { width: 1.6rem; height: .28rem; background: var(--rule-2); border-radius: 1px; }
+.pip.on { background: var(--breach); }
+.pip.done { background: var(--stress); }
+
+/* ---------- fund list ---------- */
+
+.funds { display: flex; flex-direction: column; gap: 1px; background: var(--rule); }
+.fund-row {
+  background: var(--surface); padding: .55rem .8rem; display: grid;
+  grid-template-columns: 1fr auto auto; gap: .8rem; align-items: center;
+  font-size: .85rem;
+}
+.fund-row .f-name { color: var(--ink); }
+.fund-row .f-lev { font: 500 .8rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.fund-row .f-tag {
+  font: 600 .58rem/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  padding: .22rem .4rem; border-radius: 2px; color: var(--stable); background: #0E2A24;
+}
+.fund-row.breached .f-tag { color: var(--breach); background: #301814; }
+.fund-row.breached .f-lev { color: var(--breach); }
+
+/* ---------- fix card ---------- */
+
+.fix {
+  border-left: 3px solid var(--stable); background: var(--surface);
+  padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: .4rem;
+}
+.fix .f-do { font: 600 1.05rem/1.4 var(--sans); color: var(--ink); }
+.fix .f-cost { font: 500 .72rem/1 var(--mono); letter-spacing: .06em; color: var(--stress); }
+
+.ba { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+@media (min-width: 34rem) { .ba { grid-template-columns: 1fr 1fr; } }
+.ba > div { background: var(--surface); padding: 1rem 1.1rem; }
+.ba .ba-lab { font: 500 .6rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ba .ba-val { font: 700 2rem/1 var(--cond); font-variant-numeric: tabular-nums; margin-top: .35rem; }
+.ba .before .ba-val { color: var(--breach); }
+.ba .after .ba-val { color: var(--stable); }
+.ba .ba-sub { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+
+/* ---------- assumptions ---------- */
+
+.assume { margin-top: 3rem; border-top: 1px solid var(--rule); padding-top: 1.25rem; }
+.assume summary {
+  font: 500 .66rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; padding: .4rem 0;
+}
+.assume summary:hover { color: var(--accent); }
+.assume ul { margin: .8rem 0 0; padding-left: 1.1rem; color: var(--ink-2); font-size: .86rem; }
+.assume li { margin-bottom: .4rem; max-width: 72ch; }
+.assume code { font-family: var(--mono); font-size: .85em; background: var(--surface-2); padding: .08em .3em; }
+
+.hint { color: var(--muted); font-size: .86rem; margin: .8rem 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

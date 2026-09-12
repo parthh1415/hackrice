@@ -46,7 +46,10 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def log_message(self, fmt, *args):
-        if "/api/" in (args[0] if args else ""):
+        # quieten the static-file chatter, keep anything about /api and any
+        # error. args[0] is an int on send_error paths, hence the str().
+        first = str(args[0]) if args else ""
+        if "/api/" in first or not first.startswith("GET /"):
             super().log_message(fmt, *args)
 
 
