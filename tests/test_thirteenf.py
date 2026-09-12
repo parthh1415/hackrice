@@ -84,7 +84,7 @@ def test_holdings_matrix_lines_up_with_the_universe():
         "Beta": {"03783310": 250.0, "59491810": 750.0},
     }
 
-    funds, tickers, matrix = build_holdings(books, universe)
+    funds, tickers, matrix, _ = build_holdings(books, universe)
 
     assert funds == ["Alpha", "Beta"]
     assert tickers == ["NVDA", "AAPL", "MSFT"]
@@ -95,7 +95,7 @@ def test_a_fund_holding_nothing_in_the_universe_is_dropped():
     universe = {"67066G10": "NVDA"}
     books = {"Alpha": {"67066G10": 600.0}, "Empty": {"99999999": 100.0}}
 
-    funds, _, matrix = build_holdings(books, universe)
+    funds, _, matrix, _ = build_holdings(books, universe)
 
     assert funds == ["Alpha"]
     assert matrix.shape == (1, 1)
@@ -112,7 +112,7 @@ def test_share_classes_of_one_issuer_collapse_into_one_column():
     }
     books = {"Alpha": {"02079K10": 900.0, "02079K30": 1070.0, "67066G10": 500.0}}
 
-    funds, tickers, matrix = build_holdings(books, universe)
+    funds, tickers, matrix, _ = build_holdings(books, universe)
 
     assert tickers == ["GOOGL", "NVDA"]
     np.testing.assert_allclose(matrix, [[1970.0, 500.0]])
@@ -122,7 +122,7 @@ def test_ticker_column_order_is_first_appearance():
     universe = {"67066G10": "NVDA", "02079K10": "GOOGL", "02079K30": "GOOGL"}
     books = {"Alpha": {"67066G10": 1.0, "02079K30": 2.0}}
 
-    _, tickers, _ = build_holdings(books, universe)
+    _, tickers, _, _ = build_holdings(books, universe)
 
     assert tickers == ["NVDA", "GOOGL"]
 

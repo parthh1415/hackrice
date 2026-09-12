@@ -71,16 +71,19 @@ def build_holdings(books, universe):
     that fund's other nine, inventing dispersion in the overlap metric.
 
     Funds with nothing in the universe are dropped rather than carried as a
-    row of zeros, which would break the leverage arithmetic. The retained fund
-    names come back so callers can filter their per-fund parameter vectors to
-    match — otherwise dropping fund 2 of 5 silently attaches every leverage
-    from index 2 onward to the wrong fund.
+    row of zeros, which would break the leverage arithmetic. Dropping a row
+    is why the fourth return value exists: `kept` is the index each surviving
+    row had in `books`, so a caller holding a per-manager leverage vector can
+    subset it the same way. Names alone aren't enough — a caller that builds
+    its vector from the original manager list has nothing to match names
+    against, and dropping fund 2 of 5 then slides every leverage from index 2
+    onward onto the wrong fund, silently.
     """
     tickers = list(dict.fromkeys(universe.values()))
     column = {ticker: i for i, ticker in enumerate(tickers)}
 
-    funds, rows = [], []
-    for name, positions in books.items():
+    funds, rows, kept = [], [], []
+    for index, (name, positions) in enumerate(books.items()):
         row = [0.0] * len(tickers)
         for cusip, value in positions.items():
             ticker = universe.get(cusip)
@@ -90,8 +93,9 @@ def build_holdings(books, universe):
             continue
         funds.append(name)
         rows.append(row)
+        kept.append(index)
 
-    return funds, tickers, np.array(rows, dtype=float)
+    return funds, tickers, np.array(rows, dtype=float), kept
 
 
 # --------------------------------------------------------------------------

@@ -28,9 +28,13 @@ def assemble(books, universe, adv_by_ticker, quarter):
     come out of here in dollars. Getting this wrong makes price impact a
     million times too strong and the whole thing detonates on any shock.
     """
-    funds, tickers, matrix = build_holdings(books, universe)
+    funds, tickers, matrix, kept = build_holdings(books, universe)
     return {
         "funds": funds,
+        # which rows of the original manager list survived. anything that
+        # builds a per-fund vector off that list has to subset it by this or
+        # a dropped manager slides every later parameter onto its neighbour.
+        "fund_indices": kept,
         "tickers": tickers,
         "holdings": matrix.tolist(),
         "adv": [float(adv_by_ticker[t]) * _MILLION for t in tickers],
