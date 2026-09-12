@@ -381,6 +381,10 @@ MUTATIONS = {
         "web/assumptions.html",
         "    breaches: P.breaches != null ? P.breaches : 2,",
         "    breaches: 3,"),
+    "cta_points_at_the_wrong_page": (
+        "web/cascade.html",
+        '<a class="btn btn-primary" href="defend.html">Find the cheapest single-position fix</a>',
+        '<a class="btn btn-primary" href="verify.html">Find the cheapest single-position fix</a>'),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -427,7 +431,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "attribution_uses_direct_not_cascade",
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
                 "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order",
-                "solver_card_hardcodes_its_scenario"}
+                "solver_card_hardcodes_its_scenario",
+                "cta_points_at_the_wrong_page"}
 
 
 def build(name):

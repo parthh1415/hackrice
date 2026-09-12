@@ -667,6 +667,52 @@ function visibleText(d) {
           navLimit.includes("90"), navLimit);
   }
 
+  /* ---- the demo path, walked rather than deep-linked ---- */
+  {
+    /* Every check above seeds sessionStorage and loads one page. This is the
+       route a presenter actually takes: cold browser, click the button, follow
+       the call to action on each screen. It is the one thing that must not be
+       broken five minutes before a demo, and nothing was testing it — a CTA
+       pointing at the wrong page would have passed everything else here. */
+    const next = (doc, re) => [...doc.querySelectorAll("a.btn")]
+      .find((b) => re.test(b.textContent));
+
+    let p = await load("index.html", {});
+    p.d.getElementById("useDemo").dispatchEvent(new p.window.Event("click"));
+    const loaded = await until(() => p.d.querySelectorAll("#pfRows tr").length > 0);
+    check("cold start: the demo book loads from the button", loaded, p.errors.join("; "));
+    const run = next(p.d, /run reverse stress test/i);
+    check("and offers the run", !!run && run.getAttribute("href") === "analysis.html",
+          run ? run.getAttribute("href") : "no CTA");
+
+    let carried = p.dump();
+    const legs = [
+      ["analysis.html", /see why the loss grows/i, "cascade.html", () =>
+        (txt(legDoc, "big") || "").includes(full.asset)],
+      ["cascade.html", /cheapest single-position fix/i, "defend.html", () =>
+        legDoc.querySelectorAll("#net circle").length > 0],
+      ["defend.html", /check it actually helped/i, "verify.html", () =>
+        legDoc.getElementById("root").textContent.includes(full.fix.symbol)],
+    ];
+    var legDoc = null;
+    for (const [page, ctaRe, wantsHref, ready] of legs) {
+      const leg = await load(page, carried);
+      legDoc = leg.d;
+      const ok = await until(ready);
+      check(`${page} renders on the way through`, ok, leg.errors.join("; "));
+      check(`${page} runs clean on the way through`, leg.errors.length === 0,
+            leg.errors.join("; "));
+      const cta = next(leg.d, ctaRe);
+      check(`${page} offers the next step`, !!cta && cta.getAttribute("href") === wantsHref,
+            cta ? `${cta.textContent.trim()} -> ${cta.getAttribute("href")}` : "no CTA matched");
+      carried = leg.dump();
+    }
+
+    const end = await load("verify.html", carried);
+    const arrived = await until(() => end.d.querySelectorAll("#root .card").length >= 4);
+    check("and the walk ends on the evidence", arrived, end.errors.join("; "));
+  }
+
   /* ---- the nav must not offer a page the state cannot answer ---- */
   {
     /* Arriving here with no analysis must produce the explicit "nothing to
