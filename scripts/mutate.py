@@ -298,6 +298,26 @@ MUTATIONS = {
         "src/firebreak/api.py",
         "_REF_SHOCK = -0.05",
         "_REF_SHOCK = -0.005"),
+    # The WIRING, not the functions. validate.py and portfolio.py are well
+    # unit-tested; the forty lines that call them and assemble the payload were
+    # not, and eleven of fifteen corruptions of those call sites left the suite
+    # green. These four each put a wrong number on a screen.
+    "pm_wiring_swaps_the_two_books": (
+        "src/firebreak/api.py",
+        '"synthetic": V.synthetic_stress(before, after,',
+        '"synthetic": V.synthetic_stress(after, before,'),
+    "pm_wiring_publishes_direct_prices": (
+        "src/firebreak/api.py",
+        '"prices": result.prices.tolist(),',
+        '"prices": (1.0 + found.shock).tolist(),'),
+    "pm_wiring_scores_a_looser_limit": (
+        "src/firebreak/api.py",
+        "V.synthetic_stress(before, after, n=400, limit=limit,",
+        "V.synthetic_stress(before, after, n=400, limit=limit * 2,"),
+    "pm_wiring_narrows_the_shock_range": (
+        "src/firebreak/api.py",
+        "V.synthetic_stress(before, after, n=400, limit=limit,",
+        "V.synthetic_stress(before, after, n=400, shock_range=(0.01, 0.05), limit=limit,"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
