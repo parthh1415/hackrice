@@ -101,6 +101,15 @@ MUTATIONS = {
         "_MILLION = 1_000_000.0",
         "_MILLION = 1_000.0"),
 
+    "cusip_jpm_typo": (
+        "data/universe.json",
+        '"46625H10": "JPM"',
+        '"46625H20": "JPM"'),
+    "restatement_ignored": (
+        "src/firebreak/thirteenf.py",
+        'if form not in ("13F-HR", "13F-HR/A"):',
+        'if form != "13F-HR":'),
+
     # Frontend mutations. These need the UI harnesses, not pytest — run them
     # with --ui, which drives tests/ui/provenance.js against the mutated web/
     # and the real server. All five of these once scored 47/47 green while
