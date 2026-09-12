@@ -69,6 +69,17 @@ const later = (fn, ms) => state.timers.push(setTimeout(fn, ms));
    Assets left, portfolios right: the shock enters at an asset and travels
    to portfolios, so causality runs left to right. */
 
+function layoutIsStale(width, height) {
+  const L = state.layout;
+  return !L || Math.abs(L.width - width) > 8 || Math.abs(L.height - height) > 8;
+}
+
+function ensureLayout(run, svg) {
+  const { width, height } = measure(svg);
+  if (layoutIsStale(width, height)) state.layout = computeLayout(run, width, height);
+  return state.layout;
+}
+
 function computeLayout(run, width, height) {
   const { assets, portfolios, holdings } = run.topology;
 
@@ -104,13 +115,27 @@ function computeLayout(run, width, height) {
 
 /* ───────────────────────────── the network ───────────────────────────── */
 
+/* getBoundingClientRect returns 0 before layout flushes, and a viewBox sized
+   to a zero box renders the whole diagram at a fraction of scale in the
+   corner. Measure the PARENT, which is a laid-out flex/grid child, and refuse
+   any measurement that looks like a pre-layout zero. */
+function measure(svg) {
+  const box = svg.getBoundingClientRect();
+  if (box.width > 40 && box.height > 40) return { width: box.width, height: box.height };
+  const parent = svg.parentElement && svg.parentElement.getBoundingClientRect();
+  if (parent && parent.width > 40 && parent.height > 40) {
+    return { width: parent.width, height: parent.height };
+  }
+  const stage = $("stage").getBoundingClientRect();
+  return { width: Math.max(420, stage.width || 900), height: Math.max(280, stage.height || 520) };
+}
+
 function drawNetwork(svg, run, frameIndex, opts = {}) {
   const { showBreachAt = null, flows = null, layoutOverride = null } = opts;
-  const box = svg.getBoundingClientRect();
-  const width = Math.max(420, box.width || 700);
-  const height = Math.max(280, box.height || 420);
+  const { width, height } = measure(svg);
 
-  const L = layoutOverride || state.layout || computeLayout(run, width, height);
+  const L = layoutOverride || (svg === $("network") ? ensureLayout(run, svg)
+                                                    : computeLayout(run, width, height));
   svg.setAttribute("viewBox", `0 0 ${L.width} ${L.height}`);
   svg.textContent = "";
 
@@ -415,8 +440,9 @@ async function attack() {
     state.run = normalise(body);
     state.layout = null;
     showScene("network");
-    state.layout = computeLayout(state.run, $("network").getBoundingClientRect().width || 700,
-                                 $("network").getBoundingClientRect().height || 420);
+    // one frame so the stage has real dimensions before we measure it
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    ensureLayout(state.run, $("network"));
 
     countTo(body.pct);
     $("heroSub").textContent =
@@ -481,9 +507,10 @@ async function defend() {
     split.after = normalise({ ...body, ...body.after });
     // ONE layout, shared by both halves. different node positions either side
     // would let a judge think the structure changed rather than one position.
-    const halfW = $("netBefore").getBoundingClientRect().width || 420;
-    const halfH = $("netBefore").getBoundingClientRect().height || 360;
-    split.layout = computeLayout(split.before, halfW, halfH);
+    // let the split grid lay out before measuring either half
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const half = measure($("netBefore"));
+    split.layout = computeLayout(split.before, half.width, half.height);
     playSplit();
 
     const line = (r) =>
@@ -560,8 +587,8 @@ function playSplit() {
 /* ───────────────────────────── phase diagram ──────────────────────────── */
 
 function drawBoundary(svg, b) {
-  const box = svg.getBoundingClientRect();
-  const W = Math.max(520, box.width || 720), H = Math.max(300, box.height || 420);
+  const m = measure(svg);
+  const W = Math.max(520, m.width), H = Math.max(300, m.height);
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   svg.textContent = "";
 
@@ -650,13 +677,18 @@ $("replayBtn").addEventListener("click", () => {
 });
 $("boundaryBtn").addEventListener("click", boundary);
 $("defendBtn").addEventListener("click", defend);
+let resizeTimer = null;
 window.addEventListener("resize", () => {
-  if (!state.run) return;
-  state.layout = null;
-  state.layout = computeLayout(state.run,
-    $("network").getBoundingClientRect().width || 700,
-    $("network").getBoundingClientRect().height || 420);
-  if (state.beat === "network") drawNetwork($("network"), state.run, state.frame);
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!state.run) return;
+    if (state.beat === "network") drawNetwork($("network"), state.run, state.frame);
+    if (state.beat === "split" && split.before) {
+      split.layout = computeLayout(split.before, ...Object.values(measure($("netBefore"))));
+      splitFrame("before", $("netBefore"), split.before.frames.length - 1);
+      splitFrame("after", $("netAfter"), split.after.frames.length - 1);
+    }
+  }, 120);
 });
 
 boot();
