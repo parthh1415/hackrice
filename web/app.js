@@ -395,7 +395,11 @@ function drawNetwork(svg, run, frameIndex, opts = {}) {
         class: "pulse",   // fill-box + centre origin, or scale() throws it off the node
       });
       svg.appendChild(ring);
-      ring.animate(
+      // Web Animations is not universal, and a decorative pulse is never worth
+      // a hard error on the beat that explains the mechanism. The ring is
+      // already drawn and already red by the time this runs; animate() only
+      // makes it breathe.
+      if (typeof ring.animate === "function") ring.animate(
         [{ opacity: 1, transform: "scale(1)" }, { opacity: .35, transform: "scale(1.12)" }],
         { duration: 520, easing: "cubic-bezier(.4,0,1,1)",
           fill: "forwards", iterations: 1 }
