@@ -61,17 +61,20 @@ you if the dataset moves out from under them.
 python3 -m pytest tests/ -q      # 140, no network required
 ```
 
-The frontend has its own jsdom harnesses, which need one extra install because
-`tests/ui/node_modules/` is gitignored:
+The frontend has its own jsdom harnesses. They need one extra install, because
+`tests/ui/node_modules/` is gitignored, **and a running server** — they drive the real
+`web/app.js` against the real endpoints:
 
 ```sh
-npm --prefix tests/ui install
-node tests/ui/smoke.js           # the four beats render
+npm --prefix tests/ui install                     # once
+FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server &
+node tests/ui/smoke.js           # the beats render
 node tests/ui/provenance.js      # every number on screen traces to the payload
 ```
 
-These drive `web/app.js` against a real payload, so they catch the failure mode that
-matters most in a demo: a panel that renders empty instead of throwing.
+They catch the failure mode that matters most in a demo: a panel that renders empty
+instead of throwing. With no server on 8765 every fetch fails and the output is noise,
+so check the server is up before believing a red run.
 
 ## Layout
 

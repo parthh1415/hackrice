@@ -5,12 +5,20 @@
  * app.js against the real server in jsdom instead and asserts the DOM it
  * builds — which catches every class of bug except "it looks wrong".
  *
- *   cd /tmp/domtest && npm install jsdom
- *   node ~/Desktop/firebreak/tests/ui/smoke.js
+ * Needs a server up — it fetches the real endpoints off ORIGIN below.
+ *
+ *   npm --prefix tests/ui install                     # once
+ *   PYTHONPATH=src python3 -m firebreak.server &      # or FIREBREAK_DEMO=1
+ *   node tests/ui/smoke.js
  */
 const { JSDOM } = require("jsdom");
 const fs = require("fs");
-const WEB = "/Users/parthsrivastava/Desktop/firebreak/web";
+const path = require("path");
+// off __dirname, not off an absolute path into one laptop's home directory.
+// hardcoded, this harness read whatever that machine happened to have in
+// web/ — so on a fresh clone it tested someone else's working tree, or
+// nothing at all.
+const WEB = path.resolve(__dirname, "..", "..", "web");
 const ORIGIN = "http://localhost:8765";
 
 const BOX = { stage: [1154, 610], network: [1154, 610],
