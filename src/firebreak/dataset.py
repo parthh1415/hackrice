@@ -96,6 +96,22 @@ def load_dataset(refresh=False):
             # supplements come back together and get summed
             for filing in filings:
                 for cusip, value in fetch_positions(cik, filing["accession"]).items():
+                    # SUMMED, which is right if a NEW HOLDINGS supplement only
+                    # ever carries positions the original did not have — the
+                    # rule thirteenf.py states, and which this repo has never
+                    # checked against the primary source. If a supplement can
+                    # instead RESTATE a line that already exists, summing
+                    # double-counts it and this should take the supplement's
+                    # value rather than add to it.
+                    #
+                    # Not reachable in the committed data: replaying the ingest
+                    # offline, every one of the six registrants resolves to a
+                    # single filing, so this loop never runs twice for anybody
+                    # and no CUSIP is seen from two filings. Left as a sum and
+                    # written down rather than changed, because choosing
+                    # between two merges on an unread source is how you get a
+                    # confident wrong number — which is the failure this file's
+                    # whole history is about. Read FAQ 58 before touching it.
                     merged[cusip] = merged.get(cusip, 0.0) + value
             periods[f"{name} (CIK {cik})"] = period
         books[name] = merged

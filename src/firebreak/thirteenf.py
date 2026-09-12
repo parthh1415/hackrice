@@ -178,7 +178,27 @@ def choose_filings(records):
         return [newest] + later_supplements
 
     # originals plus any additive amendments
-    return [r for r in current if not r.get("is_amendment") or kind_of(r) == "NEW HOLDINGS"]
+    chosen = [r for r in current
+              if not r.get("is_amendment") or kind_of(r) == "NEW HOLDINGS"]
+    # A supplement carries the rows that were ADDED, not the book. On its own
+    # it becomes the fund's entire position set — a portfolio a fraction of its
+    # real size, reported without complaint. Reachable whenever the original
+    # falls outside the look-back window, which counts candidate filings rather
+    # than distinct periods, so a heavily-amended quarter pushes it out.
+    #
+    # This is the same silent factor-of-N the type check above refuses to guess
+    # at, and unlike the question of how to merge a repeated CUSIP it does not
+    # turn on any reading of FAQ 58: a supplement without the thing it
+    # supplements is not a portfolio.
+    if chosen and all(kind_of(r) == "NEW HOLDINGS" for r in chosen):
+        raise ValueError(
+            f"period {latest_period}: the only filings available are NEW HOLDINGS "
+            f"supplements ({', '.join(r['accession'] for r in chosen)}) with no "
+            "original or restatement to supplement. A supplement carries the "
+            "added rows, not the book, so using it alone would report a fraction "
+            "of this manager's positions as all of them. Widen the look-back."
+        )
+    return chosen
 
 
 # The types SEC Form 13F FAQ 58 defines. Anything else is a filing we do not

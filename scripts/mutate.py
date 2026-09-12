@@ -286,6 +286,10 @@ MUTATIONS = {
         "src/firebreak/api.py",
         '    used = payload.get("params")\n    payload["cached_for"] = ({k: v for k, v in used.items()\n                              if k in KNOBS.get(route, {})}\n                             if isinstance(used, dict) else _knobs(route, params))',
         '    payload["cached_for"] = _knobs(route, params)'),
+    "pm_orphan_supplement_is_a_book": (
+        "src/firebreak/thirteenf.py",
+        '    if chosen and all(kind_of(r) == "NEW HOLDINGS" for r in chosen):',
+        "    if False:"),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',

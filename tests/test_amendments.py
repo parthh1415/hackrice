@@ -165,3 +165,38 @@ def test_whitespace_and_case_around_a_real_type_are_tolerated(kind, expect):
     ])
 
     assert [c["accession"] for c in chosen] == expect
+
+
+def test_a_supplement_with_no_original_is_refused_not_used_alone():
+    """A NEW HOLDINGS amendment carries the added rows, not the book.
+
+    Returned on its own it becomes the fund's entire position set — a book a
+    fraction of its real size, with no error. That is the same silent
+    factor-of-N this module already refuses to guess at for an unclassifiable
+    amendment type, and it does not depend on any reading of the FAQ: a
+    supplement without the thing it supplements is not a portfolio.
+
+    Reachable whenever the original falls outside the look-back window, which
+    counts candidate filings rather than distinct periods, so a heavily-amended
+    quarter pushes it out.
+    """
+    supplement = {
+        "accession": "SUPP", "period": "2026-06-30", "filing_date": "2026-08-14",
+        "is_amendment": True, "amendment_type": "NEW HOLDINGS",
+    }
+    with pytest.raises(ValueError) as excinfo:
+        choose_filings([supplement])
+    assert "supplement" in str(excinfo.value).lower()
+
+    # with its original present it is used, as before
+    original = dict(supplement, accession="ORIG", is_amendment=False, amendment_type=None)
+    assert [r["accession"] for r in choose_filings([original, supplement])] == ["ORIG", "SUPP"]
+
+
+def test_a_supplement_after_a_restatement_still_needs_the_restatement():
+    """The restatement is the base; the supplement adds to it."""
+    base = {"accession": "REST", "period": "2026-06-30", "filing_date": "2026-08-10",
+            "is_amendment": True, "amendment_type": "RESTATEMENT"}
+    later = {"accession": "SUPP", "period": "2026-06-30", "filing_date": "2026-08-20",
+             "is_amendment": True, "amendment_type": "NEW HOLDINGS"}
+    assert [r["accession"] for r in choose_filings([base, later])] == ["REST", "SUPP"]
