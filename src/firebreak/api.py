@@ -511,8 +511,11 @@ def _boundary(params):
             result = run_cascade(
                 holdings=holdings,
                 leverage=np.full(m, lev),
-                max_leverage=np.full(m, lev * 1.05),
-                target_leverage=np.full(m, max(1.0, lev * 0.95)),
+                # this was hardcoded at 1.05 while the payload echoed the
+                # requested band, so every grid came back identical and the
+                # response asserted something the computation hadn't done
+                max_leverage=np.full(m, lev * band),
+                target_leverage=np.full(m, min(max(1.0, lev * 0.95), lev * band)),
                 gamma=gamma,
                 adv=adv,
                 shock=shock,

@@ -45,3 +45,19 @@ def test_the_band_is_never_below_the_deleverage_target():
     result = api.handle("/api/break?leverage=5&band=1.0", {})
 
     assert result["params"]["band"] >= 1.0
+
+
+def test_the_boundary_sweep_actually_applies_the_band_it_reports():
+    """The sweep echoed `band` in its payload and then hardcoded 1.05 in the
+    run. Grids came back byte-identical at band 1.02, 1.05 and 1.30 while the
+    response claimed the band applied — the payload asserting something the
+    computation didn't do.
+    """
+    tight = api.handle("/api/boundary?leverage=5&gamma=0.2&band=1.02", {})
+    loose = api.handle("/api/boundary?leverage=5&gamma=0.2&band=1.30", {})
+
+    assert tight["band"] == 1.02 and loose["band"] == 1.30
+    assert tight["grid"] != loose["grid"], "band is echoed but not applied"
+
+    # a wider band means more room before breach, so less amplification
+    assert max(map(max, loose["grid"])) < max(map(max, tight["grid"]))
