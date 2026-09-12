@@ -101,6 +101,144 @@ const svg = (id) => d.getElementById(id);
         d.getElementById("footAfter").textContent.includes("loss"));
   check("no errors across all four beats", errors.length === 0, errors.join("; "));
 
+  /* ── from here down: the paths a demo actually stumbles into ────────── */
+
+  const css = fs.readFileSync(WEB + "/style.css", "utf8");
+  const reserved = (sel) => {
+    const rule = css.match(new RegExp(`\\${sel}\\s*\\{([^}]*)\\}`))[1];
+    return Number(rule.match(/(?:min-)?width:\s*([\d.]+)ch/)[1]);
+  };
+  const set = (id, v) => {
+    const e = d.getElementById(id);
+    e.value = v;
+    e.dispatchEvent(new window.Event("input"));
+  };
+  const click = (id) => d.getElementById(id).dispatchEvent(new window.Event("click"));
+  const text = (id) => d.getElementById(id).textContent;
+
+  /* Both of these are reserved a fixed ch width so digits can't shove the
+     layout around mid-animation. The reservation is only honest if nothing
+     the app writes is longer than it, so read the number out of the CSS and
+     watch every string that lands in the element. */
+  console.log("\nFIXED WIDTHS — nothing may outgrow its reservation");
+  const seen = { roundLabel: new Set(), heroVal: new Set() };
+  const sampler = setInterval(() => {
+    seen.roundLabel.add(text("roundLabel"));
+    seen.heroVal.add(text("heroVal"));
+  }, 25);
+
+  set("leverage", "1.5");      // 58.34% — the widest hero the sliders can reach
+  click("attackBtn");
+  await sleep(7000);
+  clearInterval(sampler);
+
+  const longest = (s) => [...s].reduce((a, b) => (b.length > a.length ? b : a), "");
+  const worstLabel = longest(seen.roundLabel), worstHero = longest(seen.heroVal);
+  check("round label fits .tl-label", worstLabel.length <= reserved(".tl-label"),
+        `"${worstLabel}" is ${worstLabel.length}ch, reserved ${reserved(".tl-label")}ch`);
+  check("hero number fits .hero-val", worstHero.length <= reserved(".hero-val"),
+        `"${worstHero}" is ${worstHero.length}ch, reserved ${reserved(".hero-val")}ch`);
+  check("hero counted to a 2-decimal percent", /^\d+\.\d{2}%$/.test(text("heroVal")), text("heroVal"));
+  check("every count-up step had 2 decimals",
+        [...seen.heroVal].every((v) => v === "—" || /^\d+\.\d{2}%$/.test(v)),
+        [...seen.heroVal].filter((v) => v !== "—" && !/^\d+\.\d{2}%$/.test(v)).join(",") || "ok");
+  check("re-running attack raised no errors", errors.length === 0, errors.join("; "));
+
+  console.log("\nFORMATTING — fixed decimals in the band");
+  const band = [...d.querySelectorAll("#band .v")].map((e) => e.textContent);
+  check("shock loss is 1dp", /^\d+\.\d%$/.test(band[0]), band[0]);
+  check("final loss is 1dp", /^\d+\.\d%$/.test(band[1]), band[1]);
+  check("amplification is 2dp", /^\d+\.\d{2}×$/.test(band[2]), band[2]);
+  check("rounds reads t / n", /^\d+ \/ \d+$/.test(band[4]), band[4]);
+
+  /* The cascade and the split each own a timer queue. Whichever scene takes
+     the stage must stop the other, or the strip along the bottom keeps
+     narrating a run that is no longer on screen. */
+  console.log("\nRACE — leaving a scene must stop its animation");
+  click("replayBtn");
+  await sleep(400);                       // cascade is mid-round, more rounds queued
+  const running = [text("roundLabel"), band4(d)].join("|");
+  click("boundaryBtn");
+  /* Snapshot straight away and compare while the sweep is still fetching —
+     the cancel has to happen when boundary() starts, not when it finishes,
+     or the cascade narrates over the scene that replaced it. */
+  const frozen = [text("roundLabel"), band4(d)].join("|");
+  await sleep(1600);
+  check("cascade was still mid-flight when the boundary took over",
+        running === frozen && /round \d/.test(frozen), frozen);
+  check("cascade stops the moment the boundary takes the stage",
+        [text("roundLabel"), band4(d)].join("|") === frozen, frozen);
+  await sleep(8000);                      // let the sweep land
+  check("boundary scene took the stage", !d.getElementById("sceneBoundary").hasAttribute("hidden"));
+
+  console.log("\nSCRUB — the timeline belongs to the cascade");
+  d.getElementById("track").children[1].dispatchEvent(new window.Event("click"));
+  await sleep(200);
+  check("scrubbing from another scene comes back to the network",
+        !d.getElementById("sceneNetwork").hasAttribute("hidden") &&
+        d.getElementById("sceneBoundary").hasAttribute("hidden"));
+
+  /* "nothing breaks this system" used to print over the previous cascade,
+     which was still on the stage saying the opposite. */
+  console.log("\nEMPTY ANSWER — no break found");
+  set("leverage", "1.5"); set("gamma", "0");
+  d.getElementById("breaches").value = "5";
+  click("attackBtn");
+  await sleep(3000);
+  check("hero goes idle", text("heroVal") === "—" && d.getElementById("heroVal").hasAttribute("data-idle"));
+  check("band is blanked", [...d.querySelectorAll("#band .v")].every((e) => e.textContent === "—"),
+        [...d.querySelectorAll("#band .v")].map((e) => e.textContent).join(" "));
+  check("timeline is emptied", d.getElementById("track").children.length === 0);
+  check("round label says no run", text("roundLabel") === "no run", text("roundLabel"));
+  check("network is cleared", svg("network").querySelectorAll("circle").length === 0);
+  check("stabilise is disabled with no run", d.getElementById("defendBtn").disabled);
+  click("replayBtn");
+  await sleep(300);
+  check("replay does nothing with no run", text("roundLabel") === "no run", text("roundLabel"));
+
+  console.log("\nEMPTY ANSWER — no single-position fix");
+  d.getElementById("defendBtn").disabled = false;    // reach the branch directly
+  click("defendBtn");
+  await sleep(3000);
+  check("banner explains there is no single cut", /No single-position cut/.test(text("fixLine")));
+  check("before half is cleared", svg("netBefore").querySelectorAll("circle").length === 0);
+  check("after half is cleared", svg("netAfter").querySelectorAll("circle").length === 0);
+  check("stale outcome readouts are gone",
+        text("footBefore") === "—" && text("footAfter") === "—",
+        `${text("footBefore")} / ${text("footAfter")}`);
+  check("stale shock stamp is gone", text("shockStamp") === "—", text("shockStamp"));
+
+  /* A cached answer must never wear the live badge. */
+  console.log("\nPROVENANCE — a replayed answer says so");
+  const realFetch = window.fetch;
+  window.fetch = async (u, o) => {
+    const r = await realFetch(u, o);
+    const j = await r.json();
+    return { ok: r.ok, status: r.status, json: async () => ({ ...j, cached: true }) };
+  };
+  set("leverage", "5"); set("gamma", "0.2");
+  d.getElementById("breaches").value = "3";
+  click("attackBtn");
+  await sleep(4000);
+  check("cached run is not badged live", d.getElementById("badge").dataset.mode === "cached",
+        `${d.getElementById("badge").dataset.mode} / ${text("badgeText")}`);
+
+  console.log("\nERROR PATH — the engine dies");
+  window.fetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  click("attackBtn");
+  await sleep(1500);
+  check("badge reports the engine is unreachable",
+        d.getElementById("badge").dataset.mode === "cached", text("badgeText"));
+  check("the reason is on screen", /500|unreachable/i.test(text("heroSub")), text("heroSub"));
+  check("attack button is usable again", !d.getElementById("attackBtn").disabled);
+  click("boundaryBtn");
+  await sleep(1200);
+  check("boundary button is usable again", !d.getElementById("boundaryBtn").disabled);
+  check("a dead engine raises no unhandled rejection", errors.length === 0, errors.join("; "));
+  window.fetch = realFetch;
+
   console.log(`\n${failures ? failures + " FAILURES" : "all checks passed"}`);
   process.exit(failures ? 1 : 0);
 })();
+
+const band4 = (d) => [...d.querySelectorAll("#band .v")].map((e) => e.textContent).join(" ");
