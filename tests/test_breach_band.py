@@ -3,10 +3,10 @@
 `max_leverage = leverage * 1.05` was hardcoded. That 5% is a free parameter
 with MORE influence over the headline than gamma or leverage:
 
-    band 1.02  ->  NVDA -1.75%   amp 3.08
-    band 1.05  ->  NVDA -5.28%   amp 1.87
-    band 1.10  ->  NVDA -10.69%  amp 1.61
-    band 1.30  ->  NVDA -27.34%  amp 1.43
+    band 1.02  ->  NVDA -1.73%   amp 3.10
+    band 1.05  ->  NVDA -5.27%   amp 1.87
+    band 1.10  ->  NVDA -10.67%  amp 1.61
+    band 1.30  ->  NVDA -27.33%  amp 1.43
 
 A fifteen-fold swing in the number on the wall, from a constant nobody could
 see, while the two less influential knobs sat on sliders. That is the worst

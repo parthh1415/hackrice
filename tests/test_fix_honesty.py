@@ -1,9 +1,11 @@
 """What the fix actually buys, measured in the product's own headline metric.
 
 The split screen shows a survived shock and is true. But re-searching the
-patched books moves critical shock distance 5.28% -> 5.31%: the intervention
-buys 0.03 percentage points. A judge who clicks "Find weakest shock" after
-"Stabilise" finds this in ten seconds, so the product had better say it first.
+patched books moves critical shock distance 5.2734% -> 5.2773%: the
+intervention buys +0.0039pp against a search that resolves 0.005pp, which is
+to say it buys nothing we can measure. A judge who clicks "Find weakest shock"
+after "Stabilise" finds this in ten seconds, so the product had better say it
+first — and say it as "no measurable change", not as a delta.
 
 This is not a bug in the fix — it is the honest character of a targeted patch.
 It defends against THE shock, not against the next one. Saying so, with the

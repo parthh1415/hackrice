@@ -378,17 +378,19 @@ def _stabilise(params):
     after = run_cascade(shock=found.shock, **patched)
 
     # Re-search the patched books and report what the fix bought in the
-    # product's own headline metric. It buys very little — 5.28% -> 5.31% at
-    # the demo settings — because a cheapest single-position cut defends
-    # against THE shock, not against the next one. A judge will click "Find
-    # weakest shock" after "Stabilise" and find this in ten seconds, so the
-    # honest move is to put the number on screen ourselves. It also names the
-    # real next feature: minimise over all shocks, not one.
+    # product's own headline metric. It buys almost nothing — 5.2734% ->
+    # 5.2773% at the demo settings — because a cheapest single-position cut
+    # defends against THE shock, not against the next one. A judge will click
+    # "Find weakest shock" after "Stabilise" and find this in ten seconds, so
+    # the honest move is to put the number on screen ourselves. It also names
+    # the real next feature: minimise over all shocks, not one.
     repeat = find_weakest_shock(condition=condition, **patched)
     delta = (repeat.pct - found.pct) if repeat else None
     # The search bisects to a tolerance; a delta finer than that is a claim the
-    # method cannot support. It reported +0.03pp against a 0.05pp resolution,
-    # then +0.004pp against 0.005pp — both inside their own error bar. Same
+    # method cannot support. Today it is +0.0039pp against a 0.005pp
+    # resolution — inside its own error bar, so it is reported as no measurable
+    # change rather than as a number. Tightening the tolerance does not rescue
+    # it: at 0.05pp the delta was +0.03pp, and it stayed inside. Same
     # fake-precision failure as the hero number, one level up.
     resolution = _SEARCH_TOLERANCE * 100.0
     measurable = delta is not None and abs(delta) > resolution
@@ -586,7 +588,7 @@ _LIMITS = {
     "gamma": (0.0, 1.0, 0.2),
     # How far over target leverage a fund runs before it's forced to sell.
     # This was hardcoded at 1.05 and it matters more than either knob above:
-    # 1.02 gives NVDA -1.75% and amplification 3.08, 1.30 gives NVDA -27.34%
+    # 1.02 gives NVDA -1.73% and amplification 3.10, 1.30 gives NVDA -27.33%
     # and 1.43. Leaving the most influential parameter invisible while the
     # other two sat on sliders is the worst version of this.
     "band": (1.0, 1.5, 1.05),
