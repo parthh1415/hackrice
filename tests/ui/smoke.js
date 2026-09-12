@@ -65,6 +65,38 @@ const check = (name, cond, detail = "") => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const svg = (id) => d.getElementById(id);
 
+/* Wait for a thing to be true, not for a number of milliseconds to pass.
+
+   An audit measured this file two ways: scaling every sleep, and delaying only
+   the fetch. Quartering all 41 sleeps broke two checks, so ~39 carry four
+   times the margin they need — they are not sized to anything. But delaying
+   the fetch by 3s collapsed the run to 2 passes and 7 failures, and doubling
+   the sleeps rescued it completely. The weakness is not the sleeps in general;
+   it is the ones sitting between a fetch-triggering click and a DOM read.
+
+   Doubling them would work and is the treadmill: every run twice as slow for
+   everyone, forever, and still only a guess. `until` costs the same and is
+   faster at full speed. Note it does NOT belong on the four sleeps that exist
+   to catch a deliberately UNSETTLED state — waiting for things to settle is
+   exactly backwards there, and those are marked in place. */
+const until = async (what, ok, ms = 20000) => {
+  for (let waited = 0; waited < ms; waited += 25) {
+    if (ok()) return true;
+    await sleep(25);
+  }
+  check(`timed out waiting for ${what}`, false, `${ms}ms elapsed`);
+  return false;
+};
+
+const drawn = (id) => () => svg(id) && svg(id).querySelectorAll("circle").length >= 10;
+
+/* A run is on screen when the HERO has a number, not when the network has
+   circles. The first version of the boot predicate waited on circles and
+   returned too early: the network renders, then the count-up runs, so the
+   very next check read the hero mid-animation and saw "—". Picking the wrong
+   observable is how a predicate becomes just a faster sleep. */
+const heroReady = () => /^\d+\.\d{2}%$/.test(d.getElementById("heroVal").textContent);
+
 /* The README has warned about this for weeks: "with no server on 8765 every
    fetch fails and the output is noise, so check the server is up before
    believing a red run." It cost an hour anyway — eight checks failed with a
@@ -84,7 +116,13 @@ async function requireServer() {
 
 (async () => {
   await requireServer();
-  await sleep(6000);
+  // The single most valuable predicate in this file. All seven failures at
+  // SLOW_MS=3000 are in the section below this line, and every one of them
+  // names a rendering bug — "assets drawn", "edges drawn", "metrics band
+  // filled" — when the truth is that the app's boot fetch had not returned.
+  // A fixed 6s is a bet on the server being fast.
+  await until("the app's own boot run to finish",
+              () => drawn("network")() && heroReady());
 
   console.log("BEAT 1+2 — attack and cascade");
   const net = svg("network");
@@ -165,6 +203,8 @@ async function requireServer() {
   }
   const round0 = svg("netBefore").innerHTML;
   reflow();
+  // TIMED WINDOW — do not replace with a predicate. Sized to a real
+  // constant in the app: the reflow handler is debounced at 60ms.
   await sleep(150);                       // handler is debounced 60ms
   check("split redraw keeps the round it is on",
         /^shock applied/.test(d.getElementById("splitRound").textContent) &&
@@ -227,6 +267,11 @@ async function requireServer() {
      narrating a run that is no longer on screen. */
   console.log("\nRACE — leaving a scene must stop its animation");
   click("replayBtn");
+  // TIMED WINDOW — do not replace with a predicate. This check is "the
+  // cascade was still mid-flight when the boundary took over", so waiting
+  // for things to settle is the opposite of what it wants. It is also the
+  // one that fails first when the sleeps are scaled down, which is the
+  // right behaviour: the window moving should be loud, not silent.
   await sleep(400);                       // cascade is mid-round, more rounds queued
   const running = [text("roundLabel"), band4(d)].join("|");
   click("boundaryBtn");
@@ -321,6 +366,8 @@ async function requireServer() {
   set("leverage", "1.5"); set("gamma", "0.2");
   d.getElementById("breaches").value = "2";
   click("attackBtn");
+  // TIMED WINDOW — do not replace with a predicate. It is sampling the
+  // count-up BEFORE it finishes; settled is precisely what it must not be.
   await sleep(70);                        // the count-up is mid-flight
   window.fetch = async (u, o) => {        // a recording comes off disk this fast
     const r = await realFetch(u, o);
@@ -347,6 +394,8 @@ async function requireServer() {
   click("boundaryBtn");
   await sleep(80);
   click("attackBtn");                     // cascade starts while the sweep flies
+  // TIMED WINDOW — do not replace with a predicate. Together with the 80ms
+  // above, this deliberately interleaves a sweep with a running cascade.
   await sleep(2800);                      // the sweep has now landed
   const stageAt = d.getElementById("sceneBoundary").hasAttribute("hidden") ? "network" : "boundary";
   const labelAt = text("roundLabel");

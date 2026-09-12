@@ -27,6 +27,15 @@ const state = {
   knobs: null,      // the slider positions the run on screen actually answers
 };
 
+/* `const` at module scope does not attach to the global object, so the test
+   harnesses could not see `state.request` — the generation counter they use
+   to tell this run from the one before it. Their wait read `undefined`, fell
+   back to "assume it moved", and the guarantee written in its comment was not
+   the one keeping it correct. Exporting it makes the stated reason the real
+   one, and gives that wait a barrier that survives someone reintroducing a
+   sleep between the click and the wait. */
+window.state = state;
+
 /* ────────────────────────────── formatting ─────────────────────────────
    Every number is fixed-width and fixed-decimal. Digits must never reflow
    mid-animation — that single detail is the fastest way to look amateur. */

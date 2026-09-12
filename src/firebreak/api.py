@@ -243,6 +243,33 @@ GOLDEN_SPOTS = [
     {"leverage": 5, "gamma": 0.2, "band": 1.02, "breaches": 3},
     {"leverage": 5, "gamma": 0.2, "band": 1.15, "breaches": 3},
     {"leverage": 5, "gamma": 0.2, "band": 1.30, "breaches": 3},
+
+    # Every slider's EXTREME, because the recorded set above is an interior
+    # box and the sliders reach well outside it. The threshold was never the
+    # problem: the far ends fall past it and compute live, correctly. It is
+    # the moderately off-grid positions that bite — near enough to be served,
+    # far enough to be wrong — and that is exactly where a hand on a slider
+    # lands.
+    #
+    # Band 1.00 is the one that mattered. There the breach ceiling sits on
+    # top of the resting leverage, so the system breaks on the faintest touch
+    # and the true critical distance is 0.0039%. Demo mode served the
+    # band-1.02 recording and rendered 1.73% — a 444x error, in the direction
+    # that makes the book look SAFER, on the headline number, at the knob the
+    # video script tells the presenter to drag.
+    #
+    # It is also the failure find_weakest_shock's own comment forbids:
+    # "asserting zero is safe made the search bisect down to -0.0003 and
+    # report that as the hero number, which is fabricated." The search stopped
+    # fabricating it. The cache started.
+    {"leverage": 5, "gamma": 0.2, "band": 1.00, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.50, "breaches": 3},
+    {"leverage": 1.5, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 8, "gamma": 0.2, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 0.0, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 1.0, "band": 1.05, "breaches": 3},
+    {"leverage": 5, "gamma": 0.2, "band": 1.05, "breaches": 4},
+    {"leverage": 5, "gamma": 0.2, "band": 1.05, "breaches": 5},
 ]
 
 

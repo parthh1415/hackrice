@@ -13,7 +13,7 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ```sh
 git clone <this repo> && cd firebreak
 python3 -m pip install numpy pytest      # the only dependencies
-python3 -m pytest tests/ -q              # 223 passing
+python3 -m pytest tests/ -q              # 247 passing
 PYTHONPATH=src python3 -m firebreak.server
 ```
 
@@ -29,7 +29,7 @@ a pip install at 3am.
 ## Run it with no network
 
 The holdings matrix (`data/cache/dataset.json`, one frozen quarter) is committed, and so
-are 31 recorded answers in `data/cache/golden/` (244KB). The web fonts are vendored into
+are 53 recorded answers in `data/cache/golden/` (420KB). The web fonts are vendored into
 `web/fonts/` too, so not even the stylesheet reaches out. Nothing here touches the
 internet unless you explicitly ask it to.
 
@@ -61,7 +61,7 @@ you if the dataset moves out from under them.
 ## Tests
 
 ```sh
-python3 -m pytest tests/ -q      # 223, no network required
+python3 -m pytest tests/ -q      # 247, no network required
 ```
 
 The frontend has its own jsdom harnesses. They need one extra install, because

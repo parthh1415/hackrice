@@ -110,9 +110,30 @@ const band = () => [...d.querySelectorAll("#band .v")].map((e) => e.textContent)
    without observing a single repaint, because the stale state and the
    expected state happened to coincide.
 
-   `state.request` is the app's own generation counter — claimStage()
-   increments it, holdsStage() compares against it — so a run that has not
-   started cannot satisfy this, and neither can the run before.
+   Two barriers, and it is worth being precise about which does what, because
+   for a while the comment here credited the wrong one.
+
+   The first is the label. `attack()` writes "searching" SYNCHRONOUSLY, before
+   its first await, so it has already happened when dispatchEvent returns. The
+   label then stays non-matching continuously — "searching", "shock applied",
+   "round 1 · breach" — until this run's final round. There is no instant at
+   which the previous run's `round N / N` is visible to a poll. That is what
+   makes this correct, and it is why the earlier attempt to wait for the
+   "searching" transient failed: catching a state that lasts 13ms is a race,
+   whereas starting from a state that cannot match is not.
+
+   The second is `state.request`, the app's own generation counter —
+   claimStage() increments it, holdsStage() compares against it. This one was
+   dead for a while: `const state` at module scope does not attach to the
+   global object, so `generation()` read undefined, `before` was null at every
+   call site, and `moved` short-circuited to true forever. An agent
+   instrumented it and found `gen null -> null` on all five waits at every
+   delay. app.js exports it now, so the check is real.
+
+   The second barrier matters because the first depends on `settled()` being
+   called with nothing between it and the click. Nothing enforces that. A
+   future call site that adds a sleep in between silently loses the label
+   guarantee — and would still be protected by the counter.
 
    My first attempt polled for the label to pass through "searching", which
    attack() now writes before fetching. That does not work and is worth

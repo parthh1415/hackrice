@@ -77,7 +77,15 @@ def test_each_recording_still_matches_a_live_run(route, knobs):
 def test_the_recordings_declare_no_stopwatch_of_their_own():
     """The null in solve_ms is load-bearing, so pin it."""
     for path in sorted(api.GOLDEN.glob("stabilise__*.json")):
-        engine = json.loads(path.read_text()).get("engine", {})
+        payload = json.loads(path.read_text())
+        if not payload.get("found"):
+            # A scenario with nothing to fix ran no solver, so it has no engine
+            # block and no duration to have recorded. band=1.00 is one: the
+            # breach ceiling sits on the resting leverage there, so the system
+            # is already over its limit and there is no shock to defend against.
+            assert "engine" not in payload, f"{path.name} claims an engine but found nothing"
+            continue
+        engine = payload.get("engine", {})
         assert "solve_ms" in engine, f"{path.name} dropped solve_ms; a recording must keep live's key shape"
         assert engine["solve_ms"] is None, (
             f"{path.name} recorded solve_ms={engine['solve_ms']!r} — a duration measured on "
