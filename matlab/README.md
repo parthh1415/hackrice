@@ -31,26 +31,36 @@ if a judge asks "why MATLAB?":
 objective to evaluate. `stabilise.m` is the solve.
 
 `patternsearch` treats the reduction as continuous, which for most of this
-project's life was the entire argument for the MATLAB path: the Python fallback
-walked the reduction up a 5% grid and could not propose a cut smaller than 5% of
-a position. On the checked-in spec MATLAB found a fix costing **1.4e-06** of
-gross assets against the Python scan's **4.4e-04** — about 300x finer.
+project's life was the whole argument for the MATLAB path: the Python fallback
+walked the reduction up a 5% grid and could not propose a cut smaller than 5%
+of a position.
 
-That argument has mostly expired, and it is more useful to say so than to keep
-quoting the old number. The Python scan now brackets on the grid and then
-bisects on depth against a *relative* tolerance, and on the same checked-in spec
-it returns **1.99e-06** — within about 1.4x of the MATLAB answer, from 300x. The
-two paths agree on which position to cut and now very nearly on how deep.
+The Python scan now brackets on that grid and then bisects on depth against a
+relative tolerance, so the gap has narrowed. On the golden-path spec
+(leverage 5.0, gamma 0.20, band 1.05, breaches 3) the pure-grid search returns
+a fix costing **4.4e-04** of gross assets and the current search returns
+**4.2e-05** — about 10x finer. At band 1.30 the same comparison is
+**1.5e-04** against **2.0e-06**, about 78x.
 
-So the honest case for `stabilise.m` is no longer precision. It is that the same
-problem, posed to a real optimiser as a constrained mixed-integer program with a
-continuous third variable, lands in the same place as our own search — which is
-the kind of agreement that is worth more than either number alone.
+MATLAB's own recorded figure is **1.4e-06**. We are not going to tell you how
+that compares, because we no longer know what it was measured on and this
+machine has no licence to re-run it. If you have one, run it and write the
+number down beside the spec it came from.
 
-> The **1.4e-06** figure predates the bisection change and has not been re-run
-> since; this machine has no MATLAB licence. If you have one, re-run it and
-> replace this note with the number you get. Do not assume the two still differ
-> by 1.4x just because that is what the arithmetic above implies.
+> An earlier version of this section did the comparison anyway and got it
+> badly wrong. It read "1.99e-06 against 4.4e-04, within about 1.4x of MATLAB,
+> from 300x" — but 4.4e-04 is the band 1.05 answer and 1.99e-06 is the band
+> 1.30 answer, two different scenarios, and the ratio between them means
+> nothing. It also said "the checked-in spec", and there is no checked-in
+> spec: `data/cache/solve_spec.json` is untracked and the app overwrites it on
+> every Stabilise press, which is how two bands got crossed in one paragraph.
+> The section it corrupted was the one about a claim that had expired.
+
+So the honest case for `stabilise.m` is not precision any more. It is that the
+same problem, posed to a real optimiser as a constrained mixed-integer program
+with a continuous third variable, lands on the same position our own search
+does. That agreement is worth more than either number alone, and it is the
+thing we can actually still verify.
 
 ## 3. Run it
 
