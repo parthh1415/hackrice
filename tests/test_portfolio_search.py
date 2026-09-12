@@ -129,7 +129,15 @@ def test_the_fix_conserves_the_portfolio_s_value():
     assert fix["cash"] > cash, "the cut has to land somewhere and cash is where"
 
 
-def test_a_smaller_cut_than_the_one_reported_does_not_survive():
+def test_a_smaller_cut_than_the_one_reported_misses_the_target():
+    """Minimal with respect to the TARGET it was solving for, not the limit.
+
+    This first asserted against the limit and failed, correctly: the fix aims
+    at limit x (1 - margin), so a shallower cut can still clear the limit while
+    missing what it was asked to hit. The margin exists because without it the
+    answer is literally zero dollars — the break point is where the loss lands
+    exactly on the limit, so an infinitesimal cut already survives it.
+    """
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
     found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
@@ -138,6 +146,10 @@ def test_a_smaller_cut_than_the_one_reported_does_not_survive():
     from firebreak.portfolio import cut_to_cash
     smaller, smaller_cash = cut_to_cash(
         vector, cash, fix["asset"], fix["fraction_of_position"] * 0.9)
-    assert loss_at(smaller, smaller_cash, found, kw) >= 0.10, (
-        "a 10% shallower cut also survives, so the reported one is not minimal"
+
+    assert loss_at(smaller, smaller_cash, found, kw) > fix["target_loss"], (
+        "a 10% shallower cut also reaches the target, so the reported cut is "
+        "not the smallest one that does"
     )
+    assert fix["loss_after"] <= fix["target_loss"] + 1e-9
+    assert fix["target_loss"] < fix["limit"], "the fix must buy real headroom"
