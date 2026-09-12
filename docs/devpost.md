@@ -64,16 +64,20 @@ at λ≈7.7, and at 1.30 the filed-overlap column never leaves 1.00 at all — o
 marker on it is a consequence of parameters we chose and show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position and bisects on *how deep*
-the cut has to be. The answer at these settings: **Citadel cuts its NVDA position by 0.16%** —
-one-sixth of one percent of a single holding, 0.009% of the system's gross assets, under a basis
-point. Re-run NVDA −5.27% against the patched books and the outcome goes from four breaches over
-three rounds to two breaches in one round, final loss 9.12% down to **6.48%**, amplification 1.87
-down to **1.33**.
+the cut has to be. The answer at these settings: **Citadel sells $1.73M of NVDA** — 0.073% of a
+$2.36B position, and 0.0042% of the system's $40.9B gross book. Four ten-thousandths of one percent.
+Re-run NVDA −5.27% against the patched books and the outcome goes from four breaches over three
+rounds to two breaches in one round, final loss 9.12% down to **6.48%**, amplification 1.87 down to
+**1.33**.
 
-The depth matters as much as the position. Our first version searched a 5% grid, so it answered
-*which* position to cut and never *how much* — every scenario came back "5%", which is what a grid
-floor looks like when you mistake it for a result. Bisected, the cheapest cuts across our recorded
-scenarios are 0.16%, 0.31%, 0.62% and 1.41%: varied, because measured.
+The depth matters as much as the position, and it took us two goes to measure it. Our first version
+searched a 5% grid, so it answered *which* position to cut and never *how much* — every scenario came
+back "5%", which is what a grid floor looks like when you mistake it for a result. Bisecting fixed
+the shape but not the resolution: the depth tolerance was an absolute 0.002 while the true answer had
+shrunk to 0.0007, so the search was halting with a bracket wider than the number it reported and
+printing the top of it — 2.15× the true minimum, on the one number the product exists to produce.
+With a relative tolerance the cheapest cuts across our ten recorded scenarios run from 0.0027% to
+0.14%, $63K to $3.2M: varied, because finally measured rather than quantised.
 
 **And then we say what the fix does not buy.** The stabilise response re-runs the reverse search
 against the patched books and reports it as `bought`. The measured delta is +0.0039pp against a
@@ -129,8 +133,14 @@ than imply a solver we did not run.
 no CDN — nothing to install on a demo machine and nothing that breaks when conference wifi does.
 That last part we had to earn twice: the page linked Geist from Google Fonts while this very
 paragraph claimed "no CDN", which one look at a network tab would have shown a judge. The font is
-self-hosted now (`web/fonts/`, `web/fonts.css`, Latin and Greek subsets — the app needs γ, λ and δ
-and nothing else outside Latin), so the claim and the page finally agree. The cascade animation
+self-hosted now (`web/fonts/`, `web/fonts.css`, 92KB of Latin and Latin-Ext), so the claim and the
+page finally agree. Writing *that* sentence cost us a third pass: the first version of it said
+"Latin and Greek subsets — the app needs γ, λ and δ", and not one clause of that was true. Geist
+publishes no Greek subset; λ and δ appear nowhere in the app; and the one γ that does appear, in the
+`Price impact γ` label, has been rendering in `-apple-system` since the day it was written — under
+the Google Fonts link exactly as much as now. We only found out by reading the cmap. Three
+consecutive claims about our own typography, all confident, all wrong, all in the paragraph about
+being wrong. The cascade animation
 reads `trajectory[t]` frame by frame; it never interpolates between precomputed endpoints, because the
 animation is supposed to *be* the mechanism rather than illustrate it.
 
@@ -160,15 +170,20 @@ into a claim we cannot support.
 reduction grid, so every scenario we recorded came back with the same answer: cut 5%. Ten
 recordings, one number. That is not a result, it is the floor of the grid wearing a result's
 clothes, and we read it as a finding for hours. Bisecting on depth as well as position, the cheapest
-cuts come out at 0.16%, 0.31%, 0.62% and 1.41% — and the headline got dramatically stronger, because
-the real answer is that cutting one-sixth of one percent of a single position prevents the whole
-cascade. We nearly shipped a much weaker claim because we never questioned a number that looked
-round.
+cuts come out between 0.0027% and 0.14% — and the headline got dramatically stronger, because the
+real answer is that selling $1.7M out of a $2.4B position prevents the whole cascade. We nearly
+shipped a much weaker claim because we never questioned a number that looked round. Then we did it
+again one level down: the bisection's *tolerance* was absolute where the answer was shrinking, so it
+reported 2.15× the true minimum. Same lesson twice in one night — the resolution of your search is
+part of your answer, and it has to be checked against the answer's own scale.
 
 **The most important parameter was invisible.** The breach band — how far over its target leverage a
 fund runs before it is forced to sell — was hardcoded at 1.05 while leverage and γ sat on sliders. It
-moves the hero harder than either of them: band 1.02 gives NVDA −1.73% and amplification 3.10, band
-1.30 gives NVDA −27.33% and 1.43. A five-fold swing in the headline number, controlled by a constant
+moves the hero harder than either of them: at leverage 5.0 with ≥3 breaching, band 1.02 gives NVDA
+−1.73% and amplification 3.10, band 1.30 gives NVDA −27.33% and 1.43. (Those two figures are
+leverage-specific — at 3.0 the same pair is −4.59% and −57.12% — which we only noticed because the
+assumptions panel was quoting them at every leverage as though they were the band's behaviour in
+general.) A five-fold swing in the headline number, controlled by a constant
 nobody could see and nobody was declaring. It is a slider now — third knob on the rail, `band`,
 default 1.05, range 1.0–1.5 — it comes back in the `params` block on every response, it has its own
 row in the assumptions panel, and it sits in the what-we-do-not-claim list next to leverage and γ.
@@ -237,11 +252,11 @@ everything turning red at once.
 Point72's number. 2.8% exposure, 0.75% direct loss, 5.70% total. That single line is the whole thesis
 about overlapping portfolios, and it came out of real filings rather than a constructed example.
 
-The fix is non-obvious and it is *priced*. Cutting 0.16% of one position — 0.009% of the system's
-gross assets — stops a cascade that costs 9.1% of system equity. It is not the fund that breaches
-first, and it is a depth no one would have guessed, which is the whole argument for solving it
-rather than eyeballing it. Output is a sentence a PM could act on, not a risk score, and we report
-what it does not buy in the same breath.
+The fix is non-obvious and it is *priced*. Selling $1.73M out of a $2.36B position — 0.0042% of the
+system's gross assets — stops a cascade that costs 9.1% of system equity. It is not the fund that
+breaches first, and it is a depth no one would have guessed, which is the whole argument for solving
+it rather than eyeballing it. The output is a trade a PM could actually place, not a risk score, and
+we report what it does not buy in the same breath.
 
 Every number on screen is derivable, and we shipped honest magnitudes: amplification 1.87, not the
 11.8 we could have had by leaving the broken metric in; a hero that prints only the digits the search

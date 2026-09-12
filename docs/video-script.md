@@ -41,7 +41,7 @@
   | asset label, NVDA, at t0 | `−5.27%` | 2 dp |
   | asset label, NVDA, at round 3 / 3 | `−5.76%` | 2 dp |
   | fund labels at t0 | `L 5.18` `L 5.36` `L 5.03` `L 5.15` `L 5.25` | 2 dp |
-  | fix line | `Citadel: cut NVDA exposure 0% · costs 0.01% of gross assets` | reduction 0 dp ⚠, cost 2 dp |
+  | fix line | `Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position · costs 0.0042% of gross assets` | dollars 1 dp + unit, percentages 2 significant figures |
   | split feet | `9.1% loss · 4 breaches · amp 1.87×` / `6.5% loss · 2 breaches · amp 1.33×` | loss 1 dp, amp 2 dp |
   | shock stamp | `identical shock · 5.27% NVDA` | 2 dp |
   | boundary marker | `L 5.0 · overlap 0.71` | 1 dp / 2 dp |
@@ -49,15 +49,15 @@
   | boundary title | `amplification · contour at 1.5× · single-name 5% reference · band 1.05` | 1 dp / 2 dp |
   | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0% · <n>ms` | — |
   | solver, after boundary | `parameter sweep` · `cells 256 · <n>ms` | — |
-  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `33 evals · <n>ms · exit 1` | — |
+  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `MATLAB not available on this machine` · `124 evals · <n>ms · exit 1` | — |
   | bought line, above the split | `critical distance 5.27% → 5.28% · no measurable change (search resolves to ±0.005pp) — defends this shock, not the next one` | 2 dp / 3 dp |
   | sliders | `5.0`, `0.20` and `1.05` | 1 dp / 2 dp / 2 dp |
 
-  ⚠ **That `0%` on the fix line is a live bug, not a typo.** The stabiliser used to be pinned to a 5%
-  grid; it bisects on depth now, so the cheapest cut is 0.15625% and `web/app.js`'s `toFixed(0)`
-  rounds the headline instruction to zero. Eight of the ten recorded scenarios read `0%`. **Do not
-  record Beat 4 until this is fixed** — the one sentence the whole beat exists to produce currently
-  tells a PM to cut nothing.
+  ✅ **The `0%` bug flagged here last pass is fixed.** The fix line used fixed-decimal formatters,
+  so once the answer got small it printed `cut NVDA exposure 0% · costs 0.00% of gross assets` —
+  the one sentence the beat exists to produce, telling a PM to cut nothing. It now leads with the
+  dollar amount and formats both percentages to two significant figures, so it reads as a trade
+  rather than a rounding error. Beat 4 is recordable.
 
   **The hero has no minus sign.** It renders `5.27%` under the label *Critical shock distance*, and
   the split stamp reads `identical shock · 5.27% NVDA`. Where this script writes "NVDA −5.27%" that
@@ -284,11 +284,10 @@ tick is for).
 
 #### Shot 2.9 · 1:57 – 2:08
 **On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
-position scan`, `MATLAB not available on this machine`, `33 evals · <n>ms · exit 1` — unless you have
+position scan`, `MATLAB not available on this machine`, `124 evals · <n>ms · exit 1` — unless you have
 done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
 resolves in about a tenth of a second:
-`Citadel: cut NVDA exposure 0.16% · costs 0.01% of gross assets` — **once the rounding bug above is
-fixed.** Today it renders `0%`.
+`Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position · costs 0.0042% of gross assets`
 and the `bought` line lands **immediately underneath it, at the same moment** — see Shot 2.12. You
 cannot hold it back, so don't plan a reveal.
 
@@ -298,8 +297,10 @@ cannot hold it back, so don't plan a reveal.
 >
 > ⏸ *(let the instruction render)*
 >
-> "Citadel cuts NVIDIA by zero point one six percent. Under a basis point of the system's gross
-> assets."
+> "Citadel sells one point seven million dollars of NVIDIA. Out of a two point four billion dollar
+> position — seven hundredths of one percent of it. Four ten-thousandths of one percent of the
+> system's gross assets."
+
 
 
 
@@ -308,16 +309,22 @@ cannot hold it back, so don't plan a reveal.
 which did *not* breach in round one.
 
 > "Notice who it isn't. Millennium and Renaissance are the two funds that breach first. The fix is in
-> neither of them. It's Citadel, which doesn't go until round two — and it's a sixth of one percent
-> of a single position. Citadel is the largest book here, so the smallest fractional cut anywhere in
+> neither of them. It's Citadel, which doesn't go until round two — and it's seven hundredths of one
+> percent of a single position. Citadel is the largest book here, so the smallest fractional cut anywhere in
 > the system is the one that takes the most dollars out of round two's selling. That is not the move
 > anyone would guess, and it's why you solve it instead of guessing."
 
 > *⚠ The old version of this beat said "notice it isn't NVIDIA — the cheapest fix is in Alphabet".
-> That is backwards now. Since the stabiliser started bisecting on cut depth (commit `f398bdb`) the
-> answer at the golden path is **Citadel · NVDA · 0.15625%**, cost 0.009% of gross assets — $3.7M out
-> of a $2.36B position. The fix **is** the shocked name. Anything quoting GOOGL, "five percent" or
-> "four basis points" is reading the old 5%-grid answer.*
+> That is backwards now. The answer at the golden path is **Citadel · NVDA · 0.0732%** — $1,731,560
+> out of a $2,364,156,792 position, costing 0.0042% of the $40.9B gross book. The fix **is** the
+> shocked name.*
+>
+> *This number has now moved twice, so check it rather than trusting any prose. Anything quoting
+> GOOGL, "five percent" or "four basis points" is the old 5%-grid answer; anything quoting 0.15625%,
+> 0.16%, 0.009%, 0.01% or 33 evals is the answer from before the depth tolerance was made relative
+> (`_DEPTH_RTOL = 0.02`, `_DEPTH_FLOOR = 1e-7`). The absolute 0.002 tolerance was halting with a
+> bracket wider than the answer it reported and printing the top of it — 2.15× the true minimum, on
+> the one number the product exists to produce.*
 >
 > *Verified: Citadel $14.6B of the $40.9B total; Two Sigma $9.2B, Millennium $7.7B, Renaissance
 > $6.3B, Point72 $3.1B. Citadel's NVDA position is 16.2% of its own book. Round-one breachers are
@@ -336,7 +343,9 @@ Right foot: `6.5% loss · 2 breaches · amp 1.33×`.
 > ⏸ *(hold on the split, ~2s)*
 >
 > "After: two funds, one round, six point five. Amplification one point eight seven down to one point
-> three three. For sixteen hundredths of one percent of one position."
+> three three. For one point seven million dollars — seven hundredths of one percent of one
+> position."
+
 
 >
 > *Say "two funds", never "it survives". Millennium and Renaissance still breach — the fix clears the
@@ -406,8 +415,10 @@ in the app showing the live solver name, evaluation count and exit flag.
 ### Shot 3.3 · 3:02 – 3:12
 **On screen:** Click **Assumptions** in the masthead. The panel opens instantly over the stage with
 eight rows, each tagged `measured`, `declared` or `limit`, filled from the live payload — Holdings
-(SEC 13F-HR, 2026-06-30, 5 managers, 10 names, $40.9B), Leverage (5.0×), Breach band (1.05, with
-"1.02 gives −1.73%, 1.30 gives −27.33%" written into the row), Price impact (γ = 0.20), ADV,
+(SEC 13F-HR, 2026-06-30, 5 managers, 10 names, $40.9B), Leverage (5.0×), Breach band (1.05, reading
+"At these settings, 1.02 gives −1.73% and 1.30 gives −27.33%" — the row shows that pair only at
+leverage 5.0 with ≥3 breaching, and names those settings instead when you are anywhere else, because
+the pair is a measurement and it drifts), Price impact (γ = 0.20), ADV,
 What 13F omits, Scale (~$8.2B system equity, "the mechanism transfers; the magnitude does not"),
 Not a prediction ("not a proven threshold"). *No slide needed — this is the product now.* Escape or
 **Close** puts it away.
@@ -468,8 +479,10 @@ shocks · multi-asset shocks · systemic-importance ranking · bystander exposur
   reading these from the page. Verified this pass — **screen value first, float in brackets**:
   hero NVDA −5.27% (5.2734); shock loss 4.9% (4.876%); after cascade 9.1% (9.122%); amplification
   1.87× (1.8710); 4 breaches, 3 rounds; order Millennium+Renaissance → Citadel → Two Sigma, Point72
-  never; Point72 2.8% / 0.75% / 5.70%; fix `Citadel: cut NVDA exposure 0.16% · costs 0.01% of gross
-  assets` (reduction 0.0015625, cost 0.0000903); after 6.5% (6.482%) and 1.33× (1.3299), 2 breaches in
+  never; Point72 2.8% / 0.75% / 5.70%; fix `Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position
+  · costs 0.0042% of gross assets` (reduction 0.000732421875, cost 0.00004234832, sell_usd
+  1,731,560.15, position_usd 2,364,156,792, gross_usd 40,888,519,059, 124 evals); after 6.5%
+  (6.483%) and 1.33× (1.3299), 2 breaches in
   1 round; shock stamp `5.27% NVDA`; boundary marker `L 5.0 · overlap 0.71` (0.7117); fund labels at
   t0 `L 5.18 · L 5.36 · L 5.03 · L 5.15 · L 5.25`, at round 3 / 3 `L 4.87 · L 4.91 · L 5.24 · L 4.80
   · L 4.92`; NVDA asset label −5.27% at t0, −5.76% at the end.

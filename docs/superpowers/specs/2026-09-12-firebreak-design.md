@@ -125,15 +125,25 @@ Three reviewers went at this independently. Findings that changed the code:
    gives NVDA −1.73% and amplification 3.10; band 1.30 gives NVDA −27.33% and
    1.43. Now a declared parameter `band` (default 1.05, clamped to 1.0–1.5),
    echoed in the `params` block of every response, and it belongs in §9.
-8. **The hero printed two decimals the search could not resolve.** Bisection
+8. **The stabiliser's depth tolerance was absolute while its answer was shrinking.**
+   `_DEPTH_TOLERANCE` was a fixed 0.002 against a true minimum of 0.0007, so
+   bisection halted with a bracket wider than the number it reported and
+   printed the top of it — **2.15× the true minimum**, on the one number the
+   product exists to produce. Now relative: `_DEPTH_RTOL = 0.02` with
+   `_DEPTH_FLOOR = 1e-7`. The position-pruning rule was unsound the same way —
+   it priced the grid step it was about to *try* rather than the last one that
+   *failed*, so a position could be discarded on the strength of a 5% cut it
+   might have cleared with 0.07%. Fixing the pruning is why evaluations went
+   from 33 to 124: it had been skipping positions it had no grounds to skip.
+9. **The hero printed two decimals the search could not resolve.** Bisection
    tolerance was 5e-4 against a display of 2 dp, so the last digit was
    decoration — and not merely imprecise: −5.28% was really −5.27%. Tolerance
    is 5e-5 now.
-9. **The after-panel drew the unpatched book.** The before/after split re-ran
+10. **The after-panel drew the unpatched book.** The before/after split re-ran
    the cascade on patched holdings but rendered the original matrix, so both
    halves showed an identical network under different numbers — in the one
    scene whose entire claim is that a position got smaller.
-10. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
+11. **Citation correction.** Caccioli et al. (2014) has *no* partial deleveraging
    — portfolios are fixed until default, then fully liquidated — and uses
    exponential impact. **Greenwood, Landier & Thesmar (2015), JFE 115(3) 471–485**
    is the actual ancestor of our deleveraging rule; their `b_n = d/e` gives
@@ -282,7 +292,7 @@ found, not a proven threshold. But pure bisection can stall on flat regions. **U
 to bracket, then bisect inside the bracket.** Robust and still fast. As built
 (`search.py`): 1% steps out to `_MAX_DROP = 0.60`, then bisection to a tolerance of **5e-5**. The
 tolerance has to resolve the precision the hero prints — at 5e-4 against a 2 dp display the last
-digit was decoration and, worse, wrong (§2.4 item 8).
+digit was decoration and, worse, wrong (§2.4 item 9).
 
 Stretch: sparse multi-asset search minimising `‖s‖₁` (encourages few assets shocked) or `‖s‖₂`.
 
@@ -298,12 +308,12 @@ essentially where it was. The `/api/stabilise` response carries a `bought` objec
 `{before_pct, after_pct, delta_pct, resolution_pct, measurable, after_asset, note}` — from re-running
 `find_weakest_shock` against the patched books.
 
-At the demo settings the fix is **Citadel cuts NVDA by 0.156%**, costing 0.0090% of gross assets,
-and `bought` reads: `before_pct` 5.2734, `after_pct` 5.2773, `delta_pct` +0.0039, against a
+At the demo settings the fix is **Citadel sells $1,731,560 of NVDA** — 0.0732% of its
+$2,364,156,792 position, and 0.0042% of the $40,888,519,059 gross book — and `bought` reads: `before_pct` 5.2734, `after_pct` 5.2773, `delta_pct` +0.0039, against a
 `resolution_pct` of 0.005. The delta is **inside the search's own resolution**, so `measurable` is
 `false` and the note reads *"no measurable change in break point — a targeted patch, not structural
 repair"*. **Report the note, never the delta.** Quoting +0.0039pp as a result would be the same
-fake-precision failure as §2.4 item 8, one level up — a number inside its own error bar presented as
+fake-precision failure as §2.4 item 9, one level up — a number inside its own error bar presented as
 though it meant something.
 
 `showBought` in `web/app.js` renders this under the fix line, and it follows the same rule: when
@@ -356,7 +366,17 @@ As shipped (`CascadeResult.as_dict()` in `engine.py`, merged with the dataset by
 
 `params` is the scenario the numbers actually answer, after clamping — `clamped` lists any knob a
 URL pushed out of range, because a confident answer to a different question is the worst failure
-mode here. `/api/stabilise` adds `before`, `after`, `fix`, `engine` and `bought` (§3.10).
+mode here. `/api/stabilise` adds `before`, `after`, `fix`, `engine` and `bought` (§3.10), where
+`fix` is:
+
+```json
+{"fund": "Citadel", "asset": "NVDA", "fund_index": 0, "asset_index": 0,
+ "reduction": 0.000732421875, "cost": 4.234832e-05,
+ "position_usd": 2364156792.0, "sell_usd": 1731560.15, "gross_usd": 40888519059.0}
+```
+
+The three `_usd` fields exist because the fractions alone stopped being sayable once the answer got
+small: "cut 0.073%" is a number, "sell $1.7M out of a $2.4B position" is a trade.
 
 Two things to hold onto: `breached` is a list of fund **indices**, not a boolean mask — both at the
 top level (anyone who breached at any round) and per trajectory frame (who breached in that round).
@@ -411,7 +431,7 @@ Devpost "what's next" bullets.
 
 All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
 (`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite was
-**146 tests, all passing** when this was last reconciled; it is still growing, so read the count off
+**149 tests, all passing** when this was last reconciled; it is still growing, so read the count off
 `python3 -m pytest tests/ -q | tail -1` rather than quoting this line.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
@@ -443,17 +463,17 @@ Tests 2 and 6 protect the headline claim. Test 7 protects the demo.
 | Scope overrun | Scene 4 cut first, then heatmap, then stabilisation. Scenes 1 + cascade animation are the irreducible core. |
 | Non-monotone damage breaks bisection | Grid-bracket then bisect (§3.9). Test 6. |
 
-**Open bug, 2026-09-12 — blocks the Scene 3 demo.** `fixLine` in `web/app.js` renders the
-reduction as `(f.reduction * 100).toFixed(0)`. That was fine while the stabiliser was pinned to a 5%
-grid; now that it bisects, reductions are sub-1% and the headline instruction rounds to **zero**. At
-the demo settings the screen currently reads:
+**Fixed 2026-09-12** (was: `fixLine` rendered the reduction with `(f.reduction * 100).toFixed(0)`
+and the cost with a 2 dp formatter, which was fine at a 5% grid floor. Once the stabiliser bisected
+on depth the answer went sub-1% and the headline instruction rounded to **zero** —
+`Citadel: cut NVDA exposure 0% · costs 0.00% of gross assets`, an instruction to cut nothing, in the
+one sentence the scene exists to produce). The line now leads with the dollar amount and formats
+percentages to two significant figures:
 
-> `Citadel: cut NVDA exposure 0% · costs 0.01% of gross assets`
+> `Citadel: sell $1.7M of NVDA · 0.073% of a $2.4B position · costs 0.0042% of gross assets`
 
-Eight of the ten recorded scenarios say `0%`; the other two say `1%`. The one sentence the whole
-scene exists to produce is currently an instruction to cut nothing. Needs 2 dp, or a significant-
-figure formatter. Until it is fixed, do not quote the reduction as a screen value — the float is
-0.156%, the display is not.
+Worth keeping as a standing rule: **a fixed-decimal formatter is an assumption about the scale of
+the answer.** When a search gets sharper, every display downstream of it needs re-checking.
 
 **Fixed 2026-09-12** (was: `_boundary` read `band`, echoed it back in `band` and `params`, then
 hardcoded `max_leverage = lev * 1.05` inside the sweep, so the phase diagram was byte-identical at
@@ -489,7 +509,7 @@ are the ones the numbers on screen were computed with. Say them out loud as well
   search that measured it. At the demo settings the change is smaller than that resolution, so the
   honest statement is "no measurable change in break point", not a delta.
 - No number in the UI is presented to more precision than the model supports — which means the
-  search tolerance has to resolve the digits the display prints (§2.4 item 8).
+  search tolerance has to resolve the digits the display prints (§2.4 items 8 and 9).
 
 ---
 

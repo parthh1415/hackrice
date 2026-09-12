@@ -556,7 +556,7 @@ git add -A && git commit -m "assumptions panel + cached demo path so wifi can't 
 ## Self-Review
 
 **Spec coverage.** *(Written before the build; Task 7 was subsequently cut and Task 8's assumptions
-panel is built and §9 is on screen.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **146 tests** as of
+panel is built and §9 is on screen.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **149 tests** as of
 2026-09-12, all passing.)* Gap found and closed: the spec's §5 Scene 2 needed a server-side sweep, added as `/api/boundary` in Task 5.
 
 **Placeholders.** None — every code step contains runnable code. Task 4's steps describe rendering rather than pasting 200 lines of SVG, which is a judgement call: the interface (`renderNetwork`, `playCascade`, the trajectory shape) is specified exactly, and the drawing is genuinely free-form.
