@@ -40,7 +40,7 @@ def handle(path, body):
         # nothing recorded, or the nearest recording is for a different
         # question — computing is better than a 404 and much better than
         # answering the question we happen to have on disk.
-        if cached is not None and cached["cached_exact"]:
+        if cached is not None and cached["cached_near"]:
             return cached
 
     try:
@@ -56,7 +56,9 @@ def handle(path, body):
 
     payload["cached"] = False
     payload["cached_for"] = _knobs(route, params)
+    # a live answer is of exactly what was asked, by construction
     payload["cached_exact"] = True
+    payload["cached_near"] = True
     return payload
 
 
@@ -162,7 +164,18 @@ def _recorded(route):
 # _distance is the sum of squared slider-span fractions, so this is an rms
 # deviation of a quarter of a slider — comfortably wider than the half-step
 # between two recordings, and nowhere near "leverage 40, five breaches".
-_SAME_SCENARIO = 0.25 ** 2
+# One threshold was doing two different jobs and they want opposite answers.
+#
+#   _NEAR_ENOUGH  — is this recording close enough to be worth showing at all?
+#                   Loose on purpose: demo mode exists so a dead engine still
+#                   draws something, and judges drag sliders to odd places.
+#   cached_exact  — is this recording actually OF these settings? Strict, and
+#                   computed by comparison, not distance. It used to be the
+#                   same 0.25 threshold, which let leverage 6.0 stand in for
+#                   6.4 and gamma 0.2 for 0.35 while still claiming exactness,
+#                   so the hero number read as an answer to a question nobody
+#                   asked.
+_NEAR_ENOUGH = 0.25 ** 2
 
 
 def _distance(route, wanted, knobs):
@@ -195,7 +208,11 @@ def load_golden(route, params):
     # so if it was recorded somewhere else the payload has to say where.
     payload["cached_for"] = {name: knobs.get(name, default)
                              for name, (default, _) in KNOBS[route].items()}
-    payload["cached_exact"] = _distance(route, wanted, knobs) <= _SAME_SCENARIO
+    payload["cached_near"] = _distance(route, wanted, knobs) <= _NEAR_ENOUGH
+    payload["cached_exact"] = all(
+        abs(wanted[name] - knobs.get(name, default)) < 1e-9
+        for name, (default, _) in KNOBS[route].items()
+    )
     payload.pop("fallback_reason", None)
     return payload
 

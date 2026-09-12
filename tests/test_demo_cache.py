@@ -260,3 +260,29 @@ def test_guards_stop_a_url_from_reaching_the_crash_path():
 
     assert result["cached"] is False, "guards should have made this computable"
     assert result["params"]["leverage"] >= 1.0
+
+
+def test_exact_means_exact_not_merely_close():
+    """`cached_exact` drives whether the UI says "cached run" or names the
+    settings it actually served. Calling a near miss exact makes the hero
+    number look like an answer to the question that was asked.
+
+    Distance was normalised by slider span against a 0.25 threshold, so
+    leverage 6.0 standing in for 6.4 AND gamma 0.2 standing in for 0.35 both
+    scored inside it and the payload claimed exactness.
+    """
+    result = api.handle("/api/break?leverage=6.4&gamma=0.35&breaches=3&demo=1", {})
+
+    assert result["cached"] is True
+    if result["cached_for"] != {"leverage": 6.4, "gamma": 0.35, "breaches": 3.0}:
+        assert result["cached_exact"] is False, (
+            f"served a recording for {result['cached_for']} and called it exact"
+        )
+
+
+def test_a_recording_of_the_asked_for_settings_is_exact():
+    result = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3&demo=1", {})
+
+    assert result["cached"] is True
+    assert result["cached_exact"] is True
+    assert result["cached_for"] == {"leverage": 5.0, "gamma": 0.2, "breaches": 3.0}
