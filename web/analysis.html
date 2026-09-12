@@ -64,8 +64,9 @@
       </div>
     </div>
     <div class="card" id="whyCard" hidden>
-      <div class="card-header"><span class="card-title">Why the loss is bigger than the shock</span></div>
-      <div class="card-body"><p class="lede" id="why">—</p></div>
+      <div class="card-header"><span class="card-title">What this does not say</span>
+        <span class="card-desc" id="whyDesc">—</span></div>
+      <div class="card-body tight"><table><tbody id="whyRows"></tbody></table></div>
     </div>
   </div>
 </main>
@@ -212,16 +213,30 @@ bindKeys("analysis");
     `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s2}</div></div>`
   ).join("");
 
+  /* This was a full-width prose panel restating the sub-line under the
+     headline and the table above it, in longer words: three tellings of one
+     idea on one screen. What replaces it is the part neither of those says —
+     what the number does NOT mean — in the same row grid as everything else,
+     rather than in blog register. */
   const nFunds = (body.funds || []).length;
   const nBroke = body.breached.length;
-  const who = nFunds && nBroke === nFunds
-    ? `all ${nFunds} of the institutional books we model`
-    : `${nBroke} of the ${nFunds || "modelled"} institutional books we model`;
-  document.getElementById("why").textContent =
-    `A ${body.pct.toFixed(2)}% fall in ${body.asset} costs this portfolio ${pct(body.direct_loss)} directly. ` +
-    `But ${who} cross their leverage limits at that price and are forced to sell — and because they ` +
-    `hold the same names you do, their selling pushes your other positions down too. That is what ` +
-    `turns ${pct(body.direct_loss)} into ${pct(body.cascade_loss)}.`;
+  document.getElementById("whyDesc").textContent =
+    `${body.asset} −${body.pct.toFixed(2)}% · limit ${pct(body.params.limit, 0)} · ` +
+    `λ ${body.params.leverage.toFixed(1)}× · band ${body.params.band}× · γ ${body.params.gamma}`;
+  document.getElementById("whyRows").innerHTML = [
+    ["Not a probability",
+     `Nothing here says a ${body.pct.toFixed(2)}% fall in ${body.asset} is likely. It says that is ` +
+     "the smallest single-name fall this model puts past your limit."],
+    ["Not a threshold",
+     `${nBroke} of ${nFunds} books cross their leverage limits at that price under an assumed ` +
+     "leverage and an assumed price-impact rule. Change either and the number moves."],
+    ["One name at a time",
+     "The search shocks a single name. A correlated fall across several would reach you sooner, " +
+     "and is not what was tested."],
+    ["Your book is an observer",
+     "It takes the price damage; it does not join the network. A retail position does not move " +
+     "the market, so the fix changes how much of the cascade reaches you, not whether it happens."],
+  ].map(([k, v]) => `<tr><td style="width:180px"><b>${k}</b></td><td class="t small">${v}</td></tr>`).join("");
 })();
 </script>
 </body>
