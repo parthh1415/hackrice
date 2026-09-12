@@ -116,19 +116,6 @@ class Book:
         self.debt = self.debt - proceeds
         return proceeds
 
-    def deleverage(self, max_leverage, target_leverage):
-        """Plan and settle at book prices. Returns dollars sold per asset.
-
-        Equity-neutral precisely because execution is at book prices.
-        run_cascade deliberately does not use this path.
-        """
-        hit = self.over_limit(max_leverage)
-        if not hit:
-            return np.zeros_like(self.prices)
-        units_sold, _ = self.plan_sales(hit, target_leverage)
-        self.settle(units_sold, self.prices)
-        return (units_sold * self.prices).sum(axis=0)
-
 
 @dataclass
 class CascadeResult:
