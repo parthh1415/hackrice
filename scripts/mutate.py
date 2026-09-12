@@ -101,6 +101,22 @@ MUTATIONS = {
         "_MILLION = 1_000_000.0",
         "_MILLION = 1_000.0"),
 
+    "ds_missing_manager_ok": (
+        "src/firebreak/dataset.py",
+        "    if missing:\n        raise RuntimeError(",
+        "    if False:\n        raise RuntimeError("),
+    "ds_mixed_periods_ok": (
+        "src/firebreak/dataset.py",
+        "    if len(distinct) > 1:",
+        "    if False:"),
+    "near_enough_wide": (
+        "src/firebreak/api.py",
+        "_NEAR_ENOUGH = 0.25 ** 2",
+        "_NEAR_ENOUGH = 16.0"),
+    "near_enough_110": (
+        "src/firebreak/api.py",
+        "_NEAR_ENOUGH = 0.25 ** 2",
+        "_NEAR_ENOUGH = 110.0"),
     "cusip_jpm_typo": (
         "data/universe.json",
         '"46625H10": "JPM"',

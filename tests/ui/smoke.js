@@ -149,7 +149,20 @@ async function requireServer() {
      not the last one, or it shows the ending and then rewinds into it. */
   console.log("\nREFLOW — a redraw must not skip to the ending");
   d.getElementById("defendBtn").dispatchEvent(new window.Event("click"));
-  while (!/^shock applied/.test(d.getElementById("splitRound").textContent)) await sleep(20);
+  // Capped. This was `while (...) await sleep(20)` with no iteration limit, so
+  // if defend() ever failed the harness spun forever, printed nothing and
+  // never exited — the exact silent-hang failure requireServer() was added to
+  // prevent, sitting forty lines below it.
+  let waited = 0;
+  while (!/^shock applied/.test(d.getElementById("splitRound").textContent)) {
+    if (waited >= 15000) {
+      check("the split reaches its first frame", false,
+            `splitRound stuck at "${d.getElementById("splitRound").textContent}" after 15s`);
+      break;
+    }
+    await sleep(20);
+    waited += 20;
+  }
   const round0 = svg("netBefore").innerHTML;
   reflow();
   await sleep(150);                       // handler is debounced 60ms

@@ -255,15 +255,95 @@ def test_a_recording_says_which_sliders_produced_it():
 def test_settings_nowhere_near_a_recording_are_computed_rather_than_faked():
     """Dragging leverage to 40 and asking for 5 breaches used to serve the
     leverage-7 / 3-breach recording, hero number and all, with nothing in the
-    payload saying the answer belonged to a different question."""
-    live = api.handle("/api/break?leverage=40&gamma=9&breaches=5", {})
-    demo = api.handle("/api/break?leverage=40&gamma=9&breaches=5&demo=1", {})
+    payload saying the answer belonged to a different question.
 
-    if demo["cached"]:
-        assert demo["cached_for"] != {"leverage": 40.0, "gamma": 9.0, "breaches": 5.0}
-        assert demo["cached_exact"] is False
-    else:
+    The assertion that used to live here could not fail. It compared
+    `cached_for` against a three-key dict — `{leverage, gamma, breaches}` —
+    and `cached_for` gained a fourth key when `band` joined KNOBS. So the
+    `!=` held for structural reasons, whatever the values were, and the whole
+    branch was inert twice over: `cached` is False at HEAD, so it was not even
+    taken. Third test found tonight that passes because it stopped being able
+    to fail.
+
+    What it should say is that the answer belongs to the question asked.
+    """
+    q = "leverage=40&gamma=9&breaches=5"
+    live = api.handle(f"/api/break?{q}", {})
+    demo = api.handle(f"/api/break?{q}&demo=1", {})
+
+    if not demo["cached"]:
         assert demo.get("magnitude") == live.get("magnitude")
+        return
+
+    assert demo["cached_exact"] is False
+    for knob, asked in (("leverage", 40.0), ("gamma", 9.0), ("breaches", 5.0)):
+        assert demo["cached_for"][knob] != asked, (
+            f"served a recording claiming to be for {knob}={asked}, which is "
+            "not a setting anything was ever recorded at"
+        )
+    assert demo["magnitude"] != live["magnitude"], (
+        "if the recording matched the live answer there would be nothing to "
+        "warn about; this test is checking the case where it does not"
+    )
+
+
+def test_the_near_enough_threshold_is_held_from_above_as_well_as_below():
+    """`_NEAR_ENOUGH` decides whether to answer a different question at all.
+
+    Nothing constrained it upward. A review agent widened it from 0.0625 to
+    1.0, 16, 100 and even 110 with all 218 tests green — at 110 the leverage-40
+    recording is close enough to serve. The cost at every slider on an end
+    (leverage 8, gamma 1.0, band 1.5, breaches >=5, all reachable by dragging):
+
+        HEAD    computes live          -> hero NVDA 14.38%
+        widened serves a recording     -> hero NVDA 27.33%
+
+    A 1.9x error on the headline, in the mode the demo actually runs in. The
+    badge does name the settings it fell back to, so it is labelled rather
+    than hidden — but labelling is not the job of this threshold. Its job is
+    to not answer a different question in the first place.
+    """
+    from firebreak.api import _NEAR_ENOUGH, _distance
+
+    # The distance is a sum of squared, scale-normalised knob differences, so
+    # 1.0 means "one full scale-unit away on one knob, or the equivalent
+    # spread across several". Serving a recording from further than that is
+    # answering a different question, whatever the badge says. This is the
+    # bound that was missing: 1.0, 16, 100 and 110 all passed the suite.
+    assert _NEAR_ENOUGH < 1.0, (
+        f"_NEAR_ENOUGH is {_NEAR_ENOUGH}; at or above 1.0 a recording a whole "
+        "scale-unit away counts as near enough, and at 110 the leverage-40 "
+        "recording does"
+    )
+
+    # And a concrete one. It has to be a point the guards will not CLAMP into
+    # range, which is what made the old leverage=40 case unreachable: 40 is
+    # pulled back to 8, and 8 is recorded, so the branch it was testing never
+    # ran. This is the farthest point inside the sliders' own limits.
+    asked = {"leverage": 1.0, "gamma": 1.0, "band": 1.5, "breaches": 5.0}
+    nearest = min(
+        _distance("/api/break", asked, {k: float(v) for k, v in knobs.items()})
+        for route, knobs in api.golden_specs() if route == "/api/break"
+    )
+    assert nearest > _NEAR_ENOUGH, (
+        f"the farthest reachable slider position is {nearest:.3f} from its "
+        f"nearest recording and _NEAR_ENOUGH is {_NEAR_ENOUGH}"
+    )
+    # `cached` is the field that means something here. `cached_near` and
+    # `cached_exact` describe the recording that WAS served, so on a live
+    # response they are trivially true — asserting on them was checking a
+    # field that had no recording to be about.
+    far = api.handle(
+        "/api/break?leverage=1&gamma=1.0&band=1.5&breaches=5&demo=1", {})
+    assert far["cached"] is False, (
+        "demo mode served a recording at the farthest reachable settings; "
+        f"cached_for={far.get('cached_for')}"
+    )
+    near = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3&demo=1", {})
+    assert near["cached"] is True, (
+        "and it must still serve one at a setting it was recorded at, or this "
+        "test would pass with the cache switched off entirely"
+    )
 
 
 def test_a_dead_engine_falls_back_but_names_the_settings_it_fell_back_to(monkeypatch):

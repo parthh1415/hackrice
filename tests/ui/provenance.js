@@ -97,12 +97,34 @@ const band = () => [...d.querySelectorAll("#band .v")].map((e) => e.textContent)
 /* The round label reads "round t / n" at the end of every round, not only the
    last one, so waiting on that shape samples the band mid-cascade. Wait for
    the round that equals the total. */
-const settled = async () => {
+/* Wait for THIS run, not for whatever is still on screen.
+
+   This used to poll only for `round N / N`, which the previous run leaves
+   sitting in the label for the whole of the next fetch — so the predicate was
+   satisfiable by the state it existed to see replaced. An audit instrumented
+   every call: against a slow server all four post-boot waits returned on
+   entry with zero polls, and one already does so on a fast machine. Both
+   directions of wrong came out of that: the DEFAULTING scenario asserted the
+   previous run's DOM against the new run's payload and reported ten app bugs
+   that do not exist, while the DEMO scenario's twelve checks all passed
+   without observing a single repaint, because the stale state and the
+   expected state happened to coincide.
+
+   `attack()` now writes "searching" before it fetches, so the label must
+   leave that state and THEN reach `round N / N`. A run that has not started
+   cannot satisfy it and neither can the run before. */
+const settled = async (opts = {}) => {
+  const { started = false } = opts;
+  let sawStart = started;
   for (let i = 0; i < 900; i++) {
-    const m = text("roundLabel").match(/^round (\d+) \/ (\d+)$/);
-    if (m && m[1] === m[2]) return;
-    await sleep(50);
+    const label = text("roundLabel");
+    if (/^searching/.test(label)) sawStart = true;
+    const m = label.match(/^round (\d+) \/ (\d+)$/);
+    if (sawStart && m && m[1] === m[2]) return;
+    await sleep(20);
   }
+  check("settled() timed out waiting for a run to finish",
+        false, `label stuck at "${text("roundLabel")}"`);
 };
 
 const QS = "leverage=5&gamma=0.2&breaches=3";
@@ -333,6 +355,12 @@ async function requireServer() {
   bandSlider.value = "1.05";
   bandSlider.dispatchEvent(new window.Event("input"));
   d.getElementById("attackBtn").dispatchEvent(new window.Event("click"));
+  // This was the one attack in the file with no settle discipline in front of
+  // it, and the audit caught its settled() returning on entry with zero polls
+  // on a fast machine — so defendBtn below was being clicked while this
+  // attack was still in flight, and the two raced on claimStage(). Masked
+  // only because the stale state it read was the demo state this reset was
+  // trying to produce.
   await settled();
 
   console.log("\nSPLIT VIEW — footers and fix line against /api/stabilise");

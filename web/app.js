@@ -753,6 +753,15 @@ async function attack() {
   const btn = $("attackBtn");
   btn.disabled = true;
   stopAnimations();
+  // The round label describes the run we are about to replace, and it
+  // survived the whole fetch — so during a search the stage narrated the
+  // PREVIOUS cascade as though it were this one. Same family as the knob
+  // note: numbers on screen that answer a question nobody is asking any
+  // more. It also made every predicate that waits on this label satisfiable
+  // by the state it was waiting to see replaced; an audit found four of five
+  // such waits returning on entry against a slow server, one of them on a
+  // fast one, reporting both false greens and false reds.
+  $("roundLabel").textContent = "searching";
   const ticket = claimStage();
   const mine = () => holdsStage(ticket);
   const stop = startElapsed("critical-shock search");
