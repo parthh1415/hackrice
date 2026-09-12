@@ -1,5 +1,11 @@
 """Rebuild the committed dataset from recorded EDGAR bytes, with no network.
 
+(Provenance note: these fixtures, this test and scripts/record_edgar_mirror.py
+were written by a review agent and landed in commit ac6fda0, whose message is
+about the devpost and does not mention them — a `git add -A` of mine swept an
+agent's in-progress work into an unrelated commit. See commit ce0d0e1 for the
+record. Nothing here is my work but the apology.)
+
 `scripts/refresh_dataset.py` was the one thing in this repo that every printed
 number depends on and that nothing could exercise. The goldens do not cover it:
 they pin the engine's OUTPUT, so a corrupted CUSIP map that gets refreshed and
