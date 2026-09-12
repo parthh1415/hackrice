@@ -13,8 +13,32 @@ running over, the twelve seconds come out of Shot 2.7's grid pause and Shot 4.2'
 - **The band has no slider** — it is a URL parameter (`&band=`) that defaults to 1.05. Leave it
   alone and don't put it in the URL bar on camera. It swings the hero harder than either slider
   (1.02 → −1.73%, 1.30 → −27.33%), which is exactly why Act 3 has to name it as a declared parameter.
-- **Read numbers off the screen, not off this script's underlying floats.** The metrics band renders
-  losses to one decimal and amplification to two, the hero and the shock stamp to two.
+- **Read numbers off the screen, not off this script's underlying floats.** The app rounds, and
+  saying a float over a display that shows something else is the fastest way to lose a judge. The
+  full rendered set at the golden path, verified live 2026-09-12 — **this is the authority; if a
+  line in this script disagrees with the table, the table wins**:
+
+  | on screen | reads | rendered by |
+  |---|---|---|
+  | hero | `5.27%` | 2 dp |
+  | hero sub | `NVDA · 4 of 5 funds forced to sell` | counts |
+  | metrics band | `Shock loss 4.9%` · `After cascade 9.1%` · `Amplification 1.87×` · `Breaches 4` · `Rounds 3 / 3` | losses 1 dp, amp 2 dp |
+  | round label | `round 3 / 3` | integers |
+  | asset label, NVDA | `−5.27%` | 2 dp |
+  | fund labels at t0 | `L 5.18` `L 5.36` `L 5.03` `L 5.15` `L 5.25` | 2 dp |
+  | fix line | `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets` | reduction 0 dp, cost 2 dp |
+  | split feet | `9.1% loss · 4 breaches · amp 1.87×` / `6.5% loss · 2 breaches · amp 1.33×` | loss 1 dp, amp 2 dp |
+  | shock stamp | `identical shock · 5.27% NVDA` | 2 dp |
+  | boundary marker | `L 5.0 · overlap 0.71` | 1 dp / 2 dp |
+  | boundary axes | `1.5`–`8.0`, `0.00 · 0.72 · 1.00` | 1 dp / 2 dp |
+  | boundary title | `amplification · single-name 5% reference` | — |
+  | solver, after attack | `grid scan + bisection` · `names 10 · step 1.0%` | — |
+  | solver, after stabilise | `SciPy-free Python · exhaustive position scan` · `79 evals · exit 1` | — |
+  | sliders | `5.0` and `0.20` | 1 dp / 2 dp |
+
+  Nothing else in this script is a screen value. The Point72 overlay in Shot 2.6, the architecture
+  diagram, the `bought` slide in Shot 2.12 and the "what we do not claim" bullets in Shot 3.3 are
+  all things you have to make — the app renders none of them.
 - Run the loop once to warm the cache. Serve with the cached demo path so wifi cannot kill you.
 - Browser at 1280×800, zoom 100%, no tab bar clutter, no notifications.
 - Speak at roughly 150 words per minute. The lines below are timed for that.
@@ -109,8 +133,11 @@ solver strip legible at the bottom.
 > Sigma goes in round three. Four of five funds, three rounds."
 
 #### Shot 2.6 · 1:19 – 1:32
-**On screen:** Zoom to the Point72 node, which never turned red. Overlay its
-numbers: `NVDA weight 2.8% · direct loss 0.75% · total loss 5.70%`.
+**On screen:** Zoom to the Point72 node, which never turned red. Its only on-screen readout is its
+leverage label, which ends around `L 5.03`. **Add the three numbers as an overlay in the edit** —
+`NVDA weight 2.8% · direct loss 0.75% · total loss 5.70%`. The app renders none of them; they are
+derived from the trajectory and this beat depends on them, so build the overlay rather than pointing
+the cursor at something that isn't there.
 
 > "But look at Point72. It holds two point eight percent NVIDIA, the smallest position in the system.
 > The shock itself costs it three quarters of one percent of equity."
@@ -129,19 +156,28 @@ eight eight" over a display that reads 4.9%.
 ### Beat 3 — BOUNDARY (1:32 – 1:57)
 
 #### Shot 2.7 · 1:32 – 1:42
-**On screen:** Click **Map the boundary**. A 16×16 phase diagram fills in cell by cell. Leverage on
-one axis 1.5 to 8.0, crowding on the other, running from every fund holding something different,
-through the books exactly as filed, up to every fund holding the same thing.
+**On screen:** Click **Map the boundary**. The sweep runs server-side, then the whole 16×16 grid
+appears at once. Axis labels read `1.5` to `8.0` up the side and `0.00 · 0.72 · 1.00` along the
+bottom, with `amplification · single-name 5% reference` in the top right.
+
+> *It does **not** fill in cell by cell — `drawBoundary` paints every rect in one synchronous pass,
+> so the grid pops. The pause below is the server computing 256 cascades, not an animation. Don't
+> promise a fill-in in the edit.*
 
 > "Fair question: did we get unlucky, or is the structure the problem? So sweep it. Leverage from one
 > and a half to eight. Crowding from every fund holding something different, through the books
 > exactly as filed, all the way up to every fund holding the same thing."
 >
-> ⏸ *(let the grid finish, ~2s)*
+> ⏸ *(wait for the sweep to return, ~2s — dead air, not an animation)*
 
 #### Shot 2.8 · 1:42 – 1:57
-**On screen:** Critical contour draws. "You are here" marker lands at leverage 5.0, overlap 0.712,
-close to the line.
+**On screen:** The marker — a white ring and dot — lands at leverage 5.0, overlap 0.71, just above
+the band where the shading flips from white to red.
+
+> *There is **no contour line**. `drawBoundary` shades each cell into one of five bands (amplification
+> < 1.05, < 1.30, < 1.80, < 3.00, above) and draws a ring for the marker. Nothing traces the
+> boundary — the eye reads it off where white becomes red, which is the 1.80 step. Say "where it
+> turns red", not "the contour".*
 
 > "Every cell is a full cascade, computed, not drawn. And there's a boundary. Below it the shock gets
 > absorbed. Above it, it runs. You are here."
@@ -171,8 +207,10 @@ close to the line.
 ### Beat 4 — DEFEND (1:57 – 2:42)
 
 #### Shot 2.9 · 1:57 – 2:08
-**On screen:** Click **Stabilise**. Solver strip shows the pattern search running, evaluation count
-climbing. The instruction line resolves:
+**On screen:** Click **Stabilise**. The solver strip updates — `SciPy-free Python · exhaustive
+position scan`, `MATLAB not available on this machine`, `79 evals · <n>ms · exit 1` — unless you have
+done the MATLAB step, in which case it reads `MATLAB · patternsearch`. The instruction line
+resolves:
 `Millennium: cut GOOGL exposure 5% · costs 0.04% of gross assets`
 
 > "Now run it backwards again. Same failure condition, same shock. What is the smallest change
@@ -290,8 +328,8 @@ not built — do not cut to the app for this shot expecting to find one.)*
 > and every crowded-trade unwind since actually happened."
 
 ### Shot 4.2 · 3:24 – 3:36
-**On screen:** Short list appears: multi-asset shocks · systemic-importance ranking · square-root
-impact · bystander exposure view.
+**On screen:** Short list appears, in the order it is spoken: robust defence over a family of
+shocks · multi-asset shocks · systemic-importance ranking · bystander exposure view.
 
 > "Next, and first: a stabiliser that maximises the smallest shock that breaks you, instead of
 > minimising the cost of surviving one you already named. Then shocks across several names at once,

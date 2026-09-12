@@ -457,6 +457,11 @@ def _blend_toward_mean(holdings, blend):
 
 Colour each cell by amplification band. Draw the contour where amplification crosses 1.5 as the critical boundary. Mark the current `(leverage, measured overlap)` as "you are here".
 
+> **Drifted.** No contour is drawn. `drawBoundary` shades each cell into one of five bands —
+> amplification < 1.05, < 1.30, < 1.80, < 3.00, and above — and the boundary is whatever the eye
+> reads off the white-to-red step at **1.80**, not a 1.5 isoline. The marker is a ring and a dot.
+> The grid also renders in one synchronous pass rather than filling in cell by cell.
+
 - [ ] **Step 3: Make the leverage slider move the marker live**
 
 - [ ] **Step 4: Commit**
@@ -547,7 +552,7 @@ git add -A && git commit -m "assumptions panel + cached demo path so wifi can't 
 ## Self-Review
 
 **Spec coverage.** *(Written before the build; Task 7 was subsequently cut and Task 8's assumptions
-panel was never built — §9 is not on screen anywhere.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **97 tests** as of
+panel was never built — §9 is not on screen anywhere.)* §3 model → already built (Tasks complete before this plan). §3.9 reverse search → built. §3.10 stabilisation → Task 1. §2 13F ingest → Task 2. §5 four scenes → Tasks 4–7. §9 what-we-don't-claim → Task 8. §7 sanity tests → green. *(That read "25 passing" when written; the suite is **139 tests** as of
 2026-09-12, all passing.)* Gap found and closed: the spec's §5 Scene 2 needed a server-side sweep, added as `/api/boundary` in Task 5.
 
 **Placeholders.** None — every code step contains runnable code. Task 4's steps describe rendering rather than pasting 200 lines of SVG, which is a judgement call: the interface (`renderNetwork`, `playCascade`, the trajectory shape) is specified exactly, and the drawing is genuinely free-form.

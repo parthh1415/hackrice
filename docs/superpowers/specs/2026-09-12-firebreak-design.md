@@ -362,7 +362,7 @@ And `rounds`/`breached` live at the top level, not inside `metrics`.
 | Scene | Question | Output |
 |---|---|---|
 | **1 — Break** | "What's the smallest thing that kills us?" | `NVDA −X%`, then the cascade animates round by round |
-| **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here" |
+| **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here". As built: a 16×16 grid shaded into five amplification bands (<1.05, <1.30, <1.80, <3.00, above) with a ring-and-dot marker. **No contour line is drawn** — the visible boundary is the white-to-red step at 1.80 — and the grid paints in one pass rather than animating. |
 | **3 — Firebreak** | "What's the cheapest way out?" | a priced instruction; same shock re-run; before/after |
 | **4 — Exposure** *(planned, not built)* | "What does this mean for me?" | user's CSV portfolio as an unlevered node that cannot breach but still loses |
 
@@ -404,7 +404,7 @@ Devpost "what's next" bullets.
 
 All seven pass as of 2026-09-12 — see `spikes/verify_engine_math.py`, re-run and confirmed
 (`PYTHONPATH=src python3 spikes/verify_engine_math.py` → `ALL CHECKS PASSED`). The pytest suite was
-**138 tests, all passing** when this was last reconciled; it is still growing, so read the count off
+**139 tests, all passing** when this was last reconciled; it is still growing, so read the count off
 `python3 -m pytest tests/ -q | tail -1` rather than quoting this line.
 
 1. **Zero shock** → zero breaches, zero loss, zero rounds.
