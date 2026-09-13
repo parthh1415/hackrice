@@ -615,6 +615,49 @@ function visibleText(d) {
     check("assumptions.html runs clean", a.errors.length === 0, a.errors.join("; "));
     check("the model page has content", visibleText(a.d).trim().length > 200);
 
+    /* The provenance split. The page now leads with "One input is measured.
+       Four are numbers we chose. Three are outside the model entirely" — a
+       sentence, a bar and three group headers all stating the same three
+       counts. Four places to say one thing is four places to disagree, so the
+       only figure that decides anything is the number of items rendered. */
+    {
+      await until(() => a.d.querySelectorAll(".prov-group").length === 3);
+      const groups = [...a.d.querySelectorAll(".prov-group")];
+      eq("the model page groups its inputs by where they came from", groups.length, 3);
+
+      const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven",
+                     "eight", "nine", "ten"];
+      const claim = txt(a.d, "provClaim") || "";
+      const sub = txt(a.d, "provSub") || "";
+      const bar = [...a.d.querySelectorAll("#provBar .prov-seg")];
+      eq("the bar has a segment per group", bar.length, 3);
+
+      let total = 0;
+      for (const g of groups) {
+        const label = g.querySelector(".prov").textContent.trim();
+        const n = g.querySelectorAll(".prov-item").length;
+        total += n;
+        eq(`the ${label} group's header count is what it holds`,
+           g.querySelector(".prov-n").textContent.trim(), String(n));
+        has(`and the summary line agrees about ${label}`, sub, `${n} ${label}`);
+        check(`and the headline sentence says "${WORDS[n]}" for ${label}`,
+              new RegExp(`\\b${WORDS[n]}\\b`, "i").test(claim), claim);
+      }
+      /* Every row belongs to exactly one group — the check that catches a row
+         being dropped when it moves between labels, which is how the observer
+         fact came to be stated twice under two different ones. */
+      eq("and every input is in exactly one group", total,
+         a.d.querySelectorAll(".prov-item").length);
+      check("no input is described twice",
+            new Set([...a.d.querySelectorAll(".prov-item b")].map((n) => n.textContent)).size
+              === total, "duplicate input name");
+      /* the widths ARE the counts; a bar drawn from anything else is a picture
+         of a different page */
+      eq("and the bar is drawn from those counts",
+         bar.map((s) => s.style.flexGrow).join(","),
+         groups.map((g) => String(g.querySelectorAll(".prov-item").length)).join(","));
+    }
+
     /* The solver strip. docs/devpost.md claims the engine name, evaluation
        count and exit flag are on screen; this is the check that keeps that
        claim true, since the redesign silently dropped them once already. */

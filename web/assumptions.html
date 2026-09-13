@@ -47,13 +47,23 @@
       <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
     </div>
 
+    <!-- This was one flat table of nine rows, every row the same size, weight
+         and colour, with the provenance tag set smaller and fainter than the
+         prose it qualified. The classification IS the argument of this page —
+         one input is counted, five are ours, three are things the model cannot
+         see — and you had to read all nine rows and tally them yourself to find
+         that out. So the count is the headline, the split is a picture, and the
+         rows are grouped under the three labels rather than tagged one by one. -->
     <div class="card">
-      <div class="card-body tight"><table>
-        <!-- every other table on the site has a header row; this one did not,
-             so the provenance tag and the name in the left cell read as two
-             unlabelled things rather than as a column. -->
-        <thead><tr><th style="width:210px">Input</th><th class="t">What it is</th></tr></thead>
-        <tbody id="rows"></tbody></table></div>
+      <div class="card-header">
+        <span class="card-title">Where every input came from</span>
+        <span class="sub" id="provSub">—</span>
+      </div>
+      <div class="card-body">
+        <p class="prov-claim" id="provClaim">—</p>
+        <div class="prov-bar" id="provBar" aria-hidden="true"></div>
+      </div>
+      <div id="provGroups"></div>
     </div>
 
 </main>
@@ -96,13 +106,27 @@ bindKeys("assumptions");
        the nav, in the stat tiles, in "within the limit". Reusing it here for
        "things the model cannot see" put two unrelated meanings on one word. */
     ["not modelled", "What 13F omits", "Long-only US equity, quarterly, filed 45 days late. Options and bond-principal rows are filtered out. Shorts, derivatives and non-US holdings are invisible to us."],
-    ["not modelled", "Your portfolio is an observer", "It takes the price damage; it does not join the network. A retail account does not move markets, so your fix changes how much of the cascade reaches you — not whether the cascade happens."],
+    /* This was two rows saying nearly the same sentence under two different
+       labels — "Your portfolio is an observer" as not modelled, and
+       "Portfolio-only observer" as declared — so a careful reader found the
+       same fact classified two ways. They are one fact: some nodes take the
+       price damage without being able to cause any. Your book is always one of
+       them; a name no filer reported is another. */
+    ["not modelled", "Observers take the damage, they never cause it",
+      "Your portfolio takes the price move but does not join the network — a retail account does not move markets, so your fix changes how much of the cascade reaches you, never whether it happens.{OBSERVER_ONLY}"],
     ["not modelled", "Not a prediction", "A break point is the smallest shock our model says crosses your limit under these assumptions. It is not a proven threshold and not a forecast."],
   ];
-  if ((d.observer_only || []).length) {
-    const names = d.observer_only.join(", ");
-    rows.splice(4, 0, ["declared", "Portfolio-only observer",
-      `${names} is accepted as a directly traded portfolio exposure, but none of the five managers reported it this quarter. It can take a direct shock, but it cannot add a manager sale to the contagion network.`]);
+  /* The names that are in your book's universe but in nobody's filing belong to
+     the same fact, so they extend that row instead of opening a second one. */
+  {
+    const only = d.observer_only || [];
+    const tail = only.length
+      ? ` The same is true of ${only.join(", ")}: accepted as a directly traded ` +
+        `exposure, reported by none of the ${(d.funds || []).length || 5} managers ` +
+        `this quarter, so ${only.length > 1 ? "they take" : "it takes"} a shock ` +
+        `without being able to add a manager's sale to it.`
+      : "";
+    for (const row of rows) row[2] = row[2].replace("{OBSERVER_ONLY}", tail);
   }
   /* This taxonomy was carried by colour — green for measured, amber for
      declared, grey for not modelled — set in tracked-out uppercase. §1 has no
@@ -113,13 +137,51 @@ bindKeys("assumptions");
      weight rather than hue: measured is full ink, declared is mid, not
      modelled is faint. The order is the confidence order, so the column reads
      from "we counted this" down to "we cannot see this" by how dark it is. */
-  const rank = { measured: "prov-measured", declared: "prov-declared",
-                 "not modelled": "prov-absent" };
-  document.getElementById("rows").innerHTML = rows.map(([kind, name, body]) => `
-    <tr><td class="prov-cell">
-          <span class="prov ${rank[kind]}">${kind}</span>
-          <b>${name}</b></td>
-      <td class="small muted t">${body}</td></tr>`).join("");
+  const KINDS = [
+    { kind: "measured", css: "prov-measured",
+      def: "counted from filings, reproducible from the source" },
+    { kind: "declared", css: "prov-declared",
+      def: "a number we chose. No filing discloses it" },
+    { kind: "not modelled", css: "prov-absent",
+      def: "outside the model. Named here so it is not mistaken for a result" },
+  ];
+  const count = (kind) => rows.filter((r) => r[0] === kind).length;
+
+  /* Written out, and derived — a sentence with "one" and "five" typed into it
+     is a sentence that keeps reading correctly after somebody adds a row. */
+  const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven",
+                 "eight", "nine", "ten"];
+  const word = (n) => (n < WORDS.length ? WORDS[n] : String(n));
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const m = count("measured"), dec = count("declared"), abs = count("not modelled");
+  document.getElementById("provClaim").textContent =
+    `${cap(word(m))} input${m === 1 ? " is" : "s are"} measured. ` +
+    `${cap(word(dec))} ${dec === 1 ? "is a number we chose" : "are numbers we chose"}. ` +
+    `${cap(word(abs))} ${abs === 1 ? "thing is" : "things are"} outside the model entirely.`;
+  document.getElementById("provSub").textContent =
+    KINDS.map((k) => `${count(k.kind)} ${k.kind}`).join(" · ");
+
+  /* The split, at a glance. Width is the count, and the ink runs from solid to
+     an outline in the confidence order — measured is filled, declared is half
+     ink, not modelled is an empty frame, because that is what it is. */
+  document.getElementById("provBar").innerHTML = KINDS.map((k) =>
+    `<span class="prov-seg ${k.css}" style="flex-grow:${count(k.kind)}"></span>`).join("");
+
+  /* Grouped under the three labels, rather than nine rows each carrying its own
+     tag in 11px grey. Each group states what its label MEANS once, which the
+     page never did — the words were left to carry themselves. */
+  document.getElementById("provGroups").innerHTML = KINDS.map((k) => `
+    <section class="prov-group">
+      <div class="prov-group-head">
+        <span class="prov ${k.css}">${k.kind}</span>
+        <span class="prov-n num">${count(k.kind)}</span>
+        <span class="prov-def">${k.def}</span>
+      </div>
+      <div class="prov-items">
+        ${rows.filter((r) => r[0] === k.kind).map(([, name, body]) => `
+          <div class="prov-item"><b>${name}</b><p class="small muted">${body}</p></div>`).join("")}
+      </div>
+    </section>`).join("");
 
   /* Which solver actually ran, and what it cost. The stabilisation step is
      the piece that goes to MATLAB; when MATLAB is not on the machine the API

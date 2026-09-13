@@ -960,6 +960,48 @@ table.pairs td:first-child { color: var(--ink-mid); }
 .prov-declared { color: var(--ink-mid); }
 .prov-absent { color: var(--ink-faint); }
 
+/* The page's argument, said once and in one line. */
+.prov-claim {
+  font-family: var(--font-prose);
+  font-size: var(--t-lead);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  margin: 0 0 var(--s4);
+  max-width: var(--measure);
+  text-wrap: balance;
+}
+
+/* Width is the count. Ink runs solid → half → empty frame in the confidence
+   order, so "not modelled" is drawn as the absence it describes. */
+.prov-bar { display: flex; gap: 2px; height: var(--s3); }
+.prov-seg { display: block; flex-basis: 0; min-width: 2px; }
+.prov-seg.prov-measured { background: var(--ink); }
+.prov-seg.prov-declared { background: var(--ink-faint); }
+.prov-seg.prov-absent { background: transparent; box-shadow: inset 0 0 0 1px var(--rule); }
+
+.prov-group { border-top: 1px solid var(--rule); padding: var(--s5); }
+
+.prov-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+/* .prov is display:block for the old table cell; in this row it is inline. */
+.prov-group-head .prov { display: inline; font-size: var(--t-label); }
+.prov-n { color: var(--ink-faint); font-size: var(--t-label); }
+.prov-def { color: var(--ink-faint); font-size: var(--t-label); }
+
+/* Three across on a wide column, one on a phone. The old single-column table
+   ran 1,200px past the fold using half the width it had. */
+.prov-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--s5);
+}
+.prov-item b { display: block; margin-bottom: var(--s2); }
+.prov-item p { margin: 0; max-width: none; }
+
 /* ---------- badges ---------- */
 
 /* No pill, no radius, no fill. A hairline box with a word in it. The <i> the
