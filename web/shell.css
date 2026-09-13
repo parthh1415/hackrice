@@ -263,6 +263,14 @@ h1 {
   line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
   display: grid;
+  /* An explicit column, because an implicit `auto` one is sized to its items'
+     MAX-CONTENT — and `width: 100%` on the stage then resolves against that,
+     not against the viewport. The provenance line is the longest unbroken run
+     on the page, so on a phone the column grew to fit it, the stage grew with
+     it, and overflow-x: hidden quietly cropped the result: a centred block
+     hanging off the right edge. minmax(0, 1fr) pins the column to the
+     container. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   position: relative;
   overflow-x: hidden;
@@ -292,14 +300,6 @@ h1 {
   pointer-events: none;
   color: var(--ink);
 }
-
-/* The original is a centred stage on a near-black ground, so this one is too. */
-.entry-centred {
-  align-items: center;
-  text-align: center;
-  max-width: 1100px;
-}
-.entry-centred .entry-quote { margin-left: auto; margin-right: auto; }
 
 /* The CTA, as the component has it: a gradient hairline wrapping a pill, and
    an arrow that steps right under the cursor. */
@@ -366,18 +366,38 @@ h1 {
   .entry-paths path { animation: none; stroke-dasharray: none; opacity: 0.5; }
 }
 
+/* Centred, and centred HERE rather than in a second class beside it. There was
+   an `.entry-centred` modifier further up the file doing exactly this, and it
+   lost: same specificity, defined earlier, so this block's own align-items and
+   max-width quietly won. Only its text-align survived — which is why the
+   sentence looked centred while the wordmark and the buttons sat 200px to the
+   left of it, the one arrangement that reads as a mistake rather than a
+   choice. One rule now, so there is nothing to disagree with. */
 .entry-stage {
   position: relative;
   z-index: 1;
   isolation: isolate;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: var(--s6);
   padding: var(--s8) var(--s6);
-  max-width: 880px;
+  max-width: 1100px;
   width: 100%;
+  /* A grid item's automatic minimum size is its MIN-CONTENT, so `width: 100%`
+     is a floor it is allowed to exceed — the stage sat 110px wider than a
+     390px phone and the whole centred block hung off the edge. This is the
+     other half of the same rule applied to its children below. */
+  min-width: 0;
 }
+
+.entry-stage .entry-quote { margin-left: auto; margin-right: auto; }
+
+/* A flex item's min-width is auto, so a long line refuses to shrink below its
+   own content and pushes the column wider than the viewport. Nothing on this
+   screen may be wider than the screen. */
+.entry-stage > * { max-width: 100%; min-width: 0; }
 
 /* The field is bright enough that a dot lands inside the counter of every "o"
    in the headline. Rather than dim the whole thing back down to wallpaper, put
@@ -419,11 +439,17 @@ h1 {
   line-height: 1.3;
   color: var(--ink-mid);
   margin: 0;
-  max-width: 22em;
+  /* 22em is 440px at the clamped size, which is wider than a phone — and a
+     flex item wider than its container stretches the container, so the whole
+     stage overflowed and every line in it centred against the wrong width. */
+  max-width: min(22em, 100%);
   text-wrap: balance;
 }
 
-.entry-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
+/* justify-content, because a wrapped flex row falls back to flex-start: on a
+   narrow screen the two buttons stacked and sat left while every other line
+   on the page was centred. */
+.entry-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s3); }
 
 /* The stage arrives in reading order, a beat apart. Short and small — it is a
    door opening, not a title sequence. */
