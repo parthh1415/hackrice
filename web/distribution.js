@@ -81,11 +81,20 @@ function drawDistribution(svg, { before, after, limit, animate = true }) {
 
   /* Where each curve crosses. These two counts ARE the claim the page makes,
      so they are marked on the drawing rather than left to the table. */
+  /* Found over the FULL array and then placed in the window, because the
+     window is the worst quarter: a book that crossed its limit among the 300
+     scenarios that were cut returns index 0 from a search over the slice, and
+     the dot was planted at x(0) on the limit line — a point neither curve
+     passes through. If the crossing is off the left edge there is no crossing
+     to mark on this chart, and marking one anyway is the drawing asserting
+     something the data does not. */
   const overFrom = (arr) => {
     const k = arr.findIndex((v) => v >= limit);
-    return k < 0 ? null : k;
+    if (k < 0) return null;
+    const inWindow = k - (arr.length - shown);
+    return inWindow < 0 ? null : inWindow;
   };
-  [["ds-cross ds-cross-before", overFrom(b), b], ["ds-cross", overFrom(a), a]]
+  [["ds-cross ds-cross-before", overFrom(bAll), b], ["ds-cross", overFrom(aAll), a]]
     .forEach(([cls, k]) => {
       if (k === null) return;
       el("circle", { class: cls, cx: x(k), cy: y(limit), r: 4.5 });
@@ -100,8 +109,12 @@ function drawDistribution(svg, { before, after, limit, animate = true }) {
   /* Axes. Rank is not a quantity anybody reads off, so the x axis is labelled
      at its ends and nowhere else. */
   el("text", { class: "ds-tick", x: DIST.padL - 8, y: y(0) + 4, "text-anchor": "end" }, "0%");
+  /* The tick is DRAWN at yMax and was LABELLED with yMax rounded to a whole
+     percent — 12.61% of axis wearing a "13%" label, on one of the three y
+     references the reader has. A tenth of a point is enough to make the label
+     and the line the same number. */
   el("text", { class: "ds-tick", x: DIST.padL - 8, y: y(yMax) + 10, "text-anchor": "end" },
-     `${(yMax * 100).toFixed(0)}%`);
+     `${(yMax * 100).toFixed(1)}%`);
   /* "301th" is what naive concatenation gives you, and it is on screen next to
      a chart whose whole argument is that the numbers were done carefully. */
   const ordinal = (k) => {

@@ -1044,6 +1044,14 @@ def _solve_portfolio(params, body):
         # make.
         out["reason"] = ("No shock within the tested range pushed this portfolio "
                          "past the limit under these assumptions.")
+        # Agreeing to model part of a book is a disclosure that has to travel
+        # with every screen the book reaches, and this one was attached on the
+        # found path only — so "no single-name fall of up to 60% pushes this
+        # portfolio past 90%" was said about a book a third of which was never
+        # in the search, with nothing on that page or any page after it saying
+        # so. The banner on the client already handles the field; it was simply
+        # never sent on this branch.
+        out["excluded_note"] = excluded_note
         # The UI has to be able to name the range. "The tested range" is an
         # appeal to something the reader cannot see, and the number belongs to
         # the search, not to a literal typed into a page.

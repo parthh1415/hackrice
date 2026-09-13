@@ -231,7 +231,12 @@ bindKeys("assumptions");
       `${(st.fix.reduction * 100).toFixed(4)}% of that position, ` +
       `${(st.fix.cost * 100).toFixed(4)}% of the system's gross assets`],
     ["Engine", e.name, e.note || ""],
-    ["Solver", e.solver, e.kind === "matlab"
+    /* Both MATLAB paths run patternsearch; only the Python fallback does not.
+       Testing `kind === "matlab"` catches the live Engine API alone, so on the
+       documented offline path this row described the exhaustive Python scan
+       one line under the row that had just named MATLAB. Line 286 below was
+       fixed for exactly this; the Solver row kept the old test. */
+    ["Solver", e.solver, String(e.kind || "").startsWith("matlab")
       ? "pattern search over (fund, asset, reduction) — no gradient, piecewise-constant feasible set"
       : "exhaustive scan over the same three-way grid"],
     ["Evaluations", String(e.evaluations), "cascades simulated to find the cheapest patch"],

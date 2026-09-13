@@ -620,3 +620,33 @@ def test_a_short_is_refused_however_it_is_spelled(holding):
 
     with pytest.raises(ValueError, match="(?i)long-only|negative"):
         portfolio.normalise([holding, {"symbol": "CASH", "market_value": 5000}])
+
+
+def test_the_exclusion_is_disclosed_on_a_not_found_answer_too():
+    """`excluded_note` was attached on the found path only.
+
+    Agreeing to model part of a book is a disclosure that has to travel with
+    every screen the book reaches — the banner exists because "a disclosure
+    that appears only on the screen where you agreed to it stops being a
+    disclosure the moment you click through". The not-found screen is a claim
+    about the book too: "no single-name fall of up to 60% pushes this portfolio
+    past 90%", said about a book that is a third unmodelled, with nothing on
+    that page or any page after it saying so.
+    """
+    rows = [{"symbol": "NVDA", "market_value": 3600},
+            {"symbol": "VOO", "market_value": 2500},
+            {"symbol": "CASH", "market_value": 1000}]
+
+    hit = api.handle("/api/portfolio/full?limit=0.10&exclude_unmodelled=1",
+                     {"holdings": rows, "source": "csv"})
+    assert hit["found"] is True and hit["excluded_note"], "this test needs the found path to work"
+
+    miss = api.handle("/api/portfolio/full?limit=0.90&exclude_unmodelled=1",
+                      {"holdings": rows, "source": "csv"})
+    assert miss["found"] is False, "this test needs a not-found answer"
+    assert miss.get("excluded_note"), (
+        "a not-found answer about a partly unmodelled book carries no disclosure"
+    )
+    assert miss["excluded_note"]["excluded_fraction"] == pytest.approx(
+        hit["excluded_note"]["excluded_fraction"]
+    ), "the same book, two different accounts of how much of it was modelled"

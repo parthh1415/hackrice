@@ -1225,6 +1225,25 @@ function visibleText(d) {
        w.result.params.limit, 0.05);
   }
 
+  /* ---- verify says something when there is no validation to show ---- */
+  {
+    /* api.py emits fix: null + fix_reason and NO validation key when
+       cheapest_portfolio_fix finds nothing, and `found` stays true — so
+       requireResult passes it through and `if (r && r.validation)` fell out
+       with no else, leaving a heading and a lede promising three sections over
+       an empty div. */
+    const base = JSON.parse(store.fb);
+    const maimed = { ...base.result, fix: null,
+                     fix_reason: "no single holding carries enough of the loss" };
+    delete maimed.validation;
+    const v = await load("verify.html", { fb: JSON.stringify({ ...base, result: maimed }) });
+    await sleep(250);
+    const root = v.d.getElementById("root");
+    check("verify renders something when there is no validation in the payload",
+          root && root.innerHTML.trim().length > 0, "empty #root under the heading");
+    has("and it says why", visibleText(v.d), "no single holding carries enough of the loss");
+  }
+
   /* ---- a half-point limit reads the same everywhere ---- */
   {
     /* The slider steps in half points, so 17.5% is one arrow-key press away —

@@ -25,7 +25,21 @@ paintShell("verify");
 bindKeys("verify");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("verify");
-if (r && r.validation) {
+/* No `validation` key at all is a shape the engine emits: when
+   cheapest_portfolio_fix finds nothing it returns fix: null and fix_reason and
+   omits validation entirely, while `found` stays true — so requireResult lets
+   it through and this guard used to fall out silently, leaving a heading and a
+   lede promising three sections over an empty div. That is the same failure
+   the comment below says was fixed for the after_pct case, one level up. The
+   Fix page already answers this payload properly; say the same thing here. */
+if (r && !r.validation) {
+  document.getElementById("root").innerHTML = `<div class="card"><div class="card-body empty">
+    <h2>There is nothing to validate yet</h2>
+    <p class="lede">${r.fix_reason
+      || "No single-position change cleared the limit, so there is no defended book to score."}</p>
+    <div class="card-actions"><a class="btn btn-primary" href="defend.html">Back to the fix</a></div>
+    </div></div>`;
+} else if (r && r.validation) {
   const v = r.validation, s = v.identical_shock, n = v.new_breaking_point, syn = v.synthetic;
   const sv = (x) => (x === null || x === undefined ? "—" : pct(x, 0));
 

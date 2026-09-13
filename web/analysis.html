@@ -129,7 +129,7 @@ bindKeys("analysis");
       document.getElementById("attrCard").outerHTML = `
         <div class="card">
           <div class="card-header"><span class="card-title">What we can and cannot model</span>
-            <span class="sub">${(body.modelled || []).length} modelled names, and cash</span></div>
+            <span class="sub">${(body.modelled || []).filter((m) => m !== "CASH").length} modelled names, and cash</span></div>
           <div class="card-body tight"><table><tbody>
             ${(body.excluded || []).map(e => `<tr><td><b>${e.symbol}</b>
               <span class="badge badge-warn"><i></i>not modelled</span></td>

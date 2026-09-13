@@ -8,7 +8,20 @@ const FB = {
   },
   set(patch) {
     const next = { ...this.state, ...patch };
-    sessionStorage.setItem("fb", JSON.stringify(next));
+    /* Guarded, like the read above it and like the fb:ms write in api(), which
+       has named private mode in a comment since the day the hazard was first
+       noticed — in one place and not in this one. A refused setItem
+       (Safari's private browsing, or site data blocked for the origin) threw
+       out of `if (!FB.state.limit) FB.set({ limit: 0.10 })` at the top level of
+       index.html, so every line after it — paintLimits, render, the final
+       paintShell, the ?demo bootstrap — never ran. The page served its static
+       markup and nothing else.
+
+       Returning `next` either way means the caller still has the patched state
+       for THIS page; what is lost is carrying it to the next one, which is the
+       thing that actually failed. */
+    try { sessionStorage.setItem("fb", JSON.stringify(next)); }
+    catch { /* no session storage: this page still works, the next one starts fresh */ }
     return next;
   },
   clear() { sessionStorage.removeItem("fb"); },
@@ -34,11 +47,21 @@ const lastResponseMs = () => {
 
 async function api(path, payload) {
   const t0 = performance.now();
-  const res = await fetch(path, payload
-    ? { method: "POST", cache: "no-store",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload) }
-    : { cache: "no-store" });
+  /* A dead socket is the single most likely thing to go wrong in front of an
+     audience, and it arrived as "Failed to fetch" — the rawest string in the
+     whole product, under a heading saying the engine did not answer. Same
+     register as the HTTP case below. */
+  let res;
+  try {
+    res = await fetch(path, payload
+      ? { method: "POST", cache: "no-store",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload) }
+      : { cache: "no-store" });
+  } catch (err) {
+    console.error("firebreak:", path, err);
+    throw new Error("the engine is not answering. Check the server on port 8765.");
+  }
   /* "/api/portfolio/full?limit=0.1 → 500" is a stack trace wearing a sentence.
      The user cannot act on a route; they can act on "the engine is not
      answering". The route is still in the console for whoever is debugging. */
@@ -46,7 +69,17 @@ async function api(path, payload) {
     console.error("firebreak:", path, res.status);
     throw new Error(`the engine returned HTTP ${res.status}. Check the server on port 8765.`);
   }
-  const body = await res.json();
+  /* A 200 carrying something that is not JSON — a proxy's error page, or a
+     payload with a bare NaN in it, which is how this app's own /api/portfolio
+     routes used to fail — threw "Unexpected token < in JSON at position 0" at
+     the user. */
+  let body;
+  try { body = await res.json(); }
+  catch (err) {
+    console.error("firebreak:", path, err);
+    throw new Error("the engine answered with something this page could not read. " +
+                    "Check the server on port 8765.");
+  }
   /* Timed to the end of the body read, not to the first byte — the strip
      claims "the engine answered", and it has not answered until the answer is
      in hand. The event lets the strip repaint without polling for it. */
