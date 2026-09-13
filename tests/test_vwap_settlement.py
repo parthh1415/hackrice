@@ -92,9 +92,25 @@ def test_zero_impact_leaves_nothing_for_the_execution_price_to_change():
     Forced selling is exactly equity-neutral here — and that is the one case
     where it should be.
     """
-    result = run_cascade(shock=np.array([0.0, 0.0]), **dict(BOOK, gamma=0.0))
+    # This ran at shock=[0, 0], which is a control with nothing in it: nobody
+    # breaches, so no forced selling happens, the trajectory is one frame, and
+    # `start` is read from that same frame — abs(start - start) < 1e-9. The
+    # price assertion was inert for the same reason. Both survived a mutation
+    # that paid sellers NOTHING for what they sold.
+    #
+    # The file's own SHOCK does breach, so at gamma=0 there is a real sale to
+    # be equity-neutral about.
+    result = run_cascade(shock=SHOCK, **dict(BOOK, gamma=0.0))
+
+    assert result.rounds >= 1, "no forced selling happened, so nothing was tested"
+    sold = sum(sum(row) for f in result.trajectory for row in f["sold"])
+    assert sold > 0, "nobody sold anything, so nothing was tested"
+
     for frame in result.trajectory:
-        assert all(abs(p - 1.0) < 1e-12 for p in frame["prices"]), frame["prices"]
+        # gamma=0: the shock moves prices once and the selling moves them not
+        # at all, so every frame carries the post-shock prices unchanged.
+        assert all(abs(p - q) < 1e-12 for p, q in
+                   zip(frame["prices"], result.trajectory[0]["prices"])), frame["prices"]
     start = result.trajectory[0]["equity"][0]
     assert all(abs(f["equity"][0] - start) < 1e-9 for f in result.trajectory), (
         "with no price impact, forced selling must be equity-neutral"

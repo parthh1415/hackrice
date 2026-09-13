@@ -186,3 +186,39 @@ def test_the_python_path_reports_the_solves_it_actually_did(tmp_path, monkeypatc
     assert result["engine"] == "python"
     rows, cols = np.array(SPEC["holdings"]).shape
     assert 0 < result["evaluations"] < rows * cols * 20
+
+
+def test_two_solves_at_once_do_not_answer_each_other_s_question():
+    """`write_spec` writes one process-global file and `_try_offline` reads it
+    back, and the server is threaded — so a second request could clobber
+    data/cache/solve_spec.json in the window between the first request's write
+    and its read.
+
+    The fingerprint check does its job: the clobbered read is a mismatch, so
+    the offline result is refused and the Python solver answers instead. The
+    damage is that the SAME url returns two different fixes depending on
+    whether anything else happened to be in flight — $2,236,598.53 or
+    $2,251,028.20, a $14,430 swing on the one line in this product that tells
+    somebody to do something — and `engine.fingerprint` comes back null on the
+    unlucky one, which is the field the trace figure is named after.
+    """
+    import concurrent.futures
+
+    from firebreak import api
+
+    def solve(leverage):
+        out = api.handle(f"/api/stabilise?leverage={leverage}&gamma=0.2&band=1.05&breaches=3", {})
+        return (out["engine"]["kind"], round(out["fix"]["sell_usd"], 2),
+                out["engine"].get("fingerprint"))
+
+    alone = solve(5)
+    seen = set()
+    for _ in range(4):
+        with concurrent.futures.ThreadPoolExecutor(2) as pool:
+            both = list(pool.map(solve, [5, 6]))
+        seen.add(both[0])
+
+    assert seen == {alone}, (
+        f"/api/stabilise?leverage=5 answered {sorted(seen)} under concurrency "
+        f"and {alone} alone"
+    )

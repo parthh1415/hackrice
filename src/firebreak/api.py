@@ -3,6 +3,7 @@
 import json
 import os
 import pathlib
+import threading
 import urllib.parse
 
 import numpy as np
@@ -457,6 +458,23 @@ def _break(params):
     }
 
 
+# write_spec writes ONE process-global file and _try_offline reads that same
+# path back, with the threaded server free to run another request in between.
+# Two ordinary requests in flight together — one page calling /api/stabilise
+# while another tab loads — were enough to make the same URL answer
+# $2,236,598.53 or $2,251,028.20 depending on the traffic around it, with
+# `engine.fingerprint` present on one and null on the other. The fingerprint
+# check itself held: a clobbered spec is a mismatch, so the offline result was
+# refused rather than misapplied, and the Python solver answered instead. Both
+# answers are valid fixes; they are just different ones, and which you get was
+# decided by somebody else's request.
+#
+# The lock covers only the write-then-read window. It leaves the file on disk
+# for the by-hand MATLAB Online workflow, and it leaves write_spec's mtime
+# semantics — which its own docstring calls load-bearing — untouched.
+_SOLVE_LOCK = threading.Lock()
+
+
 def _stabilise(params):
     data = load_dataset()
     scenario, condition, found, knobs = _find(data, params)
@@ -479,8 +497,9 @@ def _stabilise(params):
         "shock": found.shock.tolist(),
         "breaches": knobs["breaches"],
     }
-    write_spec(spec)  # so matlab/stabilise.m can be run by hand, incl. MATLAB Online
-    solved = solve_stabilisation(spec)
+    with _SOLVE_LOCK:
+        write_spec(spec)  # so matlab/stabilise.m can be run by hand, incl. MATLAB Online
+        solved = solve_stabilisation(spec)
     if solved is None:
         # `params` is not optional on a found: False. Its two siblings above
         # carry it; this one did not, and handle() then falls back to echoing

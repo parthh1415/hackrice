@@ -1486,8 +1486,25 @@ function visibleText(d) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
       check("the import path is told it can exclude", body.can_exclude === true);
-      p2.window.offerExclusion(body, rows, "positions.csv");
-      await sleep(120);
+      /* Through the real change handler, not by calling offerExclusion here.
+         Calling it directly proved the RENDERER works and never touched the
+         one line that decides whether it is ever reached — `if
+         (body.can_exclude)` at index.html:470. Mutating that line to
+         `if (false)` left this whole block green while a refused upload died
+         in the note with no way forward, which is the exact dead end the
+         block was written to prevent. */
+      const input = p2.d.getElementById("csvFile");
+      const csv = "symbol,market_value\n" +
+        rows.map((r) => `${r.symbol},${r.market_value}`).join("\n");
+      Object.defineProperty(input, "files", {
+        configurable: true,
+        value: [{ name: "positions.csv", text: async () => csv }],
+      });
+      input.dispatchEvent(new p2.window.Event("change", { bubbles: true }));
+      await until(() => {
+        const o = p2.d.getElementById("importOffer");
+        return o && !o.hidden && o.textContent.trim();
+      });
       const offer = p2.d.getElementById("importOffer");
       check("the upload screen offers the way through", offer && !offer.hidden);
       has("and prices it before anything is dropped", offer.textContent,
