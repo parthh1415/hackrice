@@ -22,11 +22,27 @@
     <div class="card" id="engineCard" hidden>
       <div class="card-header"><span class="card-title">What computed the institutional patch</span>
         <span class="sub" id="engineNote"></span></div>
-      <div class="card-body">
+      <div class="card-body plot">
         <div class="figure">
           <span class="big num" id="engineEvals">—</span>
           <span class="small muted" id="engineLede">—</span>
         </div>
+        <!-- The search itself, drawn by MATLAB. Hidden unless MATLAB is what
+             ran: the file is a committed artefact of one solve, so showing it
+             beside a Python result would illustrate a search that did not
+             happen for the scenario on screen. -->
+        <figure class="trace" id="traceFig" hidden>
+          <img id="traceImg" alt="Two stacked plots against cumulative function
+            evaluations. Above, the best cost found so far, falling as a staircase
+            and then flattening. Below, the mesh size, halving repeatedly and
+            resetting at each restart.">
+          <figcaption class="small muted">Each step down is a poll that found
+            something cheaper; each flat run is the objective being unchanged
+            across a range of cuts, which is what piecewise constant looks like.
+            The mesh below halves every time a poll fails, and resets where a
+            new start begins. This is why the solve is a direct search and not a
+            gradient method — there is no gradient to follow.</figcaption>
+        </figure>
       </div>
       <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
     </div>
@@ -196,6 +212,19 @@ bindKeys("assumptions");
      patch. It reads honestly on either engine — MATLAB's patternsearch runs
      658 of them, the Python fallback 301 — so the page never has to pretend
      MATLAB was here when it was not. */
+  /* Only when MATLAB is what ran. The PNG ships with the repo, so the check is
+     what stops a committed picture of a patternsearch run sitting under a
+     Python result and implying it. */
+  if (String(e.kind || "").startsWith("matlab")) {
+    const fig = document.getElementById("traceFig");
+    const img = document.getElementById("traceImg");
+    /* Only reveal it once the file has actually loaded — a broken image icon
+       under a heading about provenance is worse than no image. */
+    img.addEventListener("load", () => { fig.hidden = false; });
+    img.addEventListener("error", () => { fig.remove(); });
+    img.src = "solve-trace.png";
+  }
+
   document.getElementById("engineEvals").textContent =
     e.evaluations == null ? "—" : Number(e.evaluations).toLocaleString("en-US");
   document.getElementById("engineLede").textContent =

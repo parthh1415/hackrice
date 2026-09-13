@@ -1,4 +1,4 @@
-function result = stabilise(specFile, outFile)
+function result = stabilise(specFile, outFile, plotFile)
 %STABILISE  Minimum-cost intervention that survives a given shock.
 %
 %   This is the part of Firebreak that genuinely needs MATLAB. The
@@ -14,6 +14,13 @@ function result = stabilise(specFile, outFile)
 %   actually have MATLAB.
 %
 %   Usage:  stabilise('data/cache/solve_spec.json', 'data/cache/solve_out.json')
+%
+%   A third argument writes a PNG of the search itself — best-so-far objective
+%   and mesh size against cumulative function evaluations. That picture is the
+%   argument for being here at all: the flat runs are the objective being
+%   piecewise constant, and the mesh halving underneath them is the direct
+%   search responding to a failed poll. Omit it and nothing changes; the solve
+%   is the product and the plot is a by-product.
 
     spec = jsondecode(fileread(specFile));
 
@@ -88,13 +95,18 @@ function result = stabilise(specFile, outFile)
     end
     evals = 0;
     best  = [];
+    trace = zeros(0, 4);   % [cumulative evals, fval, mesh size, start index]
 
     clock0 = tic;   % handle form, so a tic inside a solver can't reset ours
     for s = 1:size(starts, 1)
         x0 = starts(s, :);
         if strcmp(solver, 'patternsearch')
             try
-                [x, fval, exitflag, n] = solvePattern(@cost, @nonlcon, x0, lb, ub);
+                [x, fval, exitflag, n, tr] = solvePattern(@cost, @nonlcon, x0, lb, ub);
+                if ~isempty(tr)
+                    tr(:, 1) = tr(:, 1) + evals;          % continue the x axis
+                    trace = [trace; tr, repmat(s, size(tr, 1), 1)]; %#ok<AGROW>
+                end
             catch err
                 % Global Optimization Toolbox absent or unlicensed. fmincon
                 % is Optimization Toolbox, not base MATLAB — but GOT depends
@@ -155,6 +167,22 @@ function result = stabilise(specFile, outFile)
         'solve_ms',    ms, ...
         'engine',      'matlab');
 
+    % The picture of the search. Wrapped so a plotting failure — a headless
+    % box with no graphics, an export that cannot write — never costs us the
+    % solve. The answer is the product; this is a by-product.
+    if nargin > 1
+        if nargin < 3 || isempty(plotFile)
+            [d, ~, ~] = fileparts(outFile);
+            plotFile = fullfile(d, 'solve_trace.png');
+        end
+        try
+            drawTrace(trace, plotFile, solver, evals);
+            fprintf('wrote %s\n', plotFile);
+        catch plotErr
+            fprintf(2, 'trace not plotted (%s)\n', plotErr.message);
+        end
+    end
+
     if nargin > 1
         fid = fopen(outFile, 'w');
         if fid < 0
@@ -167,17 +195,31 @@ function result = stabilise(specFile, outFile)
     end
 end
 
-function [x, fval, exitflag, n] = solvePattern(fun, nlc, x0, lb, ub)
+function [x, fval, exitflag, n, trace] = solvePattern(fun, nlc, x0, lb, ub)
 %SOLVEPATTERN  patternsearch on the mixed (fund, asset, reduction) problem.
 %
 %   MeshTolerance is 1e-6 rather than 1e-3 because the reduction is the one
 %   variable worth refining: at 1e-3 the answer stops a factor of 2.7 short
 %   of the cheapest fix, and the extra polls are free at this problem size.
+    rows = zeros(0, 3);
     opts = optimoptions('patternsearch', ...
         'Display', 'off', 'UseCompletePoll', true, ...
-        'MeshTolerance', 1e-6, 'MaxIterations', 400);
+        'MeshTolerance', 1e-6, 'MaxIterations', 400, ...
+        'OutputFcn', @record);
     [x, fval, exitflag, output] = patternsearch(fun, x0, [], [], [], [], lb, ub, nlc, opts);
     n = output.funccount;   % lowercase: Global Optimization Toolbox spelling
+    trace = rows;
+
+    function [stop, options, changed] = record(optimvalues, options, flag)
+    %RECORD  One row per iteration. Reports only; never steers the search.
+        stop = false; changed = false;
+        if strcmp(flag, 'interrupt')
+            return
+        end
+        mesh = NaN;
+        if isfield(optimvalues, 'meshsize'), mesh = optimvalues.meshsize; end
+        rows(end+1, :) = [optimvalues.funccount, optimvalues.fval, mesh]; %#ok<AGROW>
+    end
 end
 
 function [x, fval, exitflag, n] = solveFmincon(fun, nlc, x0, lb, ub)
@@ -229,4 +271,87 @@ function [fundIdx, assetIdx, red] = unpack(x, M, N)
     fundIdx  = min(max(round(x(1)), 1), M);
     assetIdx = min(max(round(x(2)), 1), N);
     red      = min(max(x(3), 0), 1);
+end
+
+function drawTrace(trace, plotFile, solver, evals)
+%DRAWTRACE  The search, as a picture. Two panels sharing one x axis.
+%
+%   Top: the best objective found so far, against cumulative function
+%   evaluations. It is a staircase because a direct search only moves when a
+%   poll succeeds, and the flat runs between steps are the objective being
+%   piecewise constant across breach events — which is the whole reason this
+%   solve is not a gradient method.
+%
+%   Bottom: the mesh size. Every halving is a failed poll: the search found
+%   nothing better at the current spacing and tightened it. The two panels read
+%   together — the mesh collapses exactly where the objective stops moving.
+%
+%   Styled to the app's palette rather than MATLAB's, so it does not read as a
+%   screenshot from a different program when it lands on the Model page.
+    if isempty(trace)
+        error('stabilise:noTrace', 'no iterations were recorded');
+    end
+
+    paper = [241 242 238] / 255;   % --paper-raised
+    ink   = [ 20  24  28] / 255;   % --ink
+    mid   = [ 90  96 102] / 255;   % --ink-mid
+    rule  = [198 201 194] / 255;   % --rule
+    faint = [141 146 153] / 255;   % --ink-faint
+
+    x     = trace(:, 1);
+    fval  = trace(:, 2);
+    mesh  = trace(:, 3);
+    start = trace(:, 4);
+
+    % Infeasible polls come back as Inf, which a log axis cannot draw and which
+    % is not a cost anyone paid. Drop them from the objective series only.
+    ok   = isfinite(fval) & fval > 0;
+    bestSoFar = cummin(fval(ok));
+
+    f = figure('Visible', 'off', 'Color', paper, ...
+               'Units', 'pixels', 'Position', [0 0 1200 620]);
+    % 'compact' padding clipped the y label off the left edge. The labels are
+    % the only way to read the picture, so they get the room.
+    tl = tiledlayout(f, 2, 1, 'TileSpacing', 'compact', 'Padding', 'loose');
+
+    ax1 = nexttile(tl);
+    stairs(ax1, x(ok), bestSoFar, 'Color', ink, 'LineWidth', 1.4);
+    set(ax1, 'YScale', 'log');
+    ylabel(ax1, 'best cost so far');
+    title(ax1, sprintf('%s, %d function evaluations — each one a full cascade', ...
+                       solver, evals), 'FontWeight', 'normal', 'Color', ink);
+
+    ax2 = nexttile(tl);
+    if any(isfinite(mesh))
+        stairs(ax2, x, mesh, 'Color', ink, 'LineWidth', 1.4);
+        set(ax2, 'YScale', 'log');
+    end
+    ylabel(ax2, 'mesh size');
+    xlabel(ax2, 'cumulative function evaluations');
+
+    % Where one multi-start run ends and the next begins. Faint ink, not red:
+    % §1 of DESIGN.md gives the one colour exactly one meaning, a limit being
+    % crossed, and a restart is not one.
+    edges = x(find(diff(start) ~= 0) + 1);
+    for ax = [ax1 ax2]
+        hold(ax, 'on');
+        yl = ylim(ax);
+        for k = 1:numel(edges)
+            plot(ax, [edges(k) edges(k)], yl, ':', 'Color', faint, 'LineWidth', 1);
+        end
+        ylim(ax, yl);
+        hold(ax, 'off');
+        set(ax, 'Color', paper, 'XColor', mid, 'YColor', mid, ...
+                'GridColor', rule, 'GridAlpha', 0.55, 'Box', 'off', ...
+                'MinorGridLineStyle', 'none', ...
+                'FontName', 'Menlo', 'FontSize', 11, 'TickDir', 'out');
+        grid(ax, 'on');
+        ax.YLabel.Color = mid;
+        ax.XLabel.Color = mid;
+    end
+    linkaxes([ax1 ax2], 'x');
+    xlim(ax1, [0 max(x)]);
+
+    exportgraphics(f, plotFile, 'Resolution', 144, 'BackgroundColor', paper);
+    close(f);
 end

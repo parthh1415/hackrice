@@ -154,9 +154,22 @@ In MATLAB Online:
 1. Upload `matlab/cascade.m`, `matlab/stabilise.m`, and `data/cache/solve_spec.json`
 2. Run:
 
-       result = stabilise('solve_spec.json', 'solve_out.json')
+       result = stabilise('solve_spec.json', 'solve_out.json', 'solve-trace.png')
 
-3. Download `solve_out.json` back into `data/cache/`
+   The third argument is optional and writes a picture of the search itself:
+   best cost so far and mesh size against cumulative function evaluations. The
+   staircase is polls that found something cheaper, the flat runs are the
+   objective being piecewise constant across breach events, and the mesh
+   halving underneath is the direct search responding to a failed poll. It is
+   the argument for using patternsearch, drawn from the run that just happened.
+   Omit it and the solve is unchanged.
+
+   It is exported on the app's own paper palette, so it sits on the Model page
+   without reading as a screenshot from another program.
+
+3. Download `solve_out.json` into `data/cache/`, and `solve-trace.png` into
+   `web/` (the server serves static files from there, and the Model page only
+   shows the picture when the engine that ran was MATLAB)
 
 Reload the app and press `8` for the Model page. The card now reads **MATLAB · patternsearch** with
 the real evaluation count, exit flag and wall time. (`engine_label` and

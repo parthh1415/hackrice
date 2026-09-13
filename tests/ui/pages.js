@@ -625,6 +625,26 @@ function visibleText(d) {
     has("with the dollar figure from that same scenario", eb,
         "$" + Math.round(st.fix.sell_usd).toLocaleString("en-US"));
 
+    /* The solver trace is a committed PNG of ONE patternsearch run. Shown
+       beside a Python result it would illustrate a search that did not happen
+       for the scenario on screen, which is the same class of lie as the card
+       header that used to say "MATLAB not found" above a MATLAB result.
+       jsdom does not fetch images, so the reveal-on-load never fires here —
+       what is checkable is whether the page asked for the file at all. */
+    {
+      const img = a.d.getElementById("traceImg");
+      const src = img ? (img.getAttribute("src") || "") : "";
+      const isMatlab = String(st.engine.kind || "").startsWith("matlab");
+      check("the solver trace is requested only when MATLAB is what ran",
+            isMatlab ? src.includes("solve-trace.png") : src === "",
+            `engine ${st.engine.kind}, src ${JSON.stringify(src)}`);
+      /* and it starts hidden, so a missing or slow file never leaves a broken
+         image icon under a heading about provenance */
+      const fig = a.d.getElementById("traceFig");
+      check("and it is hidden until the file has actually loaded",
+            !fig || fig.hidden, "figure was visible before load");
+    }
+
     if (st.bought && st.bought.measurable === false) {
       has("an unmeasurable change is reported as unmeasurable, not as a number",
           eb, "no measurable change");
