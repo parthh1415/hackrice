@@ -67,6 +67,13 @@ if (r) (async () => {
      leaves 34px a row, which still clears an 11px label over a 10px figure. */
   const W = 1000, H = 620;
   const svg = document.getElementById("net");
+  /* §4 wraps the product's one orchestrated animation in this, and the same
+     courtesy applies to anything else that moves. The flow dots are the only
+     other motion in the app and they are user-triggered — you pressed Next or
+     Play — but somebody who has asked their machine for less movement has
+     asked for less of this too. */
+  const reduceMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   /* The viewBox was written into the markup and the drawing size lives here,
      so the two drifted the moment the diagram grew: everything below y=400 —
      two assets, a fund's readout and the whole "your book" strip — was being
@@ -141,6 +148,35 @@ if (r) (async () => {
       svg.appendChild(mk("line", { class: "cx-sell", x1: FX, y1: fy(j), x2: AX, y2: ay(i),
         "stroke-opacity": (0.22 + 0.6 * share).toFixed(3),
         "stroke-width": Math.max(.6, share * 5.2), "stroke-linecap": "round" }));
+
+      /* Dollars actually moving, fund to asset. Width alone said how much was
+         sold; it could not say that anything was being sold AT you, which is
+         the direction the whole page is about. The count scales with the size
+         of the flow, so a heavy edge is visibly busier than a trickle rather
+         than just thicker.
+
+         SVG's own <animate> rather than a rAF loop on purpose: draw() runs on
+         every step and every play tick, so a JS animation here would need its
+         own teardown and would be one more thing able to outlive the frame it
+         belongs to. These die with the elements they hang off when the svg is
+         cleared. */
+      if (!reduceMotion) {
+        const dots = 1 + Math.round(share * 2);
+        const dur = (1.6 - 0.5 * share).toFixed(2);
+        for (let k = 0; k < dots; k++) {
+          const dot = mk("circle", { class: "cx-flow", r: (1.6 + share * 1.8).toFixed(2),
+                                     cx: FX, cy: fy(j) });
+          const phase = (-(k / dots) * dur).toFixed(2);
+          dot.appendChild(mk("animate", { attributeName: "cx", values: `${FX};${AX}`,
+            dur: `${dur}s`, begin: `${phase}s`, repeatCount: "indefinite" }));
+          dot.appendChild(mk("animate", { attributeName: "cy", values: `${fy(j)};${ay(i)}`,
+            dur: `${dur}s`, begin: `${phase}s`, repeatCount: "indefinite" }));
+          dot.appendChild(mk("animate", { attributeName: "opacity",
+            values: "0;0.9;0.9;0", dur: `${dur}s`, begin: `${phase}s`,
+            repeatCount: "indefinite" }));
+          svg.appendChild(dot);
+        }
+      }
     }));
 
     /* ── assets: name, whether you hold it, and how far it has fallen ─── */

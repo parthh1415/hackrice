@@ -421,6 +421,19 @@ function visibleText(d) {
            tile("loss so far"), `${(lossAt(cas.trajectory[t].prices) * 100).toFixed(2)}%`);
         eq(`round ${t}: one flow edge per sale the engine actually made`,
            flow().length, soldAt(t));
+        /* Width says how much was sold; the dots say which way, which is the
+           direction the whole page is about. Every edge that exists has to
+           carry at least one, and every dot has to actually be animated — a
+           circle parked at the fund with no <animate> under it is a dot that
+           never travels, which looks like a rendering artefact rather than
+           money moving. */
+        const dots = [...c.d.querySelectorAll("#net circle.cx-flow")];
+        check(`round ${t}: every selling edge carries moving dollars`,
+              flow().length === 0 ? dots.length === 0 : dots.length >= flow().length,
+              `${dots.length} dots for ${flow().length} edges`);
+        check(`round ${t}: and every dot is actually animated`,
+              dots.every((n) => n.querySelectorAll("animate").length >= 2),
+              dots.filter((n) => n.querySelectorAll("animate").length < 2).length + " static");
       }
       /* Deleveraging chasing itself down to nothing is the one idea this page
          exists to land, so the picture has to get quieter as it goes. */

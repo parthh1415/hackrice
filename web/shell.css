@@ -400,6 +400,13 @@ table.pairs td:first-child { color: var(--ink-mid); }
    thing in this product that is a limit being crossed. */
 .cx-sell { stroke: var(--loss); }
 
+/* The same dollars, moving. Line width says how much; these say which way. */
+.cx-flow { fill: var(--loss); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cx-flow { display: none; }
+}
+
 .cx-asset { fill: var(--ink-faint); }
 .cx-asset.hot { fill: var(--ink); }
 
