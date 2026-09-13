@@ -579,6 +579,28 @@ table.pairs td:first-child { color: var(--ink-mid); }
   margin-left: auto;
 }
 
+/* ---------- the book as area (Portfolio page) ---------- */
+
+.bk { width: 100%; height: auto; display: block; }
+
+/* Area is what you own; shade is how many days of its own volume the five
+   modelled books hold of it. A big dark tile is the exposure the rest of the
+   product goes on to price. */
+.bk-tile { fill: var(--loss); stroke: var(--paper-raised); stroke-width: 2; }
+
+/* Cash cannot transmit — nobody is forced to sell it — so it carries no fill
+   at all rather than the lightest shade, which would read as barely crowded. */
+.bk-cash { fill: none; stroke: var(--rule); stroke-width: 1; }
+
+.bk-sym { fill: var(--ink); font-family: var(--font-ui); font-size: var(--t-label); font-weight: 500; }
+.bk-wt {
+  fill: var(--ink);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-micro);
+}
+.bk-days { fill: var(--ink-mid); font-family: var(--font-num); font-size: var(--t-micro); }
+
 /* ---------- the scenario distribution (Validate page) ---------- */
 
 .ds { width: 100%; height: auto; display: block; }

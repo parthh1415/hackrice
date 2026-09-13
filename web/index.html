@@ -45,6 +45,12 @@
         <span class="num pf-total" id="pfTotal">—</span>
         <span class="card-desc" id="pfMeta">—</span>
       </div>
+      <!-- The picture first, the table under it. The table is the right tool
+           for reading a value off a row; it is the wrong one for seeing where
+           your money sits in somebody else's crowd. -->
+      <div class="card-body plot">
+        <svg class="bk" id="bookMap"></svg>
+      </div>
       <div class="card-body tight">
         <table>
           <!-- the fourth column was a bar restating the Weight beside it: a
@@ -83,6 +89,7 @@
 </main>
 <script src="shared.js"></script>
 <script src="shell.js"></script>
+<script src="book.js"></script>
 <script>
 paintShell("portfolio");
 
@@ -129,6 +136,11 @@ function render(p) {
      not, while NVDA's own contagion is 1.05%. */
   const days = CROWDING.days || {};
   const worst = Math.max(0.001, ...Object.values(days));
+  /* Drawn from the same holdings and the same crowding table the rows below
+     use, so the picture and the table cannot describe different books. */
+  drawBook(document.getElementById("bookMap"),
+           { holdings: p.holdings, days, total: p.total_value });
+
   document.getElementById("pfRows").innerHTML = p.holdings.map((h) => {
     const d = days[h.symbol];
     return `
