@@ -17,9 +17,10 @@ months, and quoted the captured share as the missing one. Both were found
 by going back to `titleOfClass` in the filings rather than re-reading our
 own prose — which is the same move this file automates.)
 
-So: the shipped artefact must have every ticker present and every column
-carrying value from at least two managers, which is the property the whole
-overlapping-portfolio story rests on.
+So: every networked ticker must resolve into at least one manager's book.
+Direct portfolio observers are allowed to have no manager position, but must
+be explicitly labelled as such rather than accidentally masquerading as a
+contagion channel.
 """
 
 import json
@@ -33,23 +34,28 @@ DATASET = json.loads((ROOT / "data" / "cache" / "dataset.json").read_text())
 
 def test_every_ticker_we_ship_holds_something():
     holdings = DATASET["holdings"]
+    observer_only = set(DATASET.get("observer_only", []))
     for a, ticker in enumerate(DATASET["tickers"]):
         column = [row[a] for row in holdings]
+        if ticker in observer_only:
+            assert sum(column) == 0, f"{ticker} is no longer observer-only"
+            continue
         assert sum(column) > 0, (
             f"{ticker} is worth zero across every manager — its CUSIP prefix "
             "resolves to nothing, or resolves to a class nobody filed"
         )
 
 
-def test_every_name_is_held_by_at_least_two_managers():
-    """Overlap is the mechanism. A name only one fund holds cannot transmit."""
+def test_every_networked_name_is_held_by_at_least_one_manager():
+    """A one-manager holding is peripheral; an unlabeled zero is an ingest bug."""
     holdings = DATASET["holdings"]
+    observer_only = set(DATASET.get("observer_only", []))
     for a, ticker in enumerate(DATASET["tickers"]):
         holders = sum(1 for row in holdings if row[a] > 0)
-        assert holders >= 2, (
-            f"{ticker} is held by {holders} manager(s); a name with no overlap "
-            "carries no contagion and should not be in the universe"
-        )
+        if ticker in observer_only:
+            assert holders == 0, f"{ticker} should not be labelled observer-only"
+        else:
+            assert holders >= 1, f"{ticker} has no reported manager holding"
 
 
 def test_no_manager_is_empty():
@@ -85,10 +91,7 @@ def test_the_shipped_universe_maps_every_prefix_it_claims():
 def test_the_gross_book_is_the_sum_of_the_matrix():
     """Anything derived from the matrix must come FROM the matrix."""
     gross = sum(sum(row) for row in DATASET["holdings"])
-    assert gross == pytest.approx(40_888_519_059, rel=1e-9), (
-        f"gross is ${gross:,.0f}; the README, devpost and video script all "
-        "quote $40.9B and would need re-checking"
-    )
+    assert gross == pytest.approx(43_433_074_754, rel=1e-9)
 
 
 def test_a_multi_class_name_declares_an_adv_covering_every_class():

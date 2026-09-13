@@ -62,6 +62,7 @@ def main(gamma=0.2, band=1.05):
         "blends": blends.tolist(),
         "overlaps": overlaps,
         "here": {"leverage": 5.0, "overlap": api.mean_overlap(base)},
+        "asset_count": int(base.shape[1]),
         "python_grid": grid,
     }
     # so the surface is drawn in whatever the app is currently wearing

@@ -285,7 +285,7 @@ const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
       fig.hidden = false;
     });
     img.addEventListener("error", () => fig.remove());
-    img.src = `boundary-surface-g${g}-b${bd}.png`;
+    img.src = `boundary-surface-g${g}-b${bd}-n${b.asset_count}.png`;
   }
 
   /* ── hover and keyboard ──────────────────────────────────────────────── */

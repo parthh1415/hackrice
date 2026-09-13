@@ -906,7 +906,7 @@ function visibleText(d) {
       const img = bd.d.getElementById("surfaceImg");
       const src = img ? (img.getAttribute("src") || "") : "";
       eq("the surface asks for the configuration this run is actually at", src,
-         `boundary-surface-g${Number(b.params.gamma)}-b${Number(b.params.band)}.png`);
+         `boundary-surface-g${Number(b.params.gamma)}-b${Number(b.params.band)}-n${b.asset_count}.png`);
       const fig = bd.d.getElementById("surfaceFig");
       check("and stays hidden until that file has loaded", !fig || fig.hidden);
     }

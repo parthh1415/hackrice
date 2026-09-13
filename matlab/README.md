@@ -84,7 +84,7 @@ deleveraging cascades — rather than plotting numbers Python handed it.
 
     PYTHONPATH=src python3 scripts/boundary_spec.py       # inputs + Python's grid
     cd matlab && matlab -batch "boundary('../data/cache/boundary_spec.json', ...
-        '../data/cache/boundary_out.json', '../web/boundary-surface-g0.2-b1.05.png')"
+        '../data/cache/boundary_out.json', '../web/boundary-surface-g0.2-b1.05-n18.png')"
 
 It checks itself against Python's grid before it draws anything and **refuses
 to produce a figure if the two disagree by more than 1e-4**, because a surface

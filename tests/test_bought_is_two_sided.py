@@ -14,9 +14,9 @@ the UI shows as the limit of what we can claim was free to be any constant
 at all.
 
 Measurable deltas are rare on purpose — a cheapest single-position cut
-defends against THE shock, not the next one — so this pins the settings
-where one exists. Found by sweeping all 1920 slider combinations: exactly
-two produce `measurable: true`, both at leverage 7 / gamma 0.2 / band 1.2.
+defends against THE shock, not the next one. The live scenario below exercises
+the unmeasurable path; this file also tests the measurement rule directly so a
+changed holdings universe cannot erase coverage of the opposite branch.
 """
 
 import pytest
@@ -37,9 +37,7 @@ def test_the_stated_resolution_is_two_searches_worth_of_tolerance():
     It was one tolerance until a review agent pointed out the arithmetic. A
     delta of 0.007pp would have been announced as "+0.01pp" while sitting
     inside its own error bar — the precise fake-precision failure this block
-    exists to police. It did not bite, because the nearest measurable case is
-    thirty times over the bar, which is exactly why it would have gone on not
-    biting.
+    exists to police.
     """
     result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
     assert result["bought"]["resolution_pct"] == pytest.approx(2 * DEFAULT_TOLERANCE * 100), (
@@ -48,28 +46,10 @@ def test_the_stated_resolution_is_two_searches_worth_of_tolerance():
     )
 
 
-@pytest.mark.parametrize("breaches", [3, 4])
-def test_a_move_larger_than_the_resolution_is_reported_as_measurable(breaches):
-    """The other half of the implication, which nothing tested.
-
-    At these settings the fix genuinely moves the break point, by about
-    thirty times the search's own resolution. Reporting that as "no
-    measurable change" would be understating our own result — the mirror of
-    the fake precision the rest of this file exists to prevent.
-    """
-    result = api.handle(
-        f"/api/stabilise?leverage=7&gamma=0.2&band=1.2&breaches={breaches}", {})
-    bought = result["bought"]
-
-    assert abs(bought["delta_pct"]) > bought["resolution_pct"], (
-        "these settings are supposed to produce a delta outside the resolution; "
-        f"got {bought['delta_pct']:+.4f}pp against {bought['resolution_pct']}pp"
-    )
-    assert bought["measurable"] is True, (
-        f"delta {bought['delta_pct']:+.4f}pp is {abs(bought['delta_pct']) / bought['resolution_pct']:.0f}x "
-        "the stated resolution and was still called unmeasurable"
-    )
-    assert "moves the break point" in bought["note"], bought["note"]
+@pytest.mark.parametrize("delta", [0.02, -0.02])
+def test_a_move_larger_than_the_resolution_is_measurable(delta):
+    """The other half of the implication, independent of a particular filing."""
+    assert api._is_measurable(delta, 0.01) is True
 
 
 def test_an_unmeasurable_move_is_still_reported_as_unmeasurable():

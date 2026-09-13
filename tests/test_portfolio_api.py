@@ -496,6 +496,32 @@ def test_a_fully_modelled_book_carries_no_exclusion_note():
     assert out["excluded_note"] is None
 
 
+def test_portfolio_positions_export_is_fully_modelled():
+    """The current Fidelity export must not require dropping any holdings."""
+    holdings = [
+        {"symbol": "CASH", "market_value": 1256.86},  # SPAXX cash sweep
+        {"symbol": "AAPL", "market_value": 1661.35},
+        {"symbol": "CVX", "market_value": 428.12},
+        {"symbol": "FNDX", "market_value": 1785.30},
+        {"symbol": "HEFA", "market_value": 791.35},
+        {"symbol": "MSFT", "market_value": 991.26},
+        {"symbol": "NOW", "market_value": 148.96},
+        {"symbol": "SCHF", "market_value": 1127.60},
+        {"symbol": "SCHG", "market_value": 1160.28},
+        {"symbol": "SMH", "market_value": 1137.06},
+        {"symbol": "VGIT", "market_value": 516.06},
+    ]
+
+    out = api.handle("/api/portfolio/full?limit=0.10", {
+        "holdings": holdings,
+        "source": "csv",
+    })
+
+    assert out.get("refused") is not True
+    assert out["portfolio"]["total_value"] == pytest.approx(11004.20)
+    assert {row["symbol"] for row in holdings if row["symbol"] != "CASH"} <= set(out["tickers"])
+
+
 def test_a_book_with_nothing_modellable_is_still_refused():
     """Excluding everything leaves no portfolio, and the flag must not force
     an answer out of an empty book."""

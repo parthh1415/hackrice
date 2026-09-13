@@ -495,22 +495,18 @@ def _stabilise(params):
     repeat = find_weakest_shock(condition=condition, **patched)
     delta = (repeat.pct - found.pct) if repeat else None
     # The search bisects to a tolerance; a delta finer than that is a claim the
-    # method cannot support. Today it is +0.0039pp against a 0.01pp
-    # resolution — inside its own error bar, so it is reported as no measurable
-    # change rather than as a number. Tightening the tolerance does not rescue
-    # it: at 0.05pp the delta was +0.03pp, and it stayed inside. Same
-    # fake-precision failure as the hero number, one level up.
+    # method cannot support. The active holdings universe can change whether a
+    # particular scenario has a measurable result, so the rule itself is
+    # covered independently rather than relying on this demo case.
     # TWO tolerances, not one. `delta` is the difference of two independently
     # bisected searches, and each of them can be off by up to a tolerance in
     # either direction, so the error on their difference is twice that. The
     # bar was one tolerance, which meant a delta of, say, 0.007pp would have
     # been announced as "+0.01pp" while sitting inside its own error bar —
     # the exact fake-precision failure this block exists to prevent, at the
-    # one place that is supposed to be policing it. It does not bite today
-    # (the nearest measurable case is +0.148pp, thirty times over), which is
-    # precisely why it would have gone on not biting.
+    # one place that is supposed to be policing it.
     resolution = 2.0 * _SEARCH_TOLERANCE * 100.0
-    measurable = delta is not None and abs(delta) > resolution
+    measurable = _is_measurable(delta, resolution)
     bought = {
         "before_pct": found.pct,
         "after_pct": repeat.pct if repeat else None,
@@ -562,6 +558,11 @@ def _stabilise(params):
         "after": {**after.as_dict(), "holdings": patched["holdings"].tolist()},
         **data,
     }
+
+
+def _is_measurable(delta, resolution):
+    """Whether a difference clears the uncertainty of two shock searches."""
+    return delta is not None and abs(delta) > resolution
 
 
 def blend_toward_mean(holdings, blend):
@@ -678,6 +679,7 @@ def _boundary(params):
         "grid": grid,
         "rows": _ROWS,
         "cols": _COLS,
+        "asset_count": len(data["tickers"]),
         "leverage_axis": [round(float(x), 3) for x in levs],
         "overlap_axis": overlaps,
         # gamma and band used to sit here as well as in `params`, and this was
