@@ -106,16 +106,22 @@ function drawBook(svg, { holdings, days, total }) {
        matters most for the crowding line, which is the longest string on the
        tile — without it the small tiles on the right of a real twenty-name
        book render "0.7 days of vo" and spill over their own edges. */
-    if (t.w > 62 && t.h > 34) {
+    /* Each gate is the baseline the line is actually drawn at, plus room for
+       the descender. They used to sit BELOW their own baselines — h > 34 for a
+       line at y + 38, h > 52 for one at y + 56 — so a tile in the few pixels
+       between gate and baseline had its second line drawn under its own bottom
+       edge, and on the bottom row that is under the viewBox, where it is
+       clipped away entirely. A sweep of random eight-to-twenty-six-name books
+       hit it about one time in seven. */
+    if (t.w > 62 && t.h > 44) {
       el("text", { class: "bk-sym", x: t.x + 10, y: t.y + 22 }, t.symbol);
       el("text", { class: "bk-wt", x: t.x + 10, y: t.y + 38 },
          `${(t.weight * 100).toFixed(1)}%`);
-      if (!isCash && t.h > 56 && t.w > 150) {
+      /* Both spellings of the crowding line share one baseline, so they share
+         one height gate; only the width decides which of them fits. */
+      if (!isCash && t.h > 62) {
         el("text", { class: "bk-days", x: t.x + 10, y: t.y + 56 },
-           `${t.days.toFixed(1)} days of volume`);
-      } else if (!isCash && t.h > 52 && t.w > 78) {
-        el("text", { class: "bk-days", x: t.x + 10, y: t.y + 56 },
-           `${t.days.toFixed(1)}d`);
+           t.w > 150 ? `${t.days.toFixed(1)} days of volume` : `${t.days.toFixed(1)}d`);
       }
     }
   }

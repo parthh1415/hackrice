@@ -110,8 +110,13 @@ function drawDistribution(svg, { before, after, limit, animate = true }) {
                  : ones === 1 ? "st" : ones === 2 ? "nd" : ones === 3 ? "rd" : "th";
     return `${k}${suffix}`;
   };
+  /* Counted from the WORST, because the other end of this axis is "worst case"
+     and the caption underneath says "the worst 100 of 400". `total - shown + 1`
+     counts from the best — a true rank, of the wrong series — so the axis read
+     301st worst to 1st worst, 301 ranks, across 100 plotted points, with the
+     count of them printed one line below. */
   el("text", { class: "ds-band", x: DIST.padL, y: DIST.padT + plotH + 24 },
-     `${ordinal(total - shown + 1)} worst`);
+     `${ordinal(shown)} worst`);
   el("text", { class: "ds-band", x: DIST.padL + plotW, y: DIST.padT + plotH + 24,
                "text-anchor": "end" }, "worst case");
   el("text", { class: "ds-band", x: DIST.padL + plotW / 2, y: DIST.padT + plotH + 40,

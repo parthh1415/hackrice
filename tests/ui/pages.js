@@ -1225,6 +1225,114 @@ function visibleText(d) {
        w.result.params.limit, 0.05);
   }
 
+  /* ---- a half-point limit reads the same everywhere ---- */
+  {
+    /* The slider steps in half points, so 17.5% is one arrow-key press away —
+       and every readout printed it at 0 dp, so the control said 17.5% and six
+       screens said 18%. */
+    const rows = [{ symbol: "NVDA", market_value: 60000 },
+                  { symbol: "CASH", market_value: 40000 }];
+    const full = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.175", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }),
+    })).json();
+    const seed = JSON.stringify({ rows,
+      portfolio: { source: "csv", total_value: 100000, holdings: rows },
+      limit: 0.175, result: full });
+
+    for (const page of ["index.html", "cascade.html", "defend.html"]) {
+      const h = await load(page, { fb: seed });
+      await sleep(250);
+      const seen = visibleText(h.d);
+      check(`${page} does not round a half-point limit to a whole one`,
+            !/\b18%/.test(seen), (seen.match(/.{0,40}18%.{0,20}/) || [""])[0]);
+      has(`${page} prints the limit that is actually set`, txt(h.d, "navLimit") || "", "17.5%");
+    }
+  }
+
+  /* ---- nothing on the cascade prints a rounded-down zero ---- */
+  {
+    /* The dot lit at drop > 1e-9 and the readout rounded at 5e-5, so an asset
+       that had barely moved got "−0.00%" beside it — a minus in front of a
+       rounded zero, which the comment two lines above it says was fixed. */
+    const rows = [{ symbol: "AMZN", market_value: 100000 }];
+    const full = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.05", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }),
+    })).json();
+    const c = await load("cascade.html", {
+      fb: JSON.stringify({ rows, portfolio: { source: "csv", total_value: 100000, holdings: rows },
+                           limit: 0.05, result: full }),
+    });
+    await until(() => c.d.querySelectorAll("#net .cx-sub").length > 0);
+    const next = c.d.getElementById("nextBtn");
+    for (let i = 0; i < 3 && next; i++) {
+      next.dispatchEvent(new c.window.Event("click", { bubbles: true }));
+      await sleep(60);
+      const zeros = [...c.d.querySelectorAll("#net text")]
+        .map((n) => n.textContent).filter((s) => /^−0\.00%$/.test(s));
+      check(`round ${i + 1} prints no rounded-down zero`, zeros.length === 0,
+            zeros.join(" "));
+    }
+  }
+
+  /* ---- no treemap label is drawn outside its own tile ---- */
+  {
+    /* The height gates sat below the baselines they guarded — h > 34 for a
+       line at y + 38 — so a tile a few pixels into that window had its weight
+       drawn under its own bottom edge, and on the bottom row that is under the
+       viewBox, clipped away. Reachable from any imported book: this fixture is
+       eight real names. */
+    const b = await load("index.html", {
+      fb: JSON.stringify({ portfolio: { source: "csv", total_value: 10000000, holdings: [
+        { symbol: "AAPL", market_value: 98780, weight: 0.0099 },
+        { symbol: "MSFT", market_value: 3008062, weight: 0.3008 },
+        { symbol: "NVDA", market_value: 2218754, weight: 0.2219 },
+        { symbol: "GOOGL", market_value: 2335481, weight: 0.2335 },
+        { symbol: "AMZN", market_value: 138471, weight: 0.0138 },
+        { symbol: "META", market_value: 1035659, weight: 0.1036 },
+        { symbol: "TSLA", market_value: 228884, weight: 0.0229 },
+        { symbol: "AVGO", market_value: 935909, weight: 0.0936 },
+      ] }, limit: 0.10 }),
+    });
+    await until(() => b.d.querySelectorAll("#bookMap .bk-tile").length > 0);
+
+    const tiles = new Map();
+    for (const r of b.d.querySelectorAll("#bookMap .bk-tile")) {
+      tiles.set(Number(r.getAttribute("x")), r);
+    }
+    /* A selector that matches nothing makes this loop pass on an empty set —
+       the same shape as the focus audit that filtered on offsetParent and
+       silently checked no links at all. Assert there is something to check. */
+    check("the treemap drew tiles to check", tiles.size > 3, `tiles: ${tiles.size}`);
+    const outside = [];
+    for (const label of b.d.querySelectorAll("#bookMap text")) {
+      const x = Number(label.getAttribute("x")), y = Number(label.getAttribute("y"));
+      const tile = tiles.get(x - 9);            // rect x is tile.x + 1, text x is tile.x + 10
+      if (!tile) continue;
+      const bottom = Number(tile.getAttribute("y")) + Number(tile.getAttribute("height"));
+      if (y > bottom) outside.push(`${label.textContent} at y=${y} in a tile ending ${bottom}`);
+    }
+    check("every treemap label is inside the tile it names", outside.length === 0,
+          outside.join("; "));
+  }
+
+  /* ---- the distribution's axis names ranks it actually spans ---- */
+  {
+    /* The left label counted from the best and the right one from the worst,
+       so the axis claimed 301 ranks across 100 plotted points with "the worst
+       100 of 400" printed directly underneath it. */
+    const v = await load("verify.html", store);
+    await until(() => v.d.querySelectorAll("#dist .ds-band").length >= 3);
+    const bands = [...v.d.querySelectorAll("#dist .ds-band")].map((n) => n.textContent);
+    const caption = bands.find((b) => /the worst \d+ of \d+/.test(b)) || "";
+    const shown = Number((caption.match(/the worst (\d+) of/) || [])[1]);
+    check("the caption says how many scenarios are plotted", shown > 0, caption);
+    has("and the axis starts at that rank, counted the same way",
+        bands.join(" | "), `${shown}th worst`);
+    has("and ends at the worst of them", bands.join(" | "), "worst case");
+  }
+
   /* ---- a carried clamp note does not outlive the limit it describes ---- */
   {
     /* The seeder hands the clamp forward in state so the note survives the

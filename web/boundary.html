@@ -260,7 +260,17 @@ const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
      exact for a monospace and needs no layout to be true. */
   /* §6: no ALL-CAPS labels. */
   const text = `As filed — λ ${here.leverage.toFixed(1)}, overlap ${here.overlap.toFixed(2)}`;
-  const w = text.length * 6, right = xm > 300;
+  /* 0.6em per character is exact for this mono face; the SIZE has to come from
+     the token, not from a number typed beside it. It was `* 6`, which is right
+     for 10px — and --t-micro is 12, so the plate came out 20% short and the
+     last four characters of "overlap 0.71" were drawn on bare heatmap cells,
+     which is the one thing the plate exists to prevent. */
+  const micro = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue("--t-micro")) || 12;
+  const w = text.length * micro * 0.6;
+  /* and the side it flips to is decided by whether the label FITS, not by a
+     midpoint that knew nothing about its width. 520 is the map's viewBox. */
+  const right = xm + 12 + w > 520 - 4;
   const lx = right ? xm - 12 - w : xm + 12;
   svg.appendChild(mk("rect", { x: lx - 4, y: ym - 19, width: w + 8, height: 15,
     class: "bd-plate" }));

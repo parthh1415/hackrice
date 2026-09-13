@@ -90,6 +90,17 @@ const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
 const loss = (x, dp = 2) =>
   (Math.abs(x) * 100 < 0.5 * Math.pow(10, -dp) ? "—" : `−${pct(Math.abs(x), dp)}`);
 
+/* A loss limit is a number the user set, and the slider sets it in half
+   points. At a fixed 0 dp a 17.5% limit read "18%" on six screens and "17.5%"
+   on the control that set it — the same disagreement between a control and a
+   page that the clamp adoption exists to prevent, arriving from rounding
+   instead. Show the precision the number actually has. */
+const limitPct = (x) => {
+  if (x === null || x === undefined || !Number.isFinite(x)) return "—";
+  const p = x * 100;
+  return pct(x, Math.abs(p - Math.round(p)) < 1e-9 ? 0 : 1);
+};
+
 const num = (x, dp = 2, dash = "—") =>
   (x === null || x === undefined || !Number.isFinite(x)) ? dash : x.toFixed(dp);
 
@@ -145,7 +156,7 @@ function paintNav(current) {
   /* The value only. The word "LIMIT" used to be written here, which meant the
      rail could not label it in its own voice without two places writing one
      element. The label is markup now; this writes the number. */
-  if (lim) lim.textContent = s.limit ? pct(s.limit, 0) : "—";
+  if (lim) lim.textContent = s.limit ? limitPct(s.limit) : "—";
   const sh = document.getElementById("navShock");
   /* Three states, not two. A search that ran and found nothing is not the same
      as a search that never ran, and calling it "NOT RUN" is simply false — the
@@ -286,7 +297,7 @@ function requireResult(current) {
        came back empty. That is not an error and not a missing step — it is the
        answer, and it has an action attached: lower the limit. */
     const ran = !!s.result;
-    const limit = s.limit ? pct(s.limit, 0) : "your limit";
+    const limit = s.limit ? limitPct(s.limit) : "your limit";
     /* Keep the page's own masthead. Replacing all of <main> stripped the title
        band, so an empty state read as an error screen — a lone card at the top
        of 700px of black, on a page that had just been announcing what it was.

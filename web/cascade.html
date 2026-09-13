@@ -185,7 +185,12 @@ if (r) (async () => {
       Math.max(...fr.prices.map(pr => 1 - pr))));
     T.forEach((sym, i) => {
       const drop = 1 - f.prices[i];
-      const hot = drop > 1e-9;
+      /* Half a basis point: the threshold the readout beside it ROUNDS at, not
+         an epsilon. Gated at 1e-9 the dot lit up for a move the formatter then
+         printed as "−0.00%" — a minus written by hand in front of a rounded
+         zero, which is the exact bug the comment below says was fixed. A sweep
+         of the 18 names at five magnitudes found 18 frames doing it. */
+      const hot = drop * 100 >= 0.005;
       const y = ay(i);
 
       /* The names YOU hold, marked on the diagram that explains what happens
@@ -301,7 +306,7 @@ if (r) (async () => {
         x1: lim, y1: YOU_Y - 13, x2: lim, y2: YOU_Y + 13 }));
 
       const lt = mk("text", { class: "cx-sub", x: lim + 6, y: YOU_Y + 26 });
-      lt.textContent = `your limit ${pct(r.params.limit, 0)}`;
+      lt.textContent = `your limit ${limitPct(r.params.limit)}`;
       svg.appendChild(lt);
 
       const amt = mk("text", { class: `cx-you-val${over ? " breached" : ""}`,
@@ -323,7 +328,7 @@ if (r) (async () => {
       /* the size of the fire in this round, which is what the red edges are
          drawing. Without the number beside them the picture is impressionistic. */
       ["Forced selling this round", usd((f.sold || []).flat().reduce((a, b) => a + b, 0)), ""],
-      ["Your limit", pct(r.params.limit, 0), ""],
+      ["Your limit", limitPct(r.params.limit), ""],
     ].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join("");
   }
 

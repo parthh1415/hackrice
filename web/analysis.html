@@ -157,7 +157,7 @@ bindKeys("analysis");
          search.py — and saying so is the difference between a hedge and a
          disclosure. */
       `No single-name fall of up to ${pct(body.search_max_drop || 0.60, 0)} pushes this ` +
-      `portfolio past ${pct(body.params.limit, 0)} under these assumptions. That is the ` +
+      `portfolio past ${limitPct(body.params.limit)} under these assumptions. That is the ` +
       `edge of what was tested, not a clean bill of health.`;
     /* Every other outcome on this site gets a panel. This one was a headline
        and a sentence over 750px of black, which reads as the page failing
@@ -169,7 +169,7 @@ bindKeys("analysis");
         <div class="card-header"><span class="card-title">Search exhausted</span>
           <span class="sub">Every modelled name, shocks to ${pct(body.search_max_drop || 0.60, 0)}</span></div>
         <div class="card-body tight"><table class="pairs"><tbody>
-          <tr><td>Limit tested</td><td class="r num">${pct(body.params.limit, 0)}</td></tr>
+          <tr><td>Limit tested</td><td class="r num">${limitPct(body.params.limit)}</td></tr>
           <tr><td>Largest shock tested</td><td class="r num">−${pct(body.search_max_drop || 0.60, 0)}</td></tr>
           <tr><td>Names searched</td><td class="r num">${names}</td></tr>
         </tbody></table></div>
@@ -182,7 +182,7 @@ bindKeys("analysis");
 
   document.getElementById("title").textContent = "Here is what breaks it";
   document.getElementById("sub").textContent =
-    `The smallest single-name move that pushes this portfolio past a ${pct(body.params.limit, 0)} ` +
+    `The smallest single-name move that pushes this portfolio past a ${limitPct(body.params.limit)} ` +
     `loss. The shock is the trigger; the crowding is the damage.`;
   document.getElementById("resultCard").hidden = false;
   document.getElementById("whyCard").hidden = false;
@@ -238,7 +238,7 @@ bindKeys("analysis");
      headline, not in a tile you read fourth. */
   document.getElementById("bigSub").textContent =
     `At this shock your portfolio loses ${pct(body.cascade_loss)} against a limit of ` +
-    `${pct(body.params.limit, 0)} — ${body.amplification ? num(body.amplification, 2) + "×" : ""} ` +
+    `${limitPct(body.params.limit)} — ${body.amplification ? num(body.amplification, 2) + "×" : ""} ` +
     `what the fall alone would cost you, because ${body.breached.length} of the ` +
     `${(body.funds || []).length} books we model are forced to sell into it over ` +
     `${body.rounds} ${body.rounds === 1 ? "round" : "rounds"}.`;
@@ -294,7 +294,7 @@ bindKeys("analysis");
      right thing to print in this header — the caveats below are meaningless
      without them — so they are set as a sentence instead of a tic. */
   document.getElementById("whyDesc").textContent =
-    `${body.asset} −${body.pct.toFixed(2)}%, limit ${pct(body.params.limit, 0)}, ` +
+    `${body.asset} −${body.pct.toFixed(2)}%, limit ${limitPct(body.params.limit)}, ` +
     `λ ${body.params.leverage.toFixed(1)}×, band ${body.params.band}×, γ ${body.params.gamma}`;
   document.getElementById("whyRows").innerHTML = [
     ["Not a probability",

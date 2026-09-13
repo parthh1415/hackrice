@@ -74,7 +74,7 @@ if (r) {
                  as a suspiciously round result. -->
             <div class="s">${s.after_breaks ? "still breaches the limit"
               : `solved to ${pct(1 - (f.margin || 0.1), 0)} of the limit`}</div></div>
-          <div class="stat"><div class="k">Your limit</div><div class="v">${pct(s.limit, 0)}</div><div class="s">unchanged</div></div>
+          <div class="stat"><div class="k">Your limit</div><div class="v">${limitPct(s.limit)}</div><div class="s">unchanged</div></div>
           <!-- "cost" is wrong: nothing is lost. The money moves to cash and the
                book is worth the same afterwards, which the total row proves. -->
           <div class="stat"><div class="k">Share of book moved</div><div class="v">${pct(f.dollars / r.portfolio.total_value, 2)}</div><div class="s">out of the shocked name, into cash</div></div>
