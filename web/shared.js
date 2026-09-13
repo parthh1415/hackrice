@@ -65,7 +65,7 @@ function paintNav(current) {
   const s = FB.state;
   /* the bar reports the same state the nav does, so they cannot disagree */
   if (document.querySelector(".statusbar")) paintStatusBar(current);
-  paintExclusionBanner();
+  paintExclusionBanner(current);
   /* A page missing from this map reads as `undefined`, and `!undefined` locks
      it. `assumptions` was missing, so the Model link was dead on every page
      including its own — the page was reachable only by typing its URL. Nothing
@@ -193,10 +193,17 @@ function invalidateStaleResult() {
    about it. A disclosure that appears only on the screen where you agreed to
    it stops being a disclosure the moment you click through — and the pages
    after that one are the ones with the money on them. */
-function paintExclusionBanner() {
+/* The pages whose numbers describe the user's own book. Boundary sweeps the
+   five institutional books across a configuration space and Model describes
+   the method — neither reads a holding, so "not in any number below" is simply
+   untrue there, and a banner that overclaims is the same defect as one that
+   under-discloses. */
+const BOOK_PAGES = new Set(["portfolio", "analysis", "cascade", "defend", "verify"]);
+
+function paintExclusionBanner(current) {
   const note = FB.state.result && FB.state.result.excluded_note;
   const existing = document.getElementById("exclBanner");
-  if (!note) { if (existing) existing.remove(); return; }
+  if (!note || !BOOK_PAGES.has(current)) { if (existing) existing.remove(); return; }
   const names = (note.excluded || []).map((e) => e.symbol).join(", ");
   const bar = existing || document.createElement("div");
   bar.id = "exclBanner";

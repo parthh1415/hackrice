@@ -439,8 +439,8 @@ MUTATIONS = {
         "    return n <= Math.max(2, head.length / 3);"),
     "exclusion_banner_only_on_analysis": (
         "web/shared.js",
-        "  paintExclusionBanner();",
-        "  if (current === \"analysis\") paintExclusionBanner();"),
+        "  paintExclusionBanner(current);",
+        '  if (current === "analysis") paintExclusionBanner(current);'),
     "import_refusal_is_a_dead_end": (
         "web/index.html",
         "      if (body.can_exclude) { offerExclusion(body, rows, file.name); return; }",

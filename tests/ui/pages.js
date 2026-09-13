@@ -873,8 +873,7 @@ function visibleText(d) {
 
     const seeded = { fb: JSON.stringify({ portfolio: kept.portfolio, rows,
       limit: 0.10, excludeUnmodelled: true, result: kept }) };
-    for (const page of ["cascade.html", "defend.html", "verify.html",
-                        "boundary.html", "assumptions.html"]) {
+    for (const page of ["cascade.html", "defend.html", "verify.html"]) {
       const pg = await load(page, seeded);
       await until(() => !!pg.d.getElementById("exclBanner"), 4000);
       const banner = pg.d.getElementById("exclBanner");
@@ -886,6 +885,19 @@ function visibleText(d) {
               t.includes("VOO") && t.includes("VTI") && /58\.8%/.test(t),
               t.replace(/\s+/g, " ").slice(0, 110));
       }
+    }
+
+    /* But NOT where the numbers are not about the user's book. Boundary sweeps
+       the five institutional books and Model describes the method; neither
+       reads a holding, so "not in any number below" would be false there. This
+       check originally asserted the opposite — I had the banner on all seven
+       pages and called that thorough. */
+    for (const page of ["boundary.html", "assumptions.html"]) {
+      const pg = await load(page, seeded);
+      await sleep(400);
+      check(`${page} does not claim an exclusion it is not affected by`,
+            !pg.d.getElementById("exclBanner"),
+            (pg.d.getElementById("exclBanner") || {}).textContent);
     }
 
     /* and it must NOT appear when nothing was excluded */
