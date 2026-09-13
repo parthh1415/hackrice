@@ -102,13 +102,20 @@ function drawBook(svg, { holdings, days, total }) {
       "fill-opacity": isCash ? 0 : (0.14 + 0.74 * k).toFixed(3),
     });
 
+    /* Each line is drawn only if its tile can actually hold it. The width gate
+       matters most for the crowding line, which is the longest string on the
+       tile — without it the small tiles on the right of a real twenty-name
+       book render "0.7 days of vo" and spill over their own edges. */
     if (t.w > 62 && t.h > 34) {
       el("text", { class: "bk-sym", x: t.x + 10, y: t.y + 22 }, t.symbol);
       el("text", { class: "bk-wt", x: t.x + 10, y: t.y + 38 },
          `${(t.weight * 100).toFixed(1)}%`);
-      if (!isCash && t.h > 56) {
+      if (!isCash && t.h > 56 && t.w > 150) {
         el("text", { class: "bk-days", x: t.x + 10, y: t.y + 56 },
            `${t.days.toFixed(1)} days of volume`);
+      } else if (!isCash && t.h > 52 && t.w > 78) {
+        el("text", { class: "bk-days", x: t.x + 10, y: t.y + 56 },
+           `${t.days.toFixed(1)}d`);
       }
     }
   }

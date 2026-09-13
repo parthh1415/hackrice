@@ -1,0 +1,15 @@
+Account number,Account name,Symbol,Description,Quantity,Last price,Last price change,Current value,Today's gain/loss dollar,Today's gain/loss percent,Total gain/loss dollar,Total gain/loss percent,Percent of account,Cost basis total,Average cost basis,Type
+,Individual Investment,SPAXX**,HELD IN MONEY MARKET,,,,"$3,843.00",,,,,4.50%,,,Cash
+,Individual Investment,NVDA,NVIDIA CORP,153.227,$178.35,+$0.00,"$27,328.00",+$0.00,+0.00%,+$0.00,+0.00%,32.00%,"$18,583.04",$121.28,Cash
+,Individual Investment,AAPL,APPLE INC,33.413,$332.27,+$0.00,"$11,102.00",+$0.00,+0.00%,+$0.00,+0.00%,13.00%,"$7,549.36",$225.94,Cash
+,Individual Investment,MSFT,MICROSOFT CORP,22.224,$441.90,+$0.00,"$9,821.00",+$0.00,+0.00%,+$0.00,+0.00%,11.50%,"$6,678.28",$300.49,Cash
+,Individual Investment,AMZN,AMAZON COM INC,33.992,$213.55,+$0.00,"$7,259.00",+$0.00,+0.00%,+$0.00,+0.00%,8.50%,"$4,936.12",$145.21,Cash
+,Individual Investment,GOOGL,ALPHABET INC CAP STK CL A,35.695,$191.40,+$0.00,"$6,832.00",+$0.00,+0.00%,+$0.00,+0.00%,8.00%,"$4,645.76",$130.15,Cash
+,Individual Investment,META,META PLATFORMS INC CL A,9.189,$604.12,+$0.00,"$5,551.00",+$0.00,+0.00%,+$0.00,+0.00%,6.50%,"$3,774.68",$410.80,Cash
+,Individual Investment,AVGO,BROADCOM INC,17.450,$244.70,+$0.00,"$4,270.00",+$0.00,+0.00%,+$0.00,+0.00%,5.00%,"$2,903.60",$166.40,Cash
+,Individual Investment,AMD,ADVANCED MICRO DEVICES INC,23.598,$162.85,+$0.00,"$3,843.00",+$0.00,+0.00%,+$0.00,+0.00%,4.50%,"$2,613.24",$110.74,Cash
+,Individual Investment,TSLA,TESLA INC,11.736,$291.06,+$0.00,"$3,416.00",+$0.00,+0.00%,+$0.00,+0.00%,4.00%,"$2,322.88",$197.92,Cash
+,Individual Investment,JPM,JPMORGAN CHASE & CO,8.597,$248.33,+$0.00,"$2,135.00",+$0.00,+0.00%,+$0.00,+0.00%,2.50%,"$1,451.80",$168.86,Cash
+
+"Brokerage services provided by Fidelity Brokerage Services LLC (FBS), and account custody by National Financial Services LLC (NFS)."
+"Date downloaded 09/13/2026"
