@@ -156,7 +156,61 @@ body.shell {
   gap: var(--s7);
 }
 
-.col > header { display: flex; flex-direction: column; gap: var(--s3); }
+/* Not `.col > header`: shell.js wraps it in a .masthead band, so it is a
+   grandchild now. */
+.col header { display: flex; flex-direction: column; gap: var(--s3); }
+
+/* ---------- the masthead ---------- */
+
+/* The band that carries a page's title, with the entrance's dot field running
+   underneath it. It bleeds to the column's own edges — never to the viewport,
+   which is a rule the brief sets — and ends in a hairline, so the instruments
+   below it start on plain paper. */
+.masthead {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: calc(var(--s7) * -1) calc(var(--s6) * -1) 0;
+  padding: var(--s7) var(--s6) var(--s6);
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead-glow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+  /* The field has to end somewhere. A hard crop at the rule reads as a
+     cropped photograph; this fades it out before it gets there. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 58%, transparent 100%);
+}
+
+/* Above the canvas (-2), below the words. Same job as the pool on the
+   entrance: keep the type off the dots without dimming the whole field. The
+   title and lede are held to --measure, so the ground they need is the left
+   three-quarters of the band and the light gets the rest. */
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to right,
+    rgba(20, 23, 26, 0.95) 0%,
+    rgba(20, 23, 26, 0.92) 62%,
+    rgba(20, 23, 26, 0.45) 84%,
+    rgba(20, 23, 26, 0) 99%);
+}
+
+.masthead > header { max-width: var(--measure); }
+
+.masthead h1 {
+  font-size: clamp(28px, 3.1vw, 42px);
+  letter-spacing: -0.015em;
+}
 
 h1 {
   font-family: var(--font-prose);
@@ -894,7 +948,10 @@ table.pairs td:first-child { color: var(--ink-mid); }
 
 /* An outcome with no numbers in it. It is still a result and still gets a
    panel — §0: empty states render as states, not as blank panels. */
-.empty { display: flex; flex-direction: column; gap: var(--s3); }
+/* It sits directly inside .card rather than in a .card-body, so it has to
+   carry the body's padding itself — without it the heading was flush against
+   the card's left rule and the button sat in its bottom corner. */
+.empty { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s5); }
 .empty h2 {
   font-family: var(--font-prose);
   font-weight: 600;
@@ -975,6 +1032,13 @@ kbd {
   .rail-refs { border-top: 1px solid var(--rule); padding-top: var(--s3); }
   .rail-foot { margin-top: 0; border-top: 0; padding-top: 0; flex-direction: row; gap: var(--s3); }
   .col { margin-left: 0; padding: var(--s5) var(--s4) var(--s7); gap: var(--s6); }
+  /* The band bleeds by exactly the column's padding, and the column's padding
+     is smaller here. Left at the desktop figures it hangs off both edges and
+     takes the page sideways with it. */
+  .masthead {
+    margin: calc(var(--s5) * -1) calc(var(--s4) * -1) 0;
+    padding: var(--s5) var(--s4);
+  }
   .stat { min-width: 50%; }
 
   /* The boundary readout is nowrap on purpose — §5 says it must not move as

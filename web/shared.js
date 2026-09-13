@@ -267,41 +267,47 @@ function requireResult(current) {
        answer, and it has an action attached: lower the limit. */
     const ran = !!s.result;
     const limit = s.limit ? pct(s.limit, 0) : "your limit";
-    /* Keep the page's own header. Replacing all of <main> stripped the eyebrow
-       and the h1, so an empty state read as an error screen — a lone card at
-       the top of 700px of black, on a page that had just been announcing what
-       it was. */
-    const header = document.querySelector("main .stack.gap-3");
-    let head = "";
-    if (header) {
+    /* Keep the page's own masthead. Replacing all of <main> stripped the title
+       band, so an empty state read as an error screen — a lone card at the top
+       of 700px of black, on a page that had just been announcing what it was.
+       This looked for `.stack.gap-3`, a wrapper the shell rewrite deleted, so
+       it had been finding nothing and dropping the header anyway.
+
+       The live node, not a clone: the band carries a canvas with a running
+       animation, and a cloned canvas is a dead one. */
+    const main = document.querySelector("main");
+    const band = main.querySelector(".masthead");
+    if (band) {
       /* the page's lede is still its placeholder at this point — the script
          that fills it never got there — so it would render as a bare em dash
          under the headline. The empty state says the same thing properly. */
-      const clone = header.cloneNode(true);
-      clone.querySelectorAll(".lede").forEach((n) => n.remove());
-      head = clone.outerHTML;
+      band.querySelectorAll(".lede").forEach((n) => n.remove());
+      band.remove();
     }
     /* and each page says what IT cannot do, rather than every page but defend
        claiming there is nothing to "verify". */
     const verb = { cascade: "trace", defend: "defend", verify: "verify",
                    boundary: "place you on" }[current] || "show";
-    document.querySelector("main").innerHTML = ran
-      ? `<div class="stack">${head}<div class="card"><div class="empty">
+    /* `margin: 0 auto` on these centred the sentence inside a flex column with
+       a left-aligned heading above it and a left-aligned button below. */
+    main.innerHTML = ran
+      ? `<div class="stack"><div class="card"><div class="empty">
            <h2>No break point to ${verb}</h2>
-           <p class="lede" style="margin:0 auto">At a ${limit} limit, no single-name fall
+           <p class="lede">At a ${limit} limit, no single-name fall
            inside the tested range crossed it — so there is nothing here to
            ${verb}. That is the edge of what was tested, not a clean bill of health.</p>
            <div class="card-actions">
              <a class="btn btn-primary" href="index.html">Lower the limit</a>
              <a class="btn btn-outline" href="analysis.html">Back to the analysis</a></div>
          </div></div></div>`
-      : `<div class="stack">${head}<div class="card"><div class="empty">
+      : `<div class="stack"><div class="card"><div class="empty">
            <h2>No analysis yet</h2>
-           <p class="lede" style="margin:0 auto">Run a reverse stress test first — this page
+           <p class="lede">Run a reverse stress test first — this page
            shows what that produced.</p>
            <div class="card-actions">
              <a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
          </div></div></div>`;
+    if (band) main.insertBefore(band, main.firstChild);
     paintNav(current);
     return null;
   }

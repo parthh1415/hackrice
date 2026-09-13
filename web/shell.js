@@ -65,6 +65,49 @@ function buildShell() {
   return rail;
 }
 
+/* The entrance and the instruments used to be two different products to look
+   at: one with light moving under it, one flat. This puts the same field
+   behind the title of every page — quieter, shorter, and cut off by a rule
+   above the first card, so the screens that carry numbers still carry them on
+   plain paper.
+
+   Done here rather than in seven files of markup: every page already has one
+   `.col > header`, so the band is built around whatever that header holds and
+   no page has to know about it. */
+function dressMasthead() {
+  const header = document.querySelector(".col > header");
+  if (!header || header.parentNode.classList.contains("masthead")) return;
+
+  const band = document.createElement("div");
+  band.className = "masthead";
+  const canvas = document.createElement("canvas");
+  canvas.className = "masthead-glow";
+  canvas.setAttribute("aria-hidden", "true");
+
+  header.parentNode.insertBefore(band, header);
+  band.appendChild(canvas);
+  band.appendChild(header);
+
+  /* Dimmer and slower than the entrance, and with the lobes kept low and wide
+     so the light sits under the words rather than crossing them. The entrance
+     is atmosphere; this is a letterhead. */
+  if (typeof dottedGlow === "function") {
+    dottedGlow(canvas, {
+      gap: 13,
+      dotAlpha: 0.16,
+      gain: 0.62,
+      bloom: 0.6,
+      falloff: 0.45,
+      speed: 0.55,
+      lights: [
+        { rgb: [40, 170, 255], r: 0.34, cx: 0.22, cy: 0.55, ax: 0.22, ay: 0.12, fx: 0.019, fy: 0.012, p: 0.0 },
+        { rgb: [95, 120, 255], r: 0.30, cx: 0.58, cy: 0.48, ax: 0.24, ay: 0.14, fx: 0.014, fy: 0.021, p: 2.1 },
+        { rgb: [148, 92, 236], r: 0.26, cx: 0.86, cy: 0.60, ax: 0.16, ay: 0.12, fx: 0.010, fy: 0.017, p: 4.0 },
+      ],
+    });
+  }
+}
+
 /* `demo · 14ms`. Both halves measured: the source is what the book says it is,
    and the milliseconds are what the stopwatch in api() recorded. */
 function paintStrip() {
@@ -115,6 +158,7 @@ function paintShell(current) {
     }
   });
 
+  dressMasthead();
   paintStrip();
   paintNav(current);
 }

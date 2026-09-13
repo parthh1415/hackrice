@@ -164,13 +164,30 @@ function dottedGlow(canvas, opts = {}) {
     /* Rebuilding the mask means re-drawing every dot, which is the one
        expensive thing here. Do it once the drag has stopped. */
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { build(); if (still) frame(performance.now()); }, 120);
+    resizeTimer = setTimeout(() => {
+      if (canvas.clientWidth === w && canvas.clientHeight === h) return;
+      build();
+      if (still) frame(performance.now());
+    }, 120);
   };
   window.addEventListener("resize", onResize);
+  /* The masthead canvas is sized by the type above it, and that type is still
+     a fallback face when this runs — when the real one lands the band changes
+     height, the canvas stretches with it, and the grid comes back as ellipses.
+     A window resize never fires for that. */
+  let ro = null;
+  if (window.ResizeObserver) {
+    ro = new ResizeObserver(onResize);
+    ro.observe(canvas);
+  }
   /* A background animation running behind a tab nobody is looking at is pure
      battery. */
   document.addEventListener("visibilitychange", () =>
     document.hidden ? stop() : start());
 
-  return () => { stop(); window.removeEventListener("resize", onResize); };
+  return () => {
+    stop();
+    window.removeEventListener("resize", onResize);
+    if (ro) ro.disconnect();
+  };
 }

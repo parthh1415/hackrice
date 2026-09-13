@@ -907,6 +907,14 @@ function visibleText(d) {
       const src = img ? (img.getAttribute("src") || "") : "";
       eq("the surface asks for the configuration this run is actually at", src,
          `boundary-surface-g${Number(b.params.gamma)}-b${Number(b.params.band)}-n${b.asset_count}.png`);
+      /* Matching the page's filename against a filename built the same way
+         proves the page can spell. It does not prove the file is there — and
+         it was not: widening the universe from ten names to eighteen changed
+         the name the page asks for, the committed PNG kept the old one, and
+         the figure quietly deleted itself on every load for days. The error
+         handler is the reason it was quiet. Ask the disk. */
+      check("and that file is actually committed", fs.existsSync(path.join(WEB, src)),
+            `${src} is missing — re-run matlab/boundary.m (see matlab/README.md)`);
       const fig = bd.d.getElementById("surfaceFig");
       check("and stays hidden until that file has loaded", !fig || fig.hidden);
     }
