@@ -531,3 +531,60 @@ def test_a_book_with_nothing_modellable_is_still_refused():
     ], "source": "csv"})
     assert out["found"] is False and out["refused"] is True
     assert out["can_exclude"] is False
+
+
+@pytest.mark.parametrize("given", ["nan", "inf", "-inf", "1e400", "-1e400"])
+def test_a_limit_that_is_not_a_number_is_refused_rather_than_used(given):
+    """`_guarded` rejects NaN and +/-Inf before clamping. `_limit_of` did not.
+
+    `min(max(nan, 0.01), 0.90)` is nan, so the search ran with a limit no
+    comparison can be true against: every `loss >= limit` was False, nothing was
+    found, and the payload said "No shock within the tested range pushed this
+    portfolio past the limit" — this project's honest-negative wording, on a
+    search that could not have succeeded. The same book at limit=0.10 breaks at
+    NVDA -25.05%.
+
+    And the payload could not be read at all. json.dumps writes a bare `NaN`,
+    which Python's own loader accepts and every strict parser — including the
+    browser's, which is the one that matters — rejects, so the page threw on
+    the whole response.
+    """
+    out = api.handle(f"/api/portfolio/full?limit={given}", {})
+
+    limit = out["params"]["limit"]
+    assert limit == limit, "the limit used is NaN"
+    assert float("-inf") < limit < float("inf"), f"the limit used is {limit}"
+
+    strict = json.dumps(out)
+    json.loads(strict, parse_constant=_no_bare_constants)
+
+
+def _no_bare_constants(name):
+    raise AssertionError(
+        f"the payload contains a bare {name}, which is not JSON — "
+        "the browser's parser rejects the whole response"
+    )
+
+
+def test_a_stabilise_run_with_no_fix_still_says_what_it_was_run_with():
+    """The one `found: False` return in _stabilise that omits `params`.
+
+    Its two siblings carry it. Without it `handle` falls back to echoing the
+    RAW query string as `cached_for`, so `?leverage=999` came back as
+    `cached_for: {leverage: 999.0}` beside `cached_exact: true` for an answer
+    computed at 8.0 — the exact pairing the comment above that fallback says
+    was fixed — and with no `clamped` list at all, since `clamped` ships inside
+    `params`. `?band=1.0` reaches it, and band 1.00 is a recorded golden spot.
+    """
+    out = api.handle("/api/stabilise?band=1.0&leverage=999", {})
+    assert out["found"] is False, "this test needs the no-fix path"
+
+    assert "params" in out, "a result that reports no fix still ran at some knobs"
+    assert out["params"]["leverage"] == pytest.approx(8.0)
+    names = [c["name"] for c in out["params"].get("clamped", [])]
+    assert "leverage" in names, (
+        f"leverage 999 was used as 8.0 and clamped says {out['params'].get('clamped')}"
+    )
+    assert out["cached_for"]["leverage"] == pytest.approx(8.0), (
+        "cached_for must be the knobs the answer was computed with"
+    )

@@ -189,9 +189,18 @@ def _knobs(route, params):
     out = {}
     for name, (default, _) in KNOBS.get(route, {}).items():
         try:
-            out[name] = float(params.get(name, default))
+            value = float(params.get(name, default))
         except (TypeError, ValueError):
-            out[name] = float(default)
+            value = float(default)
+        # A knob value this route cannot have used. NaN and ±Inf reach here
+        # from `?leverage=nan` and `?leverage=1e400`, and json.dumps writes
+        # them bare — not JSON, so the browser threw on the whole response.
+        # Belt to the braces in _guarded: this is the last thing standing
+        # between a query string and the payload if a route ever forgets to
+        # report its clamped params again.
+        if value != value or value in (float("inf"), float("-inf")):
+            value = float(default)
+        out[name] = value
     return out
 
 
@@ -473,7 +482,15 @@ def _stabilise(params):
     write_spec(spec)  # so matlab/stabilise.m can be run by hand, incl. MATLAB Online
     solved = solve_stabilisation(spec)
     if solved is None:
-        return {"found": False, "reason": "no single-position fix clears it", **data}
+        # `params` is not optional on a found: False. Its two siblings above
+        # carry it; this one did not, and handle() then falls back to echoing
+        # the RAW query string as cached_for — `{leverage: 999.0}` beside
+        # `cached_exact: true` for an answer computed at 8.0, which is the
+        # exact pairing the comment on that fallback says was fixed. It also
+        # took the clamp report down with it, since `clamped` ships inside
+        # `params`. Reachable at band <= 1.0, and band 1.00 is a golden spot.
+        return {"found": False, "reason": "no single-position fix clears it",
+                "params": knobs, **data}
 
     fix = Fix(
         fund=int(solved["fund_index"]),
@@ -881,6 +898,25 @@ def _limit_of(params):
     except (TypeError, ValueError):
         return default, {"name": "limit", "given": raw, "used": default,
                          "reason": "unreadable"}
+    # The same two guards _guarded carries, and for the same two reasons. This
+    # function was written later and did not get them.
+    #
+    # min(max(nan, lo), hi) is nan, so the search ran against a limit no
+    # comparison can be true of: every `loss >= limit` was False, nothing was
+    # found, and the payload came back with this project's honest-negative
+    # wording — "no shock within the tested range pushed this portfolio past
+    # the limit" — for a search that could not have succeeded. The same book at
+    # limit=0.10 breaks at NVDA −25.05%.
+    if value != value:  # NaN
+        return default, {"name": "limit", "given": raw, "used": default,
+                         "reason": "unreadable"}
+    if value in (float("inf"), float("-inf")):
+        # `given: Infinity` is a bare Infinity out of json.dumps, which Python's
+        # own loader accepts and the browser's rejects — so the whole response
+        # failed to parse and the page rendered nothing. Report the string.
+        used = min(max(value, lo), hi)
+        return used, {"name": "limit", "given": str(raw), "used": used,
+                      "reason": f"outside {lo}–{hi}"}
     used = min(max(value, lo), hi)
     if used != value:
         return used, {"name": "limit", "given": value, "used": used,
