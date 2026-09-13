@@ -833,6 +833,47 @@ function visibleText(d) {
     eq("a two-column file keeps both of its rows", narrow.rows.length, 2);
     eq("and reports no footer", narrow.footer, 0);
 
+    /* The footer rule decided on field COUNT alone, so a narrow trailing line
+       that is plainly a holding was eaten and reported as boilerplate: the
+       same row one position earlier is refused as ragged. $1,050 left the book
+       and the note said "1 line of export footer". */
+    const eaten = "symbol,quantity,price,market_value\nNVDA,20,180,3600\nCASH,1050";
+    let refused = "";
+    try { parse(eaten); } catch (e) { refused = e.message; }
+    check("a narrow trailing line that looks like a holding is refused, not eaten",
+          /fields where the header has/.test(refused), refused || "accepted it");
+    /* and the boilerplate it exists for still goes */
+    const withFooter = parse("symbol,market_value\nNVDA,3600\nCASH,1050\n" +
+      "Date downloaded 09/13/2026 10:04 AM ET");
+    eq("a real export footer is still stripped", withFooter.footer, 1);
+    eq("and the holdings above it are kept", withFooter.rows.length, 2);
+    const totalRow = parse("symbol,quantity,price,market_value\nNVDA,20,180,3600\nAccount Total,14650");
+    eq("a narrow total line is stripped too", totalRow.rows.length, 1);
+
+    /* A short, spelled as a negative quantity. The same holding written as a
+       negative market_value is refused, so this was one position with two
+       spellings and opposite outcomes — and the server multiplies q x px. */
+    for (const [what, text] of [
+      ["quantity", "symbol,quantity,price\nNVDA,-20,180\nAAPL,50,200"],
+      ["price", "symbol,quantity,price\nNVDA,20,-180\nAAPL,50,200"],
+    ]) {
+      let msg = "";
+      try { parse(text); } catch (e) { msg = e.message; }
+      check(`a negative ${what} is refused like a negative market value`,
+            /long-only/.test(msg), msg || "accepted it");
+    }
+
+    /* Among the accepted value names the LEFTMOST column won, not the most
+       specific name — so a bare `value` column priced the book over Fidelity's
+       `Current Value`, which is exactly the cost-basis bug the block's own
+       comment says was fixed. */
+    const both = parse("Symbol,Quantity,Value,Current Value\nNVDA,20,2700,3600");
+    eq("the most specific value column wins, whatever order it sits in",
+       both.rows[0].market_value, 3600);
+    const flipped = parse("Symbol,Quantity,Current Value,Value\nNVDA,20,3600,2700");
+    eq("and the same file with the columns swapped reads the same",
+       flipped.rows[0].market_value, 3600);
+
     const blank = parse("symbol,market_value\nNVDA,3600\nMSFT,3150\n,6750");
     eq("a row with no symbol is skipped", blank.rows.length, 2);
     eq("and counted, so the note can say so", blank.skipped, 1);

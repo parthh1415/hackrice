@@ -180,3 +180,62 @@ def test_damage_from_a_zero_shock_is_not_reported_as_no_amplification():
     )
     assert quiet.final_loss == pytest.approx(0.0)
     assert quiet.amplification == pytest.approx(1.0)
+
+
+def test_an_adv_of_zero_is_refused_rather_than_priced():
+    """`adv` is divided by and never checked.
+
+    For an asset no fund holds, `volume` is 0.0, so the impact multiplier is
+    0/0 — NaN. It spreads through prices, equity and leverage; every comparison
+    against NaN is False, so `over_limit` finds nobody, the loop exits at round
+    one, and `converged = not over_limit(...)` reports True. The payload then
+    carries `final_loss: NaN` and `amplification: NaN`, which json.dumps writes
+    bare and the browser's parser rejects outright.
+
+    One typo in data/universe.json away, and silent in every direction.
+    """
+    import numpy as np
+    import pytest
+
+    from firebreak.engine import run_cascade
+
+    holdings = np.array([[1000.0, 500.0], [800.0, 700.0]])
+    adv = np.array([1e9, 0.0])
+    with pytest.raises(ValueError, match="adv"):
+        run_cascade(
+            holdings=holdings, leverage=5.0,
+            max_leverage=np.array([5.25, 5.25]),
+            target_leverage=np.array([4.75, 4.75]),
+            gamma=0.2, adv=adv, shock=np.array([-0.3, 0.0]),
+        )
+
+
+def test_a_fund_that_holds_nothing_is_not_called_insolvent():
+    """`leverage()` returns +inf whenever equity <= _TINY, and a fund with an
+    all-zero row has assets 0, debt 0 and equity 0 — so it was classified with
+    the defaulted ones. Every frame of the trajectory reported
+    `leverage: null, insolvent: true` for a fund that owes nobody anything, and
+    the `units.sum() > _TINY` gate in over_limit kept it permanently out of
+    `defaulted`: insolvent, and never defaulting, for the whole animation.
+
+    Insolvency needs a balance sheet to be insolvent on.
+    """
+    import numpy as np
+
+    from firebreak.engine import run_cascade
+
+    holdings = np.array([[1000.0, 500.0], [0.0, 0.0]])
+    out = run_cascade(
+        holdings=holdings, leverage=5.0,
+        max_leverage=np.array([5.25, 5.25]),
+        target_leverage=np.array([4.75, 4.75]),
+        gamma=0.2, adv=np.array([1e9, 1e9]), shock=np.array([-0.3, 0.0]),
+    )
+
+    for frame in out.as_dict()["trajectory"]:
+        assert frame["insolvent"][1] is False, (
+            f"round {frame['t']}: the empty fund is reported insolvent"
+        )
+        assert frame["leverage"][1] is not None, (
+            f"round {frame['t']}: the empty fund has no leverage to report"
+        )

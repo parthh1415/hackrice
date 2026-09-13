@@ -435,8 +435,9 @@ MUTATIONS = {
         "const bandOf = (a) => 2;"),
     "fidelity_footer_eats_data": (
         "web/index.html",
-        "    return n < head.length && n <= Math.max(2, head.length / 3);",
-        "    return n <= Math.max(2, head.length / 3);"),
+        "    if (NOT_A_HOLDING.has(first.toUpperCase())) return true;\n"
+        "    return !looksLikeATicker(first);",
+        "    return true;"),
     "exclusion_banner_only_on_analysis": (
         "web/shared.js",
         "  paintExclusionBanner(current);",
@@ -471,8 +472,12 @@ MUTATIONS = {
         '      ["Your loss so far", pct(r.cascade_loss), cum >= (r.params.limit) ? "bad" : ""],'),
     "value_column_matched_loosely": (
         "web/index.html",
-        '  const at = (names) => head.findIndex(h => names.includes(h));',
-        '  const at = (names) => head.findIndex(h => names.some(n => h.includes(n)));'),
+        "    for (const name of names) {\n"
+        "      const i = head.indexOf(name);\n"
+        "      if (i >= 0) return i;\n"
+        "    }",
+        "    const i = head.findIndex(h => names.includes(h));\n"
+        "    if (i >= 0) return i;"),
     "ragged_row_accepted": (
         "web/index.html",
         "    if (c.length !== head.length) {",
@@ -483,7 +488,7 @@ MUTATIONS = {
         "      if (false) {"),
     "negative_holding_accepted": (
         "web/index.html",
-        "    if (v !== null && v < 0) {",
+        "    if ((v !== null && v < 0) || (q !== null && q < 0) || (px !== null && px < 0)) {",
         "    if (false) {"),
     "pct_forgets_the_hundred": (
         "web/shared.js",

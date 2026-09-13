@@ -56,7 +56,17 @@ class Book:
         """
         assets, equity = self.assets(), self.equity()
         return [
-            float(np.inf) if equity[j] <= _TINY else float(assets[j] / equity[j])
+            # A fund holding nothing in the modelled universe has A = 0, so it
+            # gets D = 0 and E = 0 — and `0 <= _TINY` put it in with the
+            # defaulted. Every frame reported `leverage: null, insolvent: true`
+            # for a fund that owes nobody anything, and the units gate in
+            # over_limit kept it out of `defaulted` forever, so it stayed
+            # insolvent-but-never-defaulting for the whole animation.
+            # Insolvency needs a balance sheet to be insolvent on.
+            float(np.inf) if equity[j] < -_TINY
+            else float(np.inf) if (equity[j] <= _TINY and assets[j] > _TINY)
+            else 0.0 if assets[j] <= _TINY
+            else float(assets[j] / equity[j])
             for j in range(len(assets))
         ]
 
@@ -169,6 +179,37 @@ def run_cascade(
             "need 1 <= target_leverage <= max_leverage; outside that range the "
             "'sale' has negative size and forced selling pushes prices up"
         )
+    # The other three parameters that quietly produce nonsense. Only
+    # target_leverage was checked, and the reason given for checking it — the
+    # model stops meaning anything outside the range — applies to all of them.
+    #
+    # adv is the one that reaches a payload. It is divided by and never
+    # validated: for an asset no fund holds the numerator is 0.0 too, so the
+    # impact multiplier is 0/0 = NaN. NaN spreads through prices, equity and
+    # leverage, every comparison against it is False, so over_limit finds
+    # nobody, the loop exits at round one and `converged` comes out True — with
+    # final_loss and amplification NaN, which json.dumps writes bare and the
+    # browser's parser rejects. One typo in data/universe.json away.
+    adv = np.asarray(adv, dtype=float)
+    if np.any(~np.isfinite(adv)) or np.any(adv <= 0.0):
+        raise ValueError(
+            "every adv must be a positive, finite number; a zero divides into "
+            "the price impact and hands back NaN prices that report as a clean "
+            "converged cascade"
+        )
+    if not np.isfinite(gamma) or gamma < 0.0:
+        raise ValueError("gamma must be >= 0; a negative one makes forced "
+                         "selling repair the market")
+    if np.any(np.asarray(leverage, dtype=float) <= 0.0):
+        raise ValueError("leverage must be > 0; at zero the implied debt is -inf")
+    shock = np.asarray(shock, dtype=float)
+    if np.any(shock < -1.0):
+        # _FLOOR keeps the IMPACT multiplier off zero and was never applied to
+        # the shock, so a -150% move set a price to -0.513 — and the comment on
+        # _FLOOR promises prices never go negative. Exactly -100% is allowed:
+        # /api/cascade clamps magnitude to 1.0 and a price of 0.0 is a real
+        # answer, which tests/test_portfolio_api.py pins.
+        raise ValueError("a shock worse than -100% would put a price below zero")
 
     book = Book(holdings, leverage)
     equity_start = book.equity().sum()
@@ -179,7 +220,6 @@ def run_cascade(
     # leverage ratio back at you.
     equity_after_shock = book.equity().sum()
 
-    adv = np.asarray(adv, dtype=float)
     n_funds, n_assets = book.units.shape
     breached, defaulted = set(), set()
     # t=0 is the post-shock, pre-deleverage state, and some funds are already

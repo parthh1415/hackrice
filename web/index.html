@@ -219,12 +219,20 @@ function money(cell, what) {
 
 /* Exact names first, and only then a contains-match — never the other way
    round. `value` alone is accepted as market value; `book_value` is not, and
-   is named in the error rather than quietly used. */
-const VALUE_NAMES = ["market_value", "market value", "marketvalue", "value",
+   is named in the error rather than quietly used.
+
+   IN PRIORITY ORDER, most specific first, and `at()` below searches this list
+   rather than the header. It used to take whichever accepted name sat in the
+   LEFTMOST column, so `Symbol,Quantity,Value,Current Value` priced the book
+   off `Value` — 2700 against 3600, the cost basis, silently, on a file that
+   carries both. That is the exact failure this block's comment says was
+   already fixed once; it was fixed between name classes and not within them.
+   Bare `value` is the vaguest of them and goes last. */
+const VALUE_NAMES = ["market_value", "market value ($)", "market value",
   /* Fidelity's Positions export calls it this, and it is unambiguous — the
      same file also carries "cost basis total", which is not a market value and
      must not be mistaken for one. */
-  "current value", "market value ($)"];
+  "current value", "marketvalue", "value"];
 const QTY_NAMES = ["quantity", "shares", "qty", "units"];
 const PRICE_NAMES = ["price", "share_price", "price_per_share", "last price"];
 
@@ -244,7 +252,16 @@ function parseCsv(text) {
   if (!lines.length) throw new Error("that file is empty");
 
   const head = splitCsvLine(lines[0]).map(h => h.toLowerCase().trim());
-  const at = (names) => head.findIndex(h => names.includes(h));
+  /* Search the NAME list, not the header: the first accepted name that is
+     present wins, so priority is the list's order and not the column order of
+     whatever file happened to arrive. */
+  const at = (names) => {
+    for (const name of names) {
+      const i = head.indexOf(name);
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
   const iSym = at(["symbol", "ticker"]);
   if (iSym < 0) throw new Error("no symbol column in the header row");
   const iVal = at(VALUE_NAMES), iQty = at(QTY_NAMES), iPx = at(PRICE_NAMES);
@@ -269,9 +286,21 @@ function parseCsv(text) {
   /* Strictly FEWER fields than the header, as well as far fewer — without the
      first condition a two-column file has every data row stripped as footer,
      because two is also "narrow". */
+  /* Narrowness is necessary and was treated as sufficient, so a trailing
+     `CASH,1050` under a four-column header was discarded and reported back as
+     "1 line of export footer" — $1,050 out of the book, from a row that is
+     refused as ragged if it sits one line earlier. A footer line also has to
+     not look like a holding: boilerplate begins with a sentence or a date, not
+     with a ticker. The rows that ARE narrow and are still not holdings —
+     "Account Total", "Pending Activity" — are already named. */
+  const looksLikeATicker = (field) =>
+    /^[A-Za-z][A-Za-z0-9.\-]{0,5}\**$/.test((field || "").trim());
   const isFooter = (line) => {
-    const n = splitCsvLine(line).length;
-    return n < head.length && n <= Math.max(2, head.length / 3);
+    const c = splitCsvLine(line);
+    if (!(c.length < head.length && c.length <= Math.max(2, head.length / 3))) return false;
+    const first = (c[0] || "").trim();
+    if (NOT_A_HOLDING.has(first.toUpperCase())) return true;
+    return !looksLikeATicker(first);
   };
   while (body.length && isFooter(body[body.length - 1])) {
     body.pop();
@@ -312,8 +341,15 @@ function parseCsv(text) {
           "drop one of the columns");
       }
     }
-    if (v !== null && v < 0) {
-      throw new Error(`${at_} (${symbol}): negative market value. 13F filings carry ` +
+    /* The sign check was on the value column only. A short spelled as −20
+       shares at $180 has no negative value in the file — the server multiplies
+       them — so the same position went through under one spelling and was
+       refused under the other, and came back with weight −0.32 in a book whose
+       total read higher than its long leg. */
+    if ((v !== null && v < 0) || (q !== null && q < 0) || (px !== null && px < 0)) {
+      const which = v !== null && v < 0 ? "market value"
+        : q !== null && q < 0 ? "quantity" : "price";
+      throw new Error(`${at_} (${symbol}): negative ${which}. 13F filings carry ` +
         "no shorts, so this build is long-only.");
     }
     if (v !== null) r.market_value = v;

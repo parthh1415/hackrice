@@ -141,6 +141,20 @@ def normalise(rows, source="csv"):
         # in the tested range" for a book that was never scored at all.
         if value != value or value in (float("inf"), float("-inf")):
             raise ValueError(f"{symbol}: market value {value} is not a finite number.")
+        # index.html refuses a negative market_value and says why — 13F filings
+        # carry no shorts, so this build is long-only — but it applied no sign
+        # check to `quantity`, and the line above turns quantity × price into a
+        # value. So the same position spelled -20 shares at $180 arrived here
+        # as -3600 and was accepted: weights went negative, total_value read
+        # 11400 on a book whose long leg was 10000, and the engine returned a
+        # confident answer for a portfolio it cannot model. This is the one
+        # path every ingestion route shares, so the rule belongs here — a POST
+        # straight to the API never touches the parser.
+        if value < 0:
+            raise ValueError(
+                f"{symbol}: negative value {value:,.2f}. 13F filings carry no "
+                "shorts, so this build is long-only."
+            )
         if symbol not in merged:
             order.append(symbol)
             merged[symbol] = {"value": 0.0, "qty": 0.0, "has_qty": False}

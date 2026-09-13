@@ -128,8 +128,14 @@ def test_a_refusal_names_what_it_can_model_so_the_user_can_act():
     assert "NVDA" in out["modelled"] and "CASH" in out["modelled"]
 
 
-@pytest.mark.parametrize("value", [0.0, -500.0])
-def test_a_portfolio_worth_nothing_is_refused_not_scored(value):
+@pytest.mark.parametrize("value,says", [
+    (0.0, "worth"),
+    # A negative holding is refused one step earlier now, and for the better
+    # reason: it is a short, not a book worth nothing. Both are refusals, and
+    # the test asserts which one each value earns rather than accepting either.
+    (-500.0, "long-only"),
+])
+def test_a_portfolio_worth_nothing_is_refused_not_scored(value, says):
     """It reported a 100% loss at a 0.00% shock.
 
     weights() returns {} when the total is <= 0, so the vector was zeros with
@@ -142,7 +148,7 @@ def test_a_portfolio_worth_nothing_is_refused_not_scored(value):
                      {"holdings": [{"symbol": "NVDA", "market_value": value}]})
 
     assert out["found"] is False and out["refused"] is True
-    assert "worth" in out["reason"]
+    assert says in out["reason"]
     assert "pct" not in out
 
 
@@ -588,3 +594,29 @@ def test_a_stabilise_run_with_no_fix_still_says_what_it_was_run_with():
     assert out["cached_for"]["leverage"] == pytest.approx(8.0), (
         "cached_for must be the knobs the answer was computed with"
     )
+
+
+@pytest.mark.parametrize("holding", [
+    {"symbol": "NVDA", "market_value": -3600},
+    {"symbol": "NVDA", "quantity": -20, "price": 180},
+    {"symbol": "NVDA", "quantity": 20, "price": -180},
+])
+def test_a_short_is_refused_however_it_is_spelled(holding):
+    """index.html refuses `market_value: -3600` — "13F filings carry no shorts,
+    so this build is long-only" — and applied no sign check to `quantity`. So
+    the same position written as quantity −20 × price 180 was accepted, and
+    `normalise` multiplied them into the book without a murmur.
+
+    What came back: total_value 11400 on a book whose long leg is 10000, NVDA
+    at weight −0.3158, and a complete confident answer — asset AAPL, cascade
+    loss 10.00%. cheapest_portfolio_fix skips `vector[asset] <= 0`, so the
+    engine could price the short and never propose closing it.
+
+    normalise is the one path every ingestion route shares, which is why the
+    rule belongs here rather than only in the parser: a POST straight to the
+    API bypasses the parser entirely.
+    """
+    from firebreak import portfolio
+
+    with pytest.raises(ValueError, match="(?i)long-only|negative"):
+        portfolio.normalise([holding, {"symbol": "CASH", "market_value": 5000}])
