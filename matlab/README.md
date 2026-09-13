@@ -180,10 +180,18 @@ In MATLAB Online:
 1. Upload `matlab/cascade.m`, `matlab/stabilise.m`, and `data/cache/solve_spec.json`
 2. Run:
 
-       result = stabilise('solve_spec.json', 'solve_out.json', 'solve-trace.png')
+       result = stabilise('solve_spec.json', 'solve_out.json', ...
+           ['solve-trace-' jsondecode(fileread('solve_spec.json')).fingerprint '.png'])
 
-   The third argument is optional and writes a picture of the search itself:
-   best cost so far and mesh size against cumulative function evaluations. The
+   The third argument is optional and writes a picture of the search itself.
+   **The fingerprint in the filename is not decoration** — the Model page asks
+   for `solve-trace-<fingerprint>.png` where the fingerprint is the one the
+   engine reports for the solve it is describing. Name it anything else and the
+   page shows no figure at all, which is the point: a trace from a different
+   search can no longer sit under a card that says "fingerprint matched".
+
+   The figure itself is best cost so far and mesh size against cumulative
+   function evaluations. The
    staircase is polls that found something cheaper, the flat runs are the
    objective being piecewise constant across breach events, and the mesh
    halving underneath is the direct search responding to a failed poll. It is
@@ -193,9 +201,12 @@ In MATLAB Online:
    It is exported on the app's own paper palette, so it sits on the Model page
    without reading as a screenshot from another program.
 
-3. Download `solve_out.json` into `data/cache/`, and `solve-trace.png` into
-   `web/` (the server serves static files from there, and the Model page only
-   shows the picture when the engine that ran was MATLAB)
+3. Download `solve_out.json` into `data/cache/`, and the
+   `solve-trace-<fingerprint>.png` it just wrote into `web/` (the server serves
+   static files from there, and the Model page only shows the picture when the
+   engine that ran was MATLAB). Delete the previous trace — nothing asks for it
+   any more, and `tests/ui/pages.js` checks that the one the page asks for is
+   on disk.
 
 Reload the app and press `8` for the Model page. The card now reads **MATLAB · patternsearch** with
 the real evaluation count, exit flag and wall time. (`engine_label` and

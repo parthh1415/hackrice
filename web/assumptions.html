@@ -228,7 +228,15 @@ bindKeys("assumptions");
        under a heading about provenance is worse than no image. */
     img.addEventListener("load", () => { fig.hidden = false; });
     img.addEventListener("error", () => { fig.remove(); });
-    img.src = "solve-trace.png";
+    /* Named after the fingerprint of the solve it came out of. It used to be a
+       fixed `solve-trace.png`, which meant a re-solve that was never
+       re-exported would sit under a card reading "fingerprint matched" while
+       showing a different search — and nothing, here or in the tests, could
+       tell. A file named after the question cannot be shown beside another
+       one. If the engine reports no fingerprint there is nothing to match, so
+       there is nothing to show. */
+    if (!e.fingerprint) { fig.remove(); }
+    else img.src = `solve-trace-${e.fingerprint}.png`;
   }
 
   document.getElementById("engineEvals").textContent =

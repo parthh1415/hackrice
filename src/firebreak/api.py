@@ -549,6 +549,16 @@ def _stabilise(params):
             "evaluations": solved.get("evaluations", 0),
             "exit_flag": solved.get("exit_flag", 0),
             "solve_ms": solved.get("solve_ms", 0),
+            # The fingerprint of the question this solve answered. It exists so
+            # the trace figure can be NAMED after it: the boundary surface
+            # silently deleted itself for days because its filename stopped
+            # matching what shipped, and the trace had the same hole with
+            # nothing to catch it — re-solve, re-commit solve_out.json, forget
+            # to re-export the figure, and the Model card says "fingerprint
+            # matched" over a picture of a different search. A figure named
+            # after a fingerprint cannot be shown beside a fingerprint it does
+            # not match. None on the Python path, which draws nothing.
+            "fingerprint": solved.get("fingerprint"),
         },
         # each half has to carry the book it's drawing. without this the
         # frontend falls back to the unpatched top-level matrix and renders

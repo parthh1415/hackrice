@@ -655,9 +655,21 @@ function visibleText(d) {
       const img = a.d.getElementById("traceImg");
       const src = img ? (img.getAttribute("src") || "") : "";
       const isMatlab = String(st.engine.kind || "").startsWith("matlab");
+      /* By fingerprint, not by a fixed name. The file is named after the solve
+         it came out of, so asking for the fingerprint the API just reported is
+         what makes "a picture of a different search" unrepresentable rather
+         than merely unlikely. */
+      const want = `solve-trace-${st.engine.fingerprint}.png`;
       check("the solver trace is requested only when MATLAB is what ran",
-            isMatlab ? src.includes("solve-trace.png") : src === "",
+            isMatlab ? src === want : src === "",
             `engine ${st.engine.kind}, src ${JSON.stringify(src)}`);
+      if (isMatlab) {
+        /* The boundary surface taught this: a filename built the same way
+           twice proves the page can spell. Ask the disk. */
+        check("and the trace for this fingerprint is actually committed",
+              fs.existsSync(path.join(WEB, want)),
+              `${want} is missing — re-export it (see matlab/README.md)`);
+      }
       /* and it starts hidden, so a missing or slow file never leaves a broken
          image icon under a heading about provenance */
       const fig = a.d.getElementById("traceFig");
