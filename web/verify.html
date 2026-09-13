@@ -18,6 +18,7 @@
 </main>
 <script src="shared.js"></script>
 <script src="shell.js"></script>
+<script src="distribution.js"></script>
 <script>
 paintShell("verify");
 bindKeys("verify");
@@ -68,6 +69,12 @@ if (r && r.validation) {
            defended figure is what the page is for, so it is the figure; the
            undefended one is what it is measured against, so it is the caption
            underneath. Same two numbers, no arrow, no second colour. -->
+      <!-- The page's picture. It had three tables of numbers and nothing to
+           look at, on the screen whose entire job is showing that the fix
+           worked. -->
+      <div class="card-body plot">
+        <svg class="ds" id="dist"></svg>
+      </div>
       <div class="stats" id="verdictTiles">
         <div class="stat"><div class="k">Break point, defended</div>
           <div class="v">${afterBreak}</div>
@@ -151,6 +158,18 @@ if (r && r.validation) {
       </div>
     </div>
   </div>`;
+
+  /* Drawn after the markup lands. The draws come from the same payload the
+     tables below read, so the picture and the numbers cannot disagree. */
+  if (syn.before_losses && syn.after_losses) {
+    drawDistribution(document.getElementById("dist"), {
+      before: syn.before_losses,
+      after: syn.after_losses,
+      limit: syn.limit != null ? syn.limit : r.params.limit,
+    });
+  } else {
+    document.getElementById("dist").closest(".card-body").remove();
+  }
 }
 </script>
 </body>

@@ -113,6 +113,16 @@ def synthetic_stress(before, after, holdings, n=1000, seed=20260912,
                        survival=(survival(before_losses, limit) if limit else None)),
         "after": dict(_summarise(after_losses),
                       survival=(survival(after_losses, limit) if limit else None)),
+        # The draws themselves, not just their summary. Four numbers — median,
+        # p95, worst, survival — describe a distribution the way a headline
+        # describes a photograph, and the Validate page had three tables of
+        # them and no picture. Both books were scored on IDENTICAL draws, so
+        # these two arrays are directly comparable scenario by scenario, which
+        # is the whole basis for drawing them over each other.
+        # Rounded to 1e-6: far below anything rendered, and it keeps the
+        # payload at a few KB rather than carrying float64 noise.
+        "before_losses": [round(float(x), 6) for x in before_losses],
+        "after_losses": [round(float(x), 6) for x in after_losses],
         "mean_amplification": float(np.mean(amps)),
         "note": ("Sampled single-name shocks through the same contagion model. "
                  "Both portfolios were scored on identical draws."),
