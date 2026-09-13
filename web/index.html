@@ -10,24 +10,43 @@
 </head>
 <body class="shell">
 <main class="col">
-    <header>
-      <h1>What are we stress testing?</h1>
-      <p class="lede">Firebreak models how a shock to one name spreads through crowded
-        institutional books and reaches yours. Start with the holdings you want to protect.</p>
-    </header>
+    <!-- The opener. It used to be "What are we stress testing?", which assumes
+         the reader already knows why they would stress test anything. One
+         claim, the two numbers that are the whole product, and the one action
+         that starts it. Everything else on this page appears only after a book
+         is loaded. -->
+    <section class="hero" id="hero">
+      <h1 class="hero-line">Your portfolio is fine until<br>someone else is forced to sell.</h1>
+
+      <p class="hero-sub">A fall in one name you hold is only the trigger. Five leveraged
+        funds are margin-called, liquidate across their whole books, and the damage arrives
+        a second time — through the names they sell, including the ones nobody shocked.</p>
+
+      <div class="hero-figs">
+        <div class="hero-fig">
+          <span class="k">the fall alone costs you</span>
+          <span class="v num" id="heroDirect">—</span>
+        </div>
+        <div class="hero-fig">
+          <span class="k">after their forced selling</span>
+          <span class="v num loss" id="heroCascade">—</span>
+        </div>
+      </div>
+      <p class="hero-note" id="heroNote">&nbsp;</p>
+    </section>
 
     <div class="card" id="loadCard">
       <div class="card-header">
         <span class="card-title">Load a portfolio</span><span class="sub">Parsed in your browser, sent only to the local engine, stored nowhere.</span>
       </div>
       <div class="card-body card-actions">
-        <button class="btn btn-primary" id="useDemo">Use demo portfolio</button>
+        <button class="btn btn-outline" id="useDemo">Use demo portfolio</button>
         <!-- A <label for> is never in the tab order, and the input it wraps is
              display:none and so unfocusable. Measured tab order skipped
              straight from "Use demo portfolio" to the limit buttons: one of
              the two ways to load a portfolio could not be operated without a
              mouse. tabindex plus Enter/Space is the standard pattern. -->
-        <label class="btn btn-outline" for="csvFile" id="csvLabel" tabindex="0" role="button">Import CSV
+        <label class="btn btn-primary" for="csvFile" id="csvLabel" tabindex="0" role="button">Import your portfolio
           <input type="file" id="csvFile" accept=".csv,text/csv" hidden></label>
         <button class="btn btn-outline" id="connectBtn" disabled>Connect brokerage</button>
         <span class="small muted" id="loadNote">
@@ -398,6 +417,28 @@ function offerExclusion(body, rows, filename) {
   });
   bringIntoView(card);
 }
+
+/* The hero's two numbers come off the engine like every other number in the
+   product. Hardcoding them would put the one pair of figures a visitor reads
+   first outside everything that keeps the rest of the app honest — and they
+   have already moved once tonight, when the universe widened. */
+(async () => {
+  try {
+    /* One call. /api/portfolio/full already defaults to the demo book when the
+       body is empty, so fetching the book first was a round trip whose result
+       was thrown away — and the strip in the rail reports the last response
+       time, so it was also doubling the number a visitor sees first. */
+    const f = await api(`/api/portfolio/full?limit=0.10`, {});
+    if (!f || !f.found) return;
+    document.getElementById("heroDirect").textContent = pct(f.direct_loss);
+    document.getElementById("heroCascade").textContent = pct(f.cascade_loss);
+    document.getElementById("heroNote").textContent =
+      `On the demo book, at a ${pct(f.params.limit, 0)} limit: ${f.asset} falls ` +
+      `${f.pct.toFixed(2)}%, ${f.breached.length} of ${(f.funds || []).length} modelled ` +
+      `books breach their leverage limits, and ${num(f.amplification, 2)}× of the damage ` +
+      `reaches you.`;
+  } catch { /* the hero is an illustration; the page works without it */ }
+})();
 
 document.getElementById("csvLabel").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" || ev.key === " ") {
