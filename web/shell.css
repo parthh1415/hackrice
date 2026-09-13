@@ -459,6 +459,12 @@ table.pairs td:first-child { color: var(--ink-mid); }
 #legend span { display: inline-flex; align-items: center; gap: var(--s1); }
 .swatch { display: inline-block; width: var(--s4); height: var(--s3); }
 .swatch-line { height: 2px; background: var(--ink); }
+/* The same swatch, inline in the row table, sized to sit on a text baseline. */
+.cellsw { width: var(--s3); height: var(--s2); margin-right: var(--s1); }
+
+/* The leverage row the filed books actually sit in. */
+.row-here td { background: var(--paper-sunk); }
+.row-here td:first-child { color: var(--ink); }
 /* The same cross the map marks the filed books with. */
 .swatch-here { background: none; color: var(--ink); width: var(--s3); }
 .swatch-here svg { display: block; width: 100%; height: 100%; }

@@ -50,7 +50,13 @@ def test_there_are_pages_and_stylesheets_to_check():
     """Guard the guard: globbing nothing would make everything below vacuous."""
     assert len(PAGES) >= 6, f"only found {[p.name for p in PAGES]}"
     assert STYLESHEETS, "no stylesheet found, so the checks below compare nothing"
-    assert "var(--" in _markup(), "no CSS variables used in the markup at all?"
+    # This used to require var() in the MARKUP. It no longer appears there and
+    # that is the point: DESIGN.md §7 forbids raw values outside tokens.css, so
+    # the pages carry classes and the stylesheets carry the palette. The guard
+    # still has to prove the checks below have something to compare, so it asks
+    # the stylesheets instead.
+    assert "var(--" in _css(), "no CSS variables used anywhere, so the checks below compare nothing"
+    assert "--ink" in _css(), "the palette is missing, so every colour check is vacuous"
 
 
 def test_every_css_variable_the_markup_uses_is_defined():
@@ -93,16 +99,26 @@ def test_every_class_the_markup_uses_has_a_rule():
     )
 
 
-@pytest.mark.parametrize("name", ["--positive", "--destructive", "--muted-foreground"])
-def test_the_semantic_aliases_still_point_at_the_palette(name):
-    """These three are the ones that broke. Keep them pointing somewhere real."""
+# The palette DESIGN.md §2 defines. --positive, --destructive and
+# --muted-foreground used to be here; they were the three that broke, and they
+# are gone along with the stylesheet that defined them — there is no green in
+# this product any more and nothing aliases anything. What is left is a flat
+# set of named values, and the failure mode is unchanged: a name the markup
+# reads and nothing defines resolves to nothing, and the property is dropped in
+# silence. These are the ones whose silent loss would be worst: the ground
+# under every page, the ink every figure is set in, and the one colour.
+@pytest.mark.parametrize("name", ["--paper", "--paper-raised", "--ink", "--ink-mid",
+                                  "--ink-faint", "--rule", "--loss", "--loss-wash",
+                                  "--font-prose", "--font-ui", "--font-num"])
+def test_the_palette_is_defined(name):
     css = _css()
     match = re.search(rf"{name}\s*:\s*([^;]+);", css)
     assert match, f"{name} is no longer defined"
-    target = match.group(1).strip()
-    if target.startswith("var("):
-        inner = re.fullmatch(r"var\((--[a-z0-9-]+)\)", target)
-        assert inner, f"{name} resolves to {target!r}, which is not a plain alias"
+    value = match.group(1).strip()
+    assert value, f"{name} is defined as nothing"
+    if value.startswith("var("):
+        inner = re.fullmatch(r"var\((--[a-z0-9-]+)\)", value)
+        assert inner, f"{name} resolves to {value!r}, which is not a plain alias"
         assert re.search(rf"{inner.group(1)}\s*:", css), (
             f"{name} aliases {inner.group(1)}, which is itself undefined"
         )

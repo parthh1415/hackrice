@@ -187,7 +187,7 @@ if (r) (async () => {
   function weightOf(sym) { return wmap[sym] || 0; }
 
   document.getElementById("log").innerHTML = frames.map((f, t) => {
-    if (t === 0) return `<tr><td class="num dim" style="width:70px">R00</td>
+    if (t === 0) return `<tr><td class="num muted" style="width:70px">R00</td>
       <td class="t">${r.asset} marked down ${r.pct.toFixed(2)}%</td></tr>`;
     /* A frame's `breached` is who was OVER THE LIMIT AT THE START of that
        round — a state, not a transition. Reading it as "crossed" narrates
@@ -212,7 +212,7 @@ if (r) (async () => {
       msg = `<b>${fresh.join(", ")}</b> crossed ${verb(fresh.length)} and ${fresh.length > 1 ? "are" : "is"} forced to sell`;
     else
       msg = `<b>${fresh.join(", ")}</b> crossed ${verb(fresh.length)}; <b>${still.join(", ")}</b> still over — all forced to sell`;
-    return `<tr><td class="num dim" style="width:70px">R${String(t).padStart(2, "0")}</td><td class="t">${msg}</td></tr>`;
+    return `<tr><td class="num muted" style="width:70px">R${String(t).padStart(2, "0")}</td><td class="t">${msg}</td></tr>`;
   }).join("");
 
   const playBtn = document.getElementById("playBtn");

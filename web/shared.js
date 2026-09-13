@@ -98,8 +98,6 @@ const num = (x, dp = 2, dash = "—") =>
    worse answer than a link that is visibly not ready. */
 function paintNav(current) {
   const s = FB.state;
-  /* the bar reports the same state the nav does, so they cannot disagree */
-  if (document.querySelector(".statusbar")) paintStatusBar(current);
   paintExclusionBanner(current);
   /* A page missing from this map reads as `undefined`, and `!undefined` locks
      it. `assumptions` was missing, so the Model link was dead on every page
@@ -170,17 +168,13 @@ function paintNav(current) {
   fetch("/api/health", { cache: "no-store" })
     .then((r) => { if (!r.ok) throw 0; return r.json(); })
     .then((h) => {
-      const dot = document.getElementById("navEngine");
       const txt = document.getElementById("navEngineText");
-      if (dot) { dot.textContent = "●"; dot.className = "up"; }
       /* "REPLAY" is also the cascade page's transport button, one click away,
          where it means something entirely different. */
       if (txt) txt.textContent = h && h.cached ? "cached" : "engine live";
     })
     .catch(() => {
-      const dot = document.getElementById("navEngine");
       const txt = document.getElementById("navEngineText");
-      if (dot) { dot.textContent = "●"; dot.className = "down"; }
       if (txt) txt.textContent = "offline";
     });
 }
@@ -292,20 +286,20 @@ function requireResult(current) {
     const verb = { cascade: "trace", defend: "defend", verify: "verify",
                    boundary: "place you on" }[current] || "show";
     document.querySelector("main").innerHTML = ran
-      ? `<div class="wrap page stack gap-8">${head}<div class="card"><div class="empty">
+      ? `<div class="stack">${head}<div class="card"><div class="empty">
            <h2>No break point to ${verb}</h2>
            <p class="lede" style="margin:0 auto">At a ${limit} limit, no single-name fall
            inside the tested range crossed it — so there is nothing here to
            ${verb}. That is the edge of what was tested, not a clean bill of health.</p>
-           <div class="row gap-4" style="margin-top:20px;justify-content:center">
+           <div class="card-actions">
              <a class="btn btn-primary" href="index.html">Lower the limit</a>
              <a class="btn btn-outline" href="analysis.html">Back to the analysis</a></div>
          </div></div></div>`
-      : `<div class="wrap page stack gap-8">${head}<div class="card"><div class="empty">
+      : `<div class="stack">${head}<div class="card"><div class="empty">
            <h2>No analysis yet</h2>
            <p class="lede" style="margin:0 auto">Run a reverse stress test first — this page
            shows what that produced.</p>
-           <div class="row gap-4" style="margin-top:20px;justify-content:center">
+           <div class="card-actions">
              <a class="btn btn-primary" href="analysis.html">Go to analysis</a></div>
          </div></div></div>`;
     paintNav(current);
@@ -344,29 +338,6 @@ const FB_PAGES = [
   ["8", "assumptions.html", "assumptions", "Model"],
 ];
 
-/* Remembered so a repaint after the data lands keeps this page's own keys. */
-let _statusExtra = null;
-
-function paintStatusBar(current, extra) {
-  if (extra !== undefined) _statusExtra = extra;
-  else extra = _statusExtra;
-  const s = FB.state;
-  /* Repaint rather than bail. The first paint happens before the demo book has
-     been fetched, so bailing left "no book loaded" sitting under a table full
-     of holdings. */
-  const bar = document.querySelector(".statusbar") || document.createElement("div");
-  bar.className = "statusbar";
-  const keys = [[`1–${FB_PAGES.length}`, "page"], ["?", "keys"]].concat(extra || []);
-  bar.innerHTML = keys
-    .map(([k, label]) => `<span class="k"><kbd>${k}</kbd>${label}</span>`)
-    .join('<span class="sep">│</span>') +
-    `<span class="right">
-       <span class="k">${s.portfolio ? (s.portfolio.holdings.length + " holdings") : "no book loaded"}</span>
-       <span class="sep">│</span>
-       <span class="k">SEC 13F-HR · ${(s.result && s.result.params) ? "λ " + s.result.params.leverage.toFixed(1) : "Q2 2026"}</span>
-     </span>`;
-  if (!bar.isConnected) document.body.appendChild(bar);
-}
 
 function bindKeys(current, extraHandlers) {
   document.addEventListener("keydown", (ev) => {

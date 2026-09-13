@@ -344,9 +344,13 @@ const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
     `${ovs[jN].toFixed(2)} is the computed column nearest the filed books`;
   document.getElementById("rows").innerHTML = levs.map((l, i) => i).reverse().map((i) => {
     const r = grid[i];
-    return `<tr${i === iN ? ' style="background:var(--accent-bg)"' : ""}>
-      <td${i === iN ? ' class="acc"' : ""}><b>${levs[i].toFixed(2)}×</b></td>
-      <td class="r num"><i class="cellsw" style="background:${fillFor(r[jN])}"></i>${r[jN].toFixed(2)}×</td>
+    /* The row the filed books sit in. It was a cyan wash and a cyan label;
+       there is no second colour now, so it is the sunk paper the rest of the
+       page uses for a well, and the label is full ink against the muted ink
+       every other row's is set in. */
+    return `<tr${i === iN ? ' class="row-here"' : ""}>
+      <td><b>${levs[i].toFixed(2)}×</b></td>
+      <td class="r num"><i class="swatch cellsw" style="background:${fillFor(r[jN])}"></i>${r[jN].toFixed(2)}×</td>
       <td class="r num muted">${Math.min(...r).toFixed(2)}×</td>
       <td class="r num muted">${Math.max(...r).toFixed(2)}×</td>
       <td class="r num muted">${r.filter((a) => a >= 1.5).length} / ${r.length}</td></tr>`;
