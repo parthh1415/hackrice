@@ -80,11 +80,26 @@ bindKeys("analysis");
   /* Adopt the limit the engine actually used. The nav reads FB state and this
      page reads params.limit; if the engine pulled the limit into range those
      are two different numbers side by side on the same screen. */
-  FB.set({ result: body, limit: (body.params && body.params.limit) || s.limit });
+  /* A refusal is not an answer. This stored the payload first and tested
+     `body.refused` thirty lines later, and paintNav unlocks Cascade on
+     `!!s.result` — so a book the engine would not search left a live link to a
+     page that then announced "no single-name fall inside the tested range
+     crossed it", which is a search result for a search that never ran. The
+     backend was changed to prevent that pairing; it came back on the client. */
+  FB.set({ result: body.refused ? null : body,
+           limit: (body.params && body.params.limit) || s.limit });
   paintShell("analysis");
 
+  /* Either this request was clamped, or the seeder's was and state is carrying
+     the note — a ?demo&limit=95 link is answered by seedDemoIfAsked, which
+     adopts the used limit, so by the time this page asks there is nothing left
+     to clamp and the disclosure would vanish with it. Only while it still
+     describes the limit in force, though: state outlives the scenario, and
+     moving the slider afterwards would otherwise leave the old note sitting
+     under a number it says nothing about. */
+  const carried = s.limitClamp && s.limitClamp.used === s.limit ? s.limitClamp : null;
   const clamp = ((body.params && body.params.clamped) || [])
-    .find((c) => c.name === "limit");
+    .find((c) => c.name === "limit") || carried;
   if (clamp) {
     const note = document.createElement("p");
     note.className = "small muted";

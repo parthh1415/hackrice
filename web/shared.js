@@ -187,18 +187,38 @@ async function seedDemoIfAsked() {
   const q = new URLSearchParams(location.search);
   if (!q.has("demo")) return false;
   const s = FB.state;
-  if (s.result && s.result.found) return false;
   /* ?limit= travels with ?demo, so a link carries the whole scenario. Passed
      through unvalidated on purpose: the engine decides what is in range and
      reports back when it had to pull a number in, and a second opinion here
      would only be a second place for the two to disagree. */
   const asked = Number(q.get("limit"));
   const limit = Number.isFinite(asked) && q.has("limit") ? asked : (s.limit || 0.10);
+  /* A session that already has an answer keeps it — unless the link is asking
+     for a different scenario. The early return used to fire before ?limit was
+     read at all, so the same URL showed one answer in a fresh tab and the
+     previous scenario's answer in a used one, with nothing on screen naming
+     the limit from the link. invalidateStaleResult cannot catch that: it
+     compares state against state, and state was never updated. */
+  if (s.result && s.result.found && (!q.has("limit") || limit === s.limit)) return false;
   try {
     const demo = await api("/api/portfolio/demo");
     FB.set({ portfolio: demo.portfolio, rows: null, limit });
     const full = await api(`/api/portfolio/full?limit=${limit}`, {});
-    FB.set({ result: full });
+    /* Adopt the limit the engine actually used, exactly as analysis.html does
+       and for the same reason: the rail reads FB state and the page reads
+       params.limit. Without it ?limit=99 put "9900%" in the rail and in the
+       body of a page describing a search the engine ran at 90% — and the
+       clamp note only renders on analysis.html, so the seeded pages never
+       disclosed it either. */
+    /* Adopting the used limit would otherwise LOSE the clamp: analysis.html
+       renders "95% was pulled in to 90%" from its own request's `clamped`, and
+       once state says 0.9 its request is not clamped and there is nothing to
+       report. The seeded pages are the ones that never re-request, so the
+       disclosure has to travel with the state. */
+    const clamp = ((full.params && full.params.clamped) || [])
+      .find((c) => c.name === "limit") || null;
+    FB.set({ result: full, limitClamp: clamp,
+             limit: (full.params && full.params.limit) || limit });
     return true;
   } catch { return false; }
 }
@@ -345,7 +365,21 @@ const FB_PAGES = [
 ];
 
 
+/* One listener per document, however many times bindKeys is called.
+   cascade.html calls it twice — once for the page shortcuts, and again once
+   the frames exist to add the transport keys — and each call used to attach a
+   fresh document listener. Two listeners meant `?` ran toggleKeyHelp twice
+   inside one keypress: open, then shut. The key was dead on the only page with
+   extra shortcuts worth documenting, which is the same symptom as the
+   built-visible bug the comment in toggleKeyHelp says was fixed, from the
+   other cause. A later call adds its handlers to the ones already bound. */
+let _keyHandlers = null;
+let _keysBound = false;
+
 function bindKeys(current, extraHandlers) {
+  if (extraHandlers) _keyHandlers = Object.assign(_keyHandlers || {}, extraHandlers);
+  if (_keysBound) return;
+  _keysBound = true;
   document.addEventListener("keydown", (ev) => {
     /* never steal a key from someone typing, and never from a chord the
        browser owns */
@@ -361,7 +395,7 @@ function bindKeys(current, extraHandlers) {
     }
     if (ev.key === "?") { ev.preventDefault(); toggleKeyHelp(); return; }
     if (ev.key === "Escape") { const d = document.getElementById("keyHelp"); if (d) d.hidden = true; return; }
-    if (extraHandlers && extraHandlers[ev.key]) { ev.preventDefault(); extraHandlers[ev.key](); }
+    if (_keyHandlers && _keyHandlers[ev.key]) { ev.preventDefault(); _keyHandlers[ev.key](); }
   });
 }
 

@@ -1187,6 +1187,91 @@ function visibleText(d) {
     }
   }
 
+  /* ---- a seeded scenario states the limit the engine used ---- */
+  {
+    /* seedDemoIfAsked stored the limit off the query string and never the one
+       the engine came back with. analysis.html adopts params.limit and says
+       why; the seeder never got that line, and cascade, defend and verify
+       never recompute — so ?demo&limit=99 put "2 Limit 9900%" in the rail and
+       "at a 9900% limit, no single-name fall crossed it" in the body, about a
+       search the engine ran at 90%. Every limit in this UI is written as a
+       percent, so ?limit=10 is the natural hand-edit and lands in the same
+       place. */
+    const c = await load("cascade.html", {}, "?demo&limit=99");
+    await until(() => JSON.parse(c.window.sessionStorage.getItem("fb") || "{}").result);
+    const st = JSON.parse(c.window.sessionStorage.getItem("fb") || "{}");
+    eq("a clamped limit is stored as the engine's, not the query's",
+       st.limit, st.result.params.limit);
+    check("so no screen can quote a limit that was never tested",
+          !/9900%/.test(visibleText(c.d)), visibleText(c.d).slice(0, 160));
+
+    /* And a warm session must not ignore the link it was handed: the early
+       return fired before ?limit was read, so the same URL showed one answer
+       in a fresh tab and the previous scenario's answer in a used one. */
+    const first = await load("analysis.html", {}, "?demo&limit=0.10");
+    await until(() => JSON.parse(first.window.sessionStorage.getItem("fb") || "{}").result);
+    const warm = await load("cascade.html",
+      { fb: first.window.sessionStorage.getItem("fb") }, "?demo&limit=0.05");
+    /* wait for the RESULT to be the new scenario's: the seeder writes the
+       limit first and the answer a request later, so waiting on the limit
+       alone reads the old answer beside the new number. */
+    await until(() => {
+      const x = JSON.parse(warm.window.sessionStorage.getItem("fb") || "{}");
+      return x.result && x.result.params && x.result.params.limit === 0.05;
+    });
+    const w = JSON.parse(warm.window.sessionStorage.getItem("fb") || "{}");
+    eq("a warm session honours the limit in the link", w.limit, 0.05);
+    eq("and re-runs the scenario rather than showing the old one",
+       w.result.params.limit, 0.05);
+  }
+
+  /* ---- a carried clamp note does not outlive the limit it describes ---- */
+  {
+    /* The seeder hands the clamp forward in state so the note survives the
+       adoption. State outlives the scenario, so the note has to check it still
+       describes the limit in force — otherwise moving the slider afterwards
+       leaves "95% was pulled in to 90%" sitting under a 5% run. */
+    const a = await load("analysis.html", {
+      fb: JSON.stringify({ ...JSON.parse(store.fb), limit: 0.05,
+                           limitClamp: { name: "limit", given: 0.95, used: 0.90 } }),
+    });
+    await until(() => /break/i.test(visibleText(a.d)));
+    check("a clamp note from another limit is not shown",
+          !/pulled in/.test(visibleText(a.d)), visibleText(a.d).slice(0, 200));
+  }
+
+  /* ---- a refusal is not a result ---- */
+  {
+    /* analysis.html stored the payload as state.result before testing
+       body.refused, and paintNav unlocks Cascade on `!!s.result`. So importing
+       a book the engine will not search left a live link to a page that then
+       announced "no single-name fall inside the tested range crossed it" —
+       a search result for a search that never ran. api.py documents the
+       backend being changed to prevent exactly this; it came back on the
+       client. */
+    const mixed = [{ symbol: "VOO", market_value: 50000 },
+                   { symbol: "NVDA", market_value: 50000 }];
+    /* `rows` and not just `portfolio`: analysis.html posts s.rows, and with
+       none it posts {} and the server answers with the demo book — so a
+       fixture without rows tests the demo, not the import. */
+    const a = await load("analysis.html", {
+      fb: JSON.stringify({ rows: mixed,
+                           portfolio: { source: "csv", total_value: 100000, holdings: mixed },
+                           limit: 0.10 }),
+    });
+    await until(() => /can't model/.test(visibleText(a.d)));
+
+    const st = JSON.parse(a.window.sessionStorage.getItem("fb") || "{}");
+    check("a refused portfolio is not stored as an answer", !st.result,
+          st.result ? "stored, found=" + st.result.found : "");
+    const locked = [...a.d.querySelectorAll(".nav-links a[data-locked]")]
+      .map((x) => x.dataset.page);
+    check("and the pages downstream of it stay locked",
+          locked.includes("cascade") && locked.includes("defend"),
+          "unlocked: " + [...a.d.querySelectorAll(".nav-links a:not([data-locked])")]
+            .map((x) => x.dataset.page).join(","));
+  }
+
   /* ---- the keyboard overlay opens on the first press ---- */
   {
     /* It was built visible and then immediately toggled off, so the first `?`
@@ -1200,6 +1285,23 @@ function visibleText(d) {
           panel ? "built but hidden" : "not built");
     k.d.dispatchEvent(new k.window.KeyboardEvent("keydown", { key: "?", bubbles: true }));
     check("and closes it on the second", k.d.getElementById("keyHelp").hidden);
+
+    /* On every page, not just the one this was written against. cascade.html
+       calls bindKeys twice — once for the page shortcuts and again, after the
+       frames exist, to add the transport keys — and bindKeys attached a fresh
+       document listener each time. Two listeners meant `?` toggled the panel
+       open and shut inside one keypress, so the key was dead on the only page
+       with extra shortcuts worth documenting. */
+    for (const page of ["index.html", "analysis.html", "cascade.html",
+                        "defend.html", "verify.html", "boundary.html",
+                        "assumptions.html"]) {
+      const kp = await load(page, store);
+      await sleep(300);
+      kp.d.dispatchEvent(new kp.window.KeyboardEvent("keydown", { key: "?", bubbles: true }));
+      const p2 = kp.d.getElementById("keyHelp");
+      check(`? opens it on ${page} too`, !!p2 && !p2.hidden,
+            p2 ? "built but hidden — bindKeys bound twice?" : "not built");
+    }
   }
 
   /* ---- an offer must not outlive the file it is about ---- */
