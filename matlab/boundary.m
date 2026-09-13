@@ -151,15 +151,19 @@ function drawSurface(overlaps, levs, Z, spec, plotFile)
 %   show), no colorbar (the z axis already carries amplification), and the
 %   plain and the plateau are labelled on the surface itself so the picture
 %   states its own conclusion.
-    paper = [241 242 238] / 255;
-    ink   = [ 20  24  28] / 255;
-    mid   = [ 90  96 102] / 255;
-    rule  = [198 201 194] / 255;
+    paper = paletteOf(spec, 'paper_raised', [241 242 238] / 255);
+    ink   = paletteOf(spec, 'ink',          [ 20  24  28] / 255);
+    mid   = paletteOf(spec, 'ink_mid',      [ 90  96 102] / 255);
+    rule  = paletteOf(spec, 'rule',         [198 201 194] / 255);
 
     % The app's own sequential ramp, interpolated. No viridis: the floor of
     % this surface has to be the same paper the page is printed on.
-    stops = [230 231 226; 211 195 184; 192 147 127; ...
-             168  80  60; 166  27  20;  74  13   8] / 255;
+    stops = [paletteOf(spec, 'ramp_0', [230 231 226] / 255);
+             paletteOf(spec, 'ramp_1', [211 195 184] / 255);
+             paletteOf(spec, 'ramp_2', [192 147 127] / 255);
+             paletteOf(spec, 'ramp_3', [168  80  60] / 255);
+             paletteOf(spec, 'ramp_4', [166  27  20] / 255);
+             paletteOf(spec, 'ramp_5', [ 74  13   8] / 255)];
     cmap = interp1(linspace(0, 1, size(stops, 1)), stops, linspace(0, 1, 256));
 
     [X, Y] = meshgrid(overlaps, levs);
@@ -175,7 +179,7 @@ function drawSurface(overlaps, levs, Z, spec, plotFile)
     hold(ax, 'on');
     shadow = double(Z >= 1.5);
     contourf(ax, X, Y, shadow, [0.5 0.5], 'LineStyle', 'none', ...
-             'FaceColor', [0.86 0.84 0.83]);
+             'FaceColor', min(1, max(0, paper + (ink - paper) * 0.10)));
     hc = get(ax, 'Children');
     for k = 1:numel(hc)
         if isprop(hc(k), 'ContourZLevel'), hc(k).ContourZLevel = zFloor; end
@@ -264,4 +268,22 @@ function drawSurface(overlaps, levs, Z, spec, plotFile)
 
     exportgraphics(f, plotFile, 'Resolution', 144, 'BackgroundColor', paper);
     close(f);
+end
+
+
+function c = paletteOf(spec, name, fallback)
+%PALETTEOF  One colour from the app's palette, or the built-in fallback.
+%
+%   The spec carries web/tokens.css's values so a figure exported here is in
+%   whatever the product is currently wearing — recolour the app and these
+%   follow. The fallback is what this file used when it was written; it keeps
+%   the figure legible if the spec is old or the palette could not be read,
+%   which should cost a nice colour and never the solve.
+    c = fallback;
+    if isfield(spec, 'palette') && isfield(spec.palette, name)
+        v = spec.palette.(name);
+        if numel(v) == 3
+            c = reshape(double(v), 1, 3);
+        end
+    end
 end

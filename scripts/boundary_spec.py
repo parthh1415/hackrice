@@ -16,6 +16,7 @@ import numpy as np
 
 from firebreak import api
 from firebreak.engine import run_cascade
+from firebreak.matlab_bridge import read_palette
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "cache" / "boundary_spec.json"
@@ -63,6 +64,10 @@ def main(gamma=0.2, band=1.05):
         "here": {"leverage": 5.0, "overlap": api.mean_overlap(base)},
         "python_grid": grid,
     }
+    # so the surface is drawn in whatever the app is currently wearing
+    palette = read_palette()
+    if palette:
+        spec["palette"] = palette
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(spec))
     flat = [a for r in grid for a in r]

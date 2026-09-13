@@ -176,7 +176,7 @@ function result = stabilise(specFile, outFile, plotFile)
             plotFile = fullfile(d, 'solve_trace.png');
         end
         try
-            drawTrace(trace, plotFile, solver, evals);
+            drawTrace(trace, plotFile, solver, evals, spec);
             fprintf('wrote %s\n', plotFile);
         catch plotErr
             fprintf(2, 'trace not plotted (%s)\n', plotErr.message);
@@ -273,7 +273,7 @@ function [fundIdx, assetIdx, red] = unpack(x, M, N)
     red      = min(max(x(3), 0), 1);
 end
 
-function drawTrace(trace, plotFile, solver, evals)
+function drawTrace(trace, plotFile, solver, evals, spec)
 %DRAWTRACE  The search, as a picture.
 %
 %   Top: the best objective found so far, against cumulative function
@@ -293,11 +293,11 @@ function drawTrace(trace, plotFile, solver, evals)
         error('stabilise:noTrace', 'no iterations were recorded');
     end
 
-    paper = [241 242 238] / 255;   % --paper-raised
-    ink   = [ 20  24  28] / 255;   % --ink
-    mid   = [ 90  96 102] / 255;   % --ink-mid
-    rule  = [198 201 194] / 255;   % --rule
-    faint = [141 146 153] / 255;   % --ink-faint
+    paper = paletteOf(spec, 'paper_raised', [241 242 238] / 255);
+    ink   = paletteOf(spec, 'ink',          [ 20  24  28] / 255);
+    mid   = paletteOf(spec, 'ink_mid',      [ 90  96 102] / 255);
+    rule  = paletteOf(spec, 'rule',         [198 201 194] / 255);
+    faint = paletteOf(spec, 'ink_faint',    [141 146 153] / 255);
 
     x     = trace(:, 1);
     fval  = trace(:, 2);
@@ -383,4 +383,22 @@ function drawTrace(trace, plotFile, solver, evals)
 
     exportgraphics(f, plotFile, 'Resolution', 144, 'BackgroundColor', paper);
     close(f);
+end
+
+
+function c = paletteOf(spec, name, fallback)
+%PALETTEOF  One colour from the app's palette, or the built-in fallback.
+%
+%   The spec carries web/tokens.css's values so a figure exported here is in
+%   whatever the product is currently wearing — recolour the app and these
+%   follow. The fallback is what this file used when it was written; it keeps
+%   the figure legible if the spec is old or the palette could not be read,
+%   which should cost a nice colour and never the solve.
+    c = fallback;
+    if isfield(spec, 'palette') && isfield(spec.palette, name)
+        v = spec.palette.(name);
+        if numel(v) == 3
+            c = reshape(double(v), 1, 3);
+        end
+    end
 end

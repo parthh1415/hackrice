@@ -79,6 +79,10 @@
   unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
 }
 
+/* Tells the browser this page is dark, so form controls, scrollbars and the
+   flash before first paint match instead of arriving white. */
+html { color-scheme: dark; }
+
 /* latin */
 @font-face {
   font-family: "IBM Plex Sans";
@@ -148,28 +152,37 @@
 }
 
 :root {
-  /* ground */
-  --paper:        #E6E7E2;  /* page ground — cool grey-green stock */
-  --paper-raised: #F1F2EE;  /* panels sit LIGHTER than the ground */
-  --paper-sunk:   #DCDED8;  /* input wells, table zebra */
+  /* ground — a dark technical document, not a dashboard. The hue is the same
+     cool grey-green the paper palette had, taken down rather than inverted:
+     a straight inversion of #E6E7E2 is #191815, which is warm, and the whole
+     character of this design is cool. */
+  --paper:        #14171A;  /* page ground */
+  --paper-raised: #1C2025;  /* panels still sit LIGHTER than the ground */
+  --paper-sunk:   #0F1214;  /* input wells, table zebra — now DARKER again */
 
   /* ink */
-  --ink:          #14181C;  /* all primary text and all figures */
-  --ink-mid:      #5A6066;  /* labels, axis ticks, secondary prose */
-  --ink-faint:    #8D9299;  /* disabled, placeholder, ghosted before-state */
-  --rule:         #C6C9C2;  /* hairlines — 1px, never a shadow */
+  --ink:          #E7E9E4;  /* all primary text and all figures */
+  --ink-mid:      #99A0A6;  /* labels, axis ticks, secondary prose */
+  --ink-faint:    #676E74;  /* disabled, placeholder, ghosted before-state */
+  --rule:         #2C3237;  /* hairlines — 1px, never a shadow */
 
   /* the only color in the product */
-  --loss:         #A61B14;  /* breach, and nothing else */
-  --loss-wash:    rgba(166, 27, 20, 0.10);
+  /* #A61B14 was chosen against paper and is nearly invisible on this ground —
+     it reads as dark brown. This is the same red opened up until it carries on
+     a dark field, without going neon: the one colour has to be unmistakable
+     and it must not look like a notification. */
+  --loss:         #E5484D;  /* breach, and nothing else */
+  --loss-wash:    rgba(229, 72, 77, 0.14);
 
-  /* sequential ramp, boundary map only */
-  --ramp-0: #E6E7E2;
-  --ramp-1: #D3C3B8;
-  --ramp-2: #C0937F;
-  --ramp-3: #A8503C;
-  --ramp-4: #A61B14;
-  --ramp-5: #4A0D08;
+  /* sequential ramp, boundary map only. Runs from the page's own ground up to
+     heat: on paper the scale darkened as it got worse, here it brightens,
+     which is the same reading in the opposite medium. */
+  --ramp-0: #14171A;
+  --ramp-1: #2B2226;
+  --ramp-2: #4E2C2C;
+  --ramp-3: #8A3A31;
+  --ramp-4: #C9452F;
+  --ramp-5: #FF8A5B;
 
   /* type */
   --font-prose: "Source Serif 4", Georgia, serif;

@@ -19,6 +19,7 @@ Never reports 'matlab' unless MATLAB genuinely produced the numbers.
 
 import hashlib
 import json
+import re
 import pathlib
 import time
 
@@ -32,6 +33,40 @@ _FINGERPRINT_KEYS = (
     "holdings", "leverage", "max_leverage", "target_leverage",
     "gamma", "adv", "shock", "breaches",
 )
+
+
+TOKENS = ROOT / "web" / "tokens.css"
+
+_PALETTE_KEYS = ("paper", "paper-raised", "paper-sunk", "ink", "ink-mid",
+                 "ink-faint", "rule", "loss",
+                 "ramp-0", "ramp-1", "ramp-2", "ramp-3", "ramp-4", "ramp-5")
+
+
+def read_palette(path=TOKENS):
+    """The app's palette, as 0-1 RGB triples, for the MATLAB figures.
+
+    The figures are exported on the product's own colours so they read as part
+    of the page rather than as a screenshot from another program. That only
+    holds if there is ONE definition of those colours, and tokens.css is it —
+    §7 of DESIGN.md says no raw hex outside that file, and a hex triple copied
+    into a .m script is exactly the copy that survives a repaint and turns a
+    figure into a bright slab on a dark page.
+
+    Returns {} if the file is unreadable, and the MATLAB side keeps its own
+    fallback, because a missing palette should cost you a nice-looking figure
+    and not the solve.
+    """
+    try:
+        text = pathlib.Path(path).read_text()
+    except Exception:
+        return {}
+    out = {}
+    for key in _PALETTE_KEYS:
+        m = re.search(rf"--{re.escape(key)}\s*:\s*#([0-9A-Fa-f]{{6}})\s*;", text)
+        if m:
+            h = m.group(1)
+            out[key.replace("-", "_")] = [int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+    return out
 
 
 def _spec_fingerprint(spec):
@@ -59,6 +94,12 @@ def write_spec(spec, path=SPEC_PATH):
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = dict(spec)
     payload["fingerprint"] = _spec_fingerprint(spec)
+    # Deliberately after the fingerprint: the palette is for the figure, not
+    # for the solve. Folding it in would invalidate a perfectly good MATLAB
+    # result every time somebody changed a colour.
+    palette = read_palette()
+    if palette:
+        payload["palette"] = palette
     text = json.dumps(payload, indent=2, default=float)
     if not (path.exists() and path.read_text() == text):
         path.write_text(text)
