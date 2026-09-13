@@ -491,6 +491,15 @@ table.pairs td:first-child { color: var(--ink-mid); }
   margin-left: auto;
 }
 
+/* ---------- provenance (Model page) ---------- */
+
+/* Three levels of confidence, encoded as three weights of one ink. */
+.prov-cell { width: 210px; vertical-align: top; }
+.prov { display: block; font-size: var(--t-micro); font-family: var(--font-ui); }
+.prov-measured { color: var(--ink); font-weight: 500; }
+.prov-declared { color: var(--ink-mid); }
+.prov-absent { color: var(--ink-faint); }
+
 /* ---------- badges ---------- */
 
 /* No pill, no radius, no fill. A hairline box with a word in it. The <i> the

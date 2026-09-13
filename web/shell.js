@@ -101,7 +101,12 @@ function paintShell(current) {
     if (step.page === current) {
       cell.className = "step-state step-here";
       cell.innerHTML = "";
-    } else if (at > i && step.done(s)) {
+    /* `at` is -1 on Boundary and Model, which are reference screens and not
+       steps. Comparing `at > i` there ticks nothing, so walking to Model from
+       a finished analysis emptied the whole stepper — the work was still done,
+       the rail just stopped saying so. Off the sequence, every completed step
+       is behind you. */
+    } else if ((at === -1 || at > i) && step.done(s)) {
       cell.className = "step-state step-mark";
       cell.innerHTML = FB_TICK;
     } else {
