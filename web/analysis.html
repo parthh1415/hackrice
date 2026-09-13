@@ -19,13 +19,15 @@
         <span class="card-title">Nearest modelled break point</span>
         <span class="card-desc" id="resultDesc">—</span>
       </div>
-      <div class="card-body">
+      <div class="card-body plot">
         <div class="figure">
           <span class="big num" id="big">—</span>
           <span class="small muted" id="bigSub">—</span>
         </div>
+        <svg class="wf" id="wf"></svg>
+        <p class="small muted" id="wfNote" hidden></p>
       </div>
-      <div class="stats" id="stats"></div>
+      <div class="wf-figures" id="stats"></div>
       <div class="card-footer">
         <a class="btn btn-primary" href="cascade.html">See why the loss grows</a>
         <a class="btn btn-outline" href="index.html">Change the portfolio</a>
@@ -51,6 +53,7 @@
 </main>
 <script src="shared.js"></script>
 <script src="shell.js"></script>
+<script src="waterfall.js"></script>
 <script>
 paintShell("analysis");
 bindKeys("analysis");
@@ -163,7 +166,8 @@ bindKeys("analysis");
 
   document.getElementById("title").textContent = "Here is what breaks it";
   document.getElementById("sub").textContent =
-    `The smallest single-name move that pushes this portfolio past a ${pct(body.params.limit, 0)} loss.`;
+    `The smallest single-name move that pushes this portfolio past a ${pct(body.params.limit, 0)} ` +
+    `loss. The shock is the trigger; the crowding is the damage.`;
   document.getElementById("resultCard").hidden = false;
   document.getElementById("whyCard").hidden = false;
 
@@ -220,23 +224,48 @@ bindKeys("analysis");
     `At this shock your portfolio loses ${pct(body.cascade_loss)} against a limit of ` +
     `${pct(body.params.limit, 0)} — ${body.amplification ? num(body.amplification, 2) + "×" : ""} ` +
     `what the fall alone would cost you, because ${body.breached.length} of the ` +
-    `${(body.funds || []).length} books we model are forced to sell into it.`;
+    `${(body.funds || []).length} books we model are forced to sell into it over ` +
+    `${body.rounds} ${body.rounds === 1 ? "round" : "rounds"}.`;
 
+  /* §4 wants three figures under the plot, and these are the three: what the
+     fall costs, what the crowding turns it into, and the ratio between them.
+     "Cascade rounds" was a fourth tile and is now in the sentence above — and
+     more to the point it is the picture itself, one band per round, which is a
+     better place for it than a number in a box.
+
+     api.py sends a null amplification when the direct loss is zero — a shock on
+     a name you do not hold, reaching you only through contagion. I could not
+     construct one against this dataset, but the cost of being wrong is the
+     app's central screen rendering blank, so num() renders the absence. */
   document.getElementById("stats").innerHTML = [
-    ["Direct loss", pct(body.direct_loss), "the shock alone", ""],
-    ["After cascade", pct(body.cascade_loss), "including forced selling", "bad"],
-    /* api.py sends null when the direct loss is zero — a shock on a name you do
-       not hold, reaching you only through contagion. I could not construct one
-       against this dataset, but the cost of being wrong about that is the
-       app's central screen rendering blank, and the cost of the guard is this. */
-    ["Amplification", `${num(body.amplification, 2)}×`, "the crowding multiplier", ""],
-    /* cumulative across the cascade. The cascade page's tile counts one round,
-       and identical wording for the two reads as a contradiction. */
-    ["Cascade rounds", String(body.rounds),
-      `${body.breached.length} of ${(body.funds || []).length} books breached in total`, ""],
-  ].map(([k, v, s2, cls]) =>
-    `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s2}</div></div>`
+    ["direct", pct(body.direct_loss), ""],
+    ["after cascade", pct(body.cascade_loss), "loss"],
+    ["amplification", `${num(body.amplification, 2)}×`, ""],
+  ].map(([k, v, cls]) =>
+    `<div class="wf-fig"><span class="k">${k}</span><span class="v num ${cls}">${v}</span></div>`
   ).join("");
+
+  /* The waterfall. It needs the round-by-round prices, which /api/portfolio/full
+     does not carry — it returns the two endpoints — so this replays the shock
+     the search just found. Same asset, same magnitude, same knobs: the picture
+     and the headline are the same run or they are nothing.
+
+     A failure here must render as a state. An empty panel under a heading that
+     promises a chart is the failure mode this project cares most about. */
+  try {
+    const casc = await api(`/api/cascade?asset=${encodeURIComponent(body.asset)}` +
+      `&magnitude=${Math.abs(body.magnitude)}&leverage=${body.params.leverage}` +
+      `&gamma=${body.params.gamma}&band=${body.params.band}`);
+    drawWaterfall(document.getElementById("wf"),
+                  { bands: cascadeBands(body, casc), limit: body.params.limit });
+  } catch (e) {
+    document.getElementById("wf").remove();
+    const note = document.getElementById("wfNote");
+    note.hidden = false;
+    note.textContent = `The round-by-round replay did not load, so the climb to ` +
+      `${pct(body.cascade_loss)} is not drawn here. The figures below are from the ` +
+      `search itself and are unaffected. ${e.message}`;
+  }
 
   /* This was a full-width prose panel restating the sub-line under the
      headline and the table above it, in longer words: three tellings of one

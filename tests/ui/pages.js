@@ -210,7 +210,34 @@ function visibleText(d) {
     eq("direct loss tile", stats[0], `${(full.direct_loss * 100).toFixed(2)}%`);
     eq("after-cascade tile", stats[1], `${(full.cascade_loss * 100).toFixed(2)}%`);
     eq("amplification tile", stats[2], `${full.amplification.toFixed(2)}×`);
-    eq("rounds tile", stats[3], String(full.rounds));
+
+    /* There used to be a fourth tile carrying the round count. DESIGN.md §4
+       puts three figures under the plot, so the count moved into the sentence
+       above — and into the plot itself, which draws one band per round. That
+       is the stronger check of the two: a tile can print any number, whereas
+       the bands have to come from the trajectory the engine returned. */
+    /* The plot is a second round trip — /api/portfolio/full returns the two
+       endpoints, not the round-by-round prices — so it lands after the card
+       does. Waiting on the card and then reading the bands is a race this lost
+       every time. */
+    const drew = await until(() => a.d.querySelectorAll("#wf .wf-band").length > 0 ||
+                                   !a.d.getElementById("wfNote").hidden);
+    check("the waterfall renders, or says why it did not", drew,
+          a.d.getElementById("wf") ? "svg still empty" : "svg removed");
+    const bandLabels = [...a.d.querySelectorAll("#wf .wf-band")].map((n) => n.textContent.trim());
+    eq("the waterfall draws the shock plus one band per round",
+       bandLabels.length, full.rounds + 1);
+    eq("the first band is the shock alone", bandLabels[0], "Direct");
+    eq("and the last is the final round", bandLabels[bandLabels.length - 1],
+       `Round ${full.rounds}`);
+    has("the sub-line says how many rounds it took", txt(a.d, "bigSub"),
+        `${full.rounds} round`);
+
+    /* The limit line is the only thing on the plot that is not a measurement,
+       so it has to be the limit that was actually used. */
+    const limitLabel = a.d.querySelector("#wf .wf-limit-label");
+    has("the plot labels the limit the run used", limitLabel && limitLabel.textContent,
+        `${(full.params.limit * 100).toFixed(2)}%`);
 
     /* amplification is reported by the engine, not divided out on screen. If a
        page ever recomputes it from the two losses it will drift from the

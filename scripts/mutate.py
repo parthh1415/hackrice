@@ -350,8 +350,8 @@ MUTATIONS = {
     # as the direct loss, which understates nothing and overstates the shock.
     "direct_loss_is_really_the_cascade": (
         "web/analysis.html",
-        '["Direct loss", pct(body.direct_loss), "the shock alone", ""],',
-        '["Direct loss", pct(body.cascade_loss), "the shock alone", ""],'),
+        '    ["direct", pct(body.direct_loss), ""],',
+        '    ["direct", pct(body.cascade_loss), ""],'),
     "weight_as_fraction": (
         "web/index.html",
         "${pct(h.weight, 1)}",

@@ -202,6 +202,9 @@ h1 {
 
 .card-body { padding: var(--s5); }
 
+/* The hero figure and the page's one visual are one region, not two panels. */
+.card-body.plot { display: flex; flex-direction: column; gap: var(--s6); }
+
 /* Wide content scrolls inside its own panel. A six-column ledger is wider than
    a phone, and without this the TABLE does not scroll — the page does, taking
    the rail and every other panel sideways with it. */
