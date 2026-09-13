@@ -274,7 +274,7 @@ function [fundIdx, assetIdx, red] = unpack(x, M, N)
 end
 
 function drawTrace(trace, plotFile, solver, evals)
-%DRAWTRACE  The search, as a picture. Two panels sharing one x axis.
+%DRAWTRACE  The search, as a picture.
 %
 %   Top: the best objective found so far, against cumulative function
 %   evaluations. It is a staircase because a direct search only moves when a
@@ -286,8 +286,9 @@ function drawTrace(trace, plotFile, solver, evals)
 %   nothing better at the current spacing and tightened it. The two panels read
 %   together — the mesh collapses exactly where the objective stops moving.
 %
-%   Styled to the app's palette rather than MATLAB's, so it does not read as a
-%   screenshot from a different program when it lands on the Model page.
+%   Captions sit in FIGURE space rather than data space. A label placed in data
+%   coordinates on a log axis moves when the data does, and this figure is
+%   regenerated on every solve.
     if isempty(trace)
         error('stabilise:noTrace', 'no iterations were recorded');
     end
@@ -306,28 +307,39 @@ function drawTrace(trace, plotFile, solver, evals)
     % Infeasible polls come back as Inf, which a log axis cannot draw and which
     % is not a cost anyone paid. Drop them from the objective series only.
     ok   = isfinite(fval) & fval > 0;
+    xo   = x(ok);
     bestSoFar = cummin(fval(ok));
+    final = bestSoFar(end);
+    % the first evaluation at which the answer stopped improving
+    settledAt = xo(find(bestSoFar <= final * (1 + 1e-12), 1, 'first'));
 
     f = figure('Visible', 'off', 'Color', paper, ...
-               'Units', 'pixels', 'Position', [0 0 1200 620]);
-    % 'compact' padding clipped the y label off the left edge. The labels are
-    % the only way to read the picture, so they get the room.
+               'Units', 'pixels', 'Position', [0 0 1500 820]);
     tl = tiledlayout(f, 2, 1, 'TileSpacing', 'compact', 'Padding', 'loose');
 
     ax1 = nexttile(tl);
-    stairs(ax1, x(ok), bestSoFar, 'Color', ink, 'LineWidth', 1.4);
+    hold(ax1, 'on');
+    % everything after the answer was found, shaded: the search proving to
+    % itself that nothing cheaper exists.
+    yl1 = [min(bestSoFar) * 0.6, max(bestSoFar) * 1.6];
+    patch(ax1, [settledAt max(x) max(x) settledAt], ...
+               [yl1(1) yl1(1) yl1(2) yl1(2)], ink, ...
+               'FaceAlpha', 0.045, 'EdgeColor', 'none');
+    stairs(ax1, xo, bestSoFar, 'Color', ink, 'LineWidth', 1.8);
+    plot(ax1, settledAt, final, 'o', 'MarkerEdgeColor', ink, ...
+         'MarkerFaceColor', paper, 'MarkerSize', 9, 'LineWidth', 1.8);
+    hold(ax1, 'off');
     set(ax1, 'YScale', 'log');
+    ylim(ax1, yl1);
     ylabel(ax1, 'best cost so far');
-    title(ax1, sprintf('%s, %d function evaluations — each one a full cascade', ...
-                       solver, evals), 'FontWeight', 'normal', 'Color', ink);
 
     ax2 = nexttile(tl);
     if any(isfinite(mesh))
-        stairs(ax2, x, mesh, 'Color', ink, 'LineWidth', 1.4);
+        stairs(ax2, x, mesh, 'Color', ink, 'LineWidth', 1.8);
         set(ax2, 'YScale', 'log');
     end
     ylabel(ax2, 'mesh size');
-    xlabel(ax2, 'cumulative function evaluations');
+    xlabel(ax2, 'cumulative function evaluations — each one a full cascade');
 
     % Where one multi-start run ends and the next begins. Faint ink, not red:
     % §1 of DESIGN.md gives the one colour exactly one meaning, a limit being
@@ -344,13 +356,30 @@ function drawTrace(trace, plotFile, solver, evals)
         set(ax, 'Color', paper, 'XColor', mid, 'YColor', mid, ...
                 'GridColor', rule, 'GridAlpha', 0.55, 'Box', 'off', ...
                 'MinorGridLineStyle', 'none', ...
-                'FontName', 'Menlo', 'FontSize', 11, 'TickDir', 'out');
+                'FontName', 'Menlo', 'FontSize', 13, 'TickDir', 'out');
         grid(ax, 'on');
         ax.YLabel.Color = mid;
         ax.XLabel.Color = mid;
     end
     linkaxes([ax1 ax2], 'x');
     xlim(ax1, [0 max(x)]);
+
+    title(tl, sprintf('How %s found it', solver), ...
+          'FontName', 'Menlo', 'FontSize', 17, 'FontWeight', 'bold', ...
+          'Color', ink);
+    subtitle(tl, sprintf(['%d evaluations, %d restarts — the answer was found ' ...
+                          'by evaluation %d and the rest is proof'], ...
+                         evals, numel(edges), round(settledAt)), ...
+             'FontName', 'Menlo', 'FontSize', 13, 'Color', mid);
+
+    annotation(f, 'textbox', [0.62 0.605 0.30 0.05], ...
+        'String', sprintf('settled at %.3e', final), ...
+        'Color', mid, 'FontName', 'Menlo', 'FontSize', 13, ...
+        'EdgeColor', 'none', 'HorizontalAlignment', 'center');
+    annotation(f, 'textbox', [0.43 0.145 0.38 0.04], ...
+        'String', 'each drop is a failed poll tightening the mesh', ...
+        'Color', mid, 'FontName', 'Menlo', 'FontSize', 13, ...
+        'EdgeColor', 'none', 'HorizontalAlignment', 'center');
 
     exportgraphics(f, plotFile, 'Resolution', 144, 'BackgroundColor', paper);
     close(f);

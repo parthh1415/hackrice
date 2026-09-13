@@ -140,10 +140,17 @@ end
 function drawSurface(overlaps, levs, Z, spec, plotFile)
 %DRAWSURFACE  The cliff, as topography.
 %
-%   The app draws this grid as a heatmap, which is the right thing for reading
-%   a value off a cell. A surface is the right thing for seeing that the
+%   The app draws this grid as a heatmap, which is the right tool for reading a
+%   value off a cell. A surface is the right tool for seeing that the
 %   transition in leverage is a CLIFF and not a ramp — which is the systemic
 %   claim, and is hard to feel from colour alone.
+%
+%   Composition notes, because the first version was muddy: no mesh lines (they
+%   washed the form out at this grid density), two lights rather than a
+%   headlight (a headlight flattens exactly the feature the figure exists to
+%   show), no colorbar (the z axis already carries amplification), and the
+%   plain and the plateau are labelled on the surface itself so the picture
+%   states its own conclusion.
     paper = [241 242 238] / 255;
     ink   = [ 20  24  28] / 255;
     mid   = [ 90  96 102] / 255;
@@ -156,72 +163,104 @@ function drawSurface(overlaps, levs, Z, spec, plotFile)
     cmap = interp1(linspace(0, 1, size(stops, 1)), stops, linspace(0, 1, 256));
 
     [X, Y] = meshgrid(overlaps, levs);
+    zFloor = 1.0;
+    zTop   = max(Z(:)) * 1.06;
 
     f = figure('Visible', 'off', 'Color', paper, ...
-               'Units', 'pixels', 'Position', [0 0 1280 860]);
-    ax = axes(f);
-    s = surf(ax, X, Y, Z, 'EdgeColor', [1 1 1], 'EdgeAlpha', 0.25, ...
-             'FaceColor', 'interp');
-    colormap(ax, cmap);
-    material(ax, 'dull');
-    camlight(ax, 'headlight');
-    lighting(ax, 'gouraud');
-    s.FaceLighting = 'gouraud';
+               'Units', 'pixels', 'Position', [0 0 1500 1000]);
+    ax = axes(f, 'Position', [0.07 0.09 0.86 0.83]);
 
+    % The shadow of the amplifying region, dropped on the floor. It reads as
+    % the map the page already shows, underneath its own topography.
     hold(ax, 'on');
+    shadow = double(Z >= 1.5);
+    contourf(ax, X, Y, shadow, [0.5 0.5], 'LineStyle', 'none', ...
+             'FaceColor', [0.86 0.84 0.83]);
+    hc = get(ax, 'Children');
+    for k = 1:numel(hc)
+        if isprop(hc(k), 'ContourZLevel'), hc(k).ContourZLevel = zFloor; end
+    end
 
-    % The 1.5x threshold, as a plane the surface breaks through, and its
-    % contour dropped onto the floor so you can read where it happens.
-    zl = [min(Z(:)) max(Z(:)) * 1.02];
-    patch(ax, [min(overlaps) max(overlaps) max(overlaps) min(overlaps)], ...
-              [min(levs) min(levs) max(levs) max(levs)], ...
-              [1.5 1.5 1.5 1.5], ink, 'FaceAlpha', 0.06, 'EdgeColor', 'none');
-    contour3(ax, X, Y, Z, [1.5 1.5], 'LineColor', ink, 'LineWidth', 2);
-    [~, hc] = contour(ax, X, Y, Z, [1.5 1.5], 'LineColor', ink, 'LineWidth', 1.5);
-    hc.ContourZLevel = zl(1);
+    s = surf(ax, X, Y, Z, 'EdgeColor', 'none', 'FaceColor', 'interp', ...
+             'FaceAlpha', 1.0);
+    colormap(ax, cmap);
+    s.FaceLighting    = 'gouraud';
+    s.AmbientStrength = 0.62;
+    s.DiffuseStrength = 0.52;
+    s.SpecularStrength = 0.08;
+    % Two lights. One headlight flattens the cliff, which is the one feature
+    % this figure exists to show.
+    light(ax, 'Position', [-1.2  0.2  2.0], 'Style', 'infinite');
+    light(ax, 'Position', [ 0.9 -1.4  0.6], 'Style', 'infinite');
 
-    % Where the five books actually sit.
+    % The 1.5x threshold where it crosses the surface.
+    contour3(ax, X, Y, Z, [1.5 1.5], 'LineColor', ink, 'LineWidth', 2.4);
+
+    % Where the five books actually sit, with a stem to the floor.
     if isfield(spec, 'here')
         hx = spec.here.overlap; hy = spec.here.leverage;
         hz = interp2(X, Y, Z, hx, hy, 'linear');
         if isfinite(hz)
-            plot3(ax, [hx hx], [hy hy], [zl(1) hz], '-', 'Color', ink, 'LineWidth', 1.4);
+            plot3(ax, [hx hx], [hy hy], [zFloor hz], '-', 'Color', ink, 'LineWidth', 1.6);
             plot3(ax, hx, hy, hz, 'o', 'MarkerEdgeColor', ink, ...
-                  'MarkerFaceColor', paper, 'MarkerSize', 11, 'LineWidth', 1.8);
-            text(ax, hx, hy, hz + 0.22, ...
-                 sprintf('  the five books as filed — %.2fx', hz), ...
-                 'Color', ink, 'FontName', 'Menlo', 'FontSize', 13, ...
-                 'FontWeight', 'bold');
+                  'MarkerFaceColor', paper, 'MarkerSize', 13, 'LineWidth', 2.2);
+            text(ax, hx, hy, zTop, ...
+                 sprintf('the five books as filed\n\\lambda %.1f, overlap %.2f — %.2fx', ...
+                         hy, hx, hz), ...
+                 'Color', ink, 'FontName', 'Menlo', 'FontSize', 14, ...
+                 'FontWeight', 'bold', 'HorizontalAlignment', 'center', ...
+                 'VerticalAlignment', 'bottom');
+            plot3(ax, [hx hx], [hy hy], [hz zTop], ':', 'Color', ink, 'LineWidth', 1);
         end
     end
+
+    % The picture states its own conclusion. Both labels are placed against the
+    % SURFACE rather than against the axis box: the first version put one off
+    % the right edge and buried the other inside the surface, because text at
+    % exactly z = max(Z) is coplanar with the thing drawn on top of it.
+    % These two are placed in FIGURE space, not data space, and deliberately.
+    % text() in a 3-D axes is depth-sorted against the surface, so a label in
+    % data coordinates is either in front of the geometry or behind it
+    % depending on the camera — three attempts produced, in turn, a label
+    % buried to its waist in a ridge, one missing its first two letters, and
+    % one that vanished completely. An annotation floats above the axes and
+    % cannot be occluded, which is the correct behaviour for a caption.
+    annotation(f, 'textbox', [0.22 0.60 0.26 0.06], 'String', 'amplifying', ...
+        'Color', paper, 'FontName', 'Menlo', 'FontSize', 19, ...
+        'FontWeight', 'bold', 'EdgeColor', 'none', ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+    annotation(f, 'textbox', [0.39 0.175 0.34 0.05], ...
+        'String', 'absorbed — every shock dies out here', ...
+        'Color', mid, 'FontName', 'Menlo', 'FontSize', 14, ...
+        'EdgeColor', 'none', 'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'middle');
     hold(ax, 'off');
 
-    % Short labels: the long ones collided with the tick at the origin, which
-    % is where both axis labels land in a default 3-D view.
     xlabel(ax, 'crowding');
     ylabel(ax, 'leverage \lambda');
     zlabel(ax, 'amplification');
-    title(ax, sprintf(['%d full cascades — how much the system multiplies a ' ...
-                       '%.0f%% single-name shock'], numel(Z), ...
-                      abs(spec.ref_shock) * 100), ...
-          'FontWeight', 'normal', 'Color', ink);
+    title(ax, sprintf(['Where the system stops absorbing\n' ...
+                       '\\rm\\fontsize{13}%d full cascades, one per cell — ' ...
+                       'a %.0f%% single-name shock at every point'], ...
+                      numel(Z), abs(spec.ref_shock) * 100), ...
+          'FontWeight', 'bold', 'Color', ink, 'FontSize', 17);
 
     set(ax, 'Color', paper, 'XColor', mid, 'YColor', mid, 'ZColor', mid, ...
-            'GridColor', rule, 'GridAlpha', 0.6, 'Box', 'off', ...
-            'FontName', 'Menlo', 'FontSize', 12, 'TickDir', 'out');
-    ax.XRuler.TickLabelGapOffset = 2;
-    ax.YRuler.TickLabelGapOffset = 2;
+            'GridColor', rule, 'GridAlpha', 0.75, 'Box', 'off', ...
+            'FontName', 'Menlo', 'FontSize', 13, 'TickDir', 'out', ...
+            'Projection', 'perspective');
     ax.Title.Color = ink;
     ax.XLabel.Color = mid; ax.YLabel.Color = mid; ax.ZLabel.Color = mid;
-    zlim(ax, zl);
-    view(ax, -37.5, 26);
+    ax.XRuler.TickLabelGapOffset = 2;
+    ax.YRuler.TickLabelGapOffset = 2;
+    zlim(ax, [zFloor zTop]);
+    xlim(ax, [min(overlaps) max(overlaps)]);
+    ylim(ax, [min(levs) max(levs)]);
+    % Chosen by rendering the alternatives and looking: this one shows the
+    % plateau, the cliff and the plain in one frame with none of the three
+    % hiding the others.
+    view(ax, -25, 34);
     grid(ax, 'on');
-
-    cb = colorbar(ax);
-    cb.Color = mid;
-    cb.Label.String = 'amplification';
-    cb.Label.Color = mid;
-    cb.FontName = 'Menlo';
 
     exportgraphics(f, plotFile, 'Resolution', 144, 'BackgroundColor', paper);
     close(f);
