@@ -676,6 +676,18 @@ kbd {
   .col { margin-left: 0; padding: var(--s5) var(--s4) var(--s7); gap: var(--s6); }
   .stat { min-width: 50%; }
 
+  /* The boundary readout is nowrap on purpose — §5 says it must not move as
+     the string changes under the cursor — and at 390px it was wider than the
+     phone, taking the page sideways with it. It keeps the single line and the
+     fixed height, drops to a line of its own, and scrolls within itself. */
+  .readout {
+    flex-basis: 100%;
+    min-width: 0;
+    margin-left: 0;
+    overflow-x: auto;
+  }
+  .board > .card:first-child { max-width: none; }
+
   /* --t-fig is 56px, which is wider than a phone once it has a ticker in front
      of it. Stepped down to the next size on the scale rather than to a new
      one: the hero is still the largest thing on the page, which is all the
