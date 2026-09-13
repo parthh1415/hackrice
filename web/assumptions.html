@@ -72,10 +72,11 @@ bindKeys("assumptions");
      declared defaults off /api/dataset — never a literal typed here, which is
      how the value on a methodology page drifts from the value in the model. */
   const P = (FB.state.result && FB.state.result.params) || d.defaults || {};
+  const gross = (d.holdings || []).flat().reduce((sum, value) => sum + value, 0);
   const rows = [
     ["measured", "Holdings", `Real, and the only thing here that is. SEC 13F-HR filings, period
       ${d.quarter || "2026-06-30"}, ${(d.funds || []).length || 5} managers across
-      ${(d.tickers || []).length || 10} names, $40.9B gross notional. Reproducible from EDGAR.`],
+      ${(d.tickers || []).length || 10} names, ${gross ? usdExact(gross) : "—"} gross notional. Reproducible from EDGAR.`],
     /* The values themselves were never on this page — it described each
        assumption at length and never said what number was used, which is the
        one thing a page about declared inputs owes you. They come from the
@@ -97,6 +98,11 @@ bindKeys("assumptions");
     ["not modelled", "Your portfolio is an observer", "It takes the price damage; it does not join the network. A retail account does not move markets, so your fix changes how much of the cascade reaches you — not whether the cascade happens."],
     ["not modelled", "Not a prediction", "A break point is the smallest shock our model says crosses your limit under these assumptions. It is not a proven threshold and not a forecast."],
   ];
+  if ((d.observer_only || []).length) {
+    const names = d.observer_only.join(", ");
+    rows.splice(4, 0, ["declared", "Portfolio-only observer",
+      `${names} is accepted as a directly traded portfolio exposure, but none of the five managers reported it this quarter. It can take a direct shock, but it cannot add a manager sale to the contagion network.`]);
+  }
   /* This taxonomy was carried by colour — green for measured, amber for
      declared, grey for not modelled — set in tracked-out uppercase. §1 has no
      green and no amber, and §6 has no ALL-CAPS labels and no tracked-out

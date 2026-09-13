@@ -237,7 +237,7 @@ reduction grid, so every scenario we recorded came back with the same answer: cu
 recordings, one number. That is not a result, it is the floor of the grid wearing a result's
 clothes, and we read it as a finding for hours. Bisecting on depth as well as position, the cheapest
 cuts come out between 0.0027% and 0.14% — and the headline got dramatically stronger, because the
-real answer is that selling $1.7M out of a $2.4B position prevents the whole cascade. We nearly
+real answer is that selling $2.25M out of a $2.36B position prevents the whole cascade. We nearly
 shipped a much weaker claim because we never questioned a number that looked round. Then we did it
 again one level down: the bisection's *tolerance* was absolute where the answer was shrinking, so it
 reported 2.15× the true minimum. Same lesson twice in one night — the resolution of your search is

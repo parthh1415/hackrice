@@ -27,6 +27,7 @@ price of the cheapest one.
 
 import json
 import pathlib
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -114,45 +115,35 @@ def test_the_fix_is_the_cheapest_position_not_the_first_workable_one(
     assert fix["weight_moved"] <= cost * 1.01
 
 
-def test_the_first_feasible_position_really_is_not_always_the_cheapest():
-    """Guards the test above from quietly becoming vacuous.
+def test_the_first_feasible_position_really_is_not_always_the_cheapest(monkeypatch):
+    """A controlled path keeps the selection check stable as holdings grow.
 
-    If every scenario in OFF_PATH drifted to one where the first feasible cut
-    IS the cheapest, the parametrised test would pass while testing nothing —
-    which is how the demo-path version of this hole stayed open. So: prove at
-    least one case still discriminates, and by how much.
+    AAPL is intentionally first in the portfolio and feasible, but its 10%
+    loss means selling 60% of the whole portfolio. MSFT falls 70%, so selling
+    only 8.57% clears the same limit. A first-feasible implementation returns
+    AAPL; the real solver must inspect both and return MSFT.
     """
-    holdings, leverage, gamma, limit = OFF_PATH[0]
-    portfolio = normalise([{"symbol": s, "market_value": float(v)}
-                           for s, v in holdings.items()])
+    portfolio = normalise([
+        {"symbol": "AAPL", "market_value": 8000.0},
+        {"symbol": "MSFT", "market_value": 1000.0},
+        {"symbol": "CASH", "market_value": 1000.0},
+    ])
     vector, cash = weight_vector(portfolio, TICKERS)
-    kw = scenario(leverage, gamma)
-    found = find_portfolio_firebreak(vector, cash, limit, **kw)
-    prices = run_cascade(shock=found.shock, **kw).prices
-    target = limit * (1.0 - FIX_MARGIN)
-
-    first = None
-    for asset in range(len(vector)):
-        if vector[asset] <= 0:
-            continue
-        full, full_cash = cut_to_cash(vector, cash, asset, 1.0)
-        if portfolio_loss(full, full_cash, prices) >= target:
-            continue
-        lo, hi = 0.0, 1.0
-        for _ in range(50):
-            mid = (lo + hi) / 2.0
-            vec, csh = cut_to_cash(vector, cash, asset, mid)
-            if portfolio_loss(vec, csh, prices) >= target:
-                lo = mid
-            else:
-                hi = mid
-        first = (vector[asset] * hi, asset)
-        break
-
-    cheapest = brute_force_cheapest(vector, cash, limit, prices)
-    assert first is not None and cheapest is not None
-    assert first[1] != cheapest[1], "this scenario no longer discriminates"
-    assert first[0] > cheapest[0] * 2, (
-        f"the gap has narrowed to {first[0] / cheapest[0]:.2f}x; pick a scenario "
-        "where taking the first feasible cut is obviously wrong"
+    prices = np.ones(len(TICKERS))
+    prices[TICKERS.index("AAPL")] = 0.90
+    prices[TICKERS.index("MSFT")] = 0.30
+    monkeypatch.setattr(
+        "firebreak.engine.run_cascade",
+        lambda **_kwargs: SimpleNamespace(prices=prices),
     )
+
+    limit = 0.10
+    truth = brute_force_cheapest(vector, cash, limit, prices)
+    fix = cheapest_portfolio_fix(
+        vector, cash, limit, np.zeros(len(TICKERS)), holdings=np.empty((0, 0)),
+    )
+
+    assert truth is not None and fix is not None
+    assert TICKERS[truth[1]] == "MSFT"
+    assert TICKERS[fix["asset"]] == "MSFT"
+    assert fix["weight_moved"] == pytest.approx(truth[0], rel=1e-9)

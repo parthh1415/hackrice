@@ -30,7 +30,11 @@ SPEC = ROOT / "data" / "cache" / "boundary_spec.json"
 def matlab():
     if not OUT.exists():
         pytest.skip("no MATLAB boundary result committed; run matlab/boundary.m")
-    return json.loads(OUT.read_text())
+    result = json.loads(OUT.read_text())
+    current_assets = len(api.load_dataset()["tickers"])
+    if result.get("asset_count") != current_assets:
+        pytest.skip("stale MATLAB boundary result; rerun matlab/boundary.m")
+    return result
 
 
 def test_the_committed_result_is_a_full_sweep(matlab):

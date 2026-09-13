@@ -56,7 +56,7 @@ def test_the_whole_portfolio_loop_answers_with_the_network_gone(no_network):
 
     assert out["found"] is True
     assert out["asset"] == "NVDA"
-    assert out["fix"]["dollars"] == pytest.approx(478.2766919706773, rel=1e-9)
+    assert out["fix"]["dollars"] == pytest.approx(472.3650012489088, rel=1e-9)
     assert out["validation"]["identical_shock"]["after_loss"] < out["params"]["limit"]
 
 

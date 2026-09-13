@@ -29,7 +29,7 @@ def collected_count():
 
 def test_the_readme_states_the_real_test_count():
     text = README.read_text()
-    claimed = re.findall(r"#\s*(\d+)(?:\s+passing|,\s*no network)", text)
+    claimed = re.findall(r"#\s*(\d+)(?:\s+collected|\s+passing|,\s*no network)", text)
     assert claimed, "README no longer states a test count next to its pytest command"
 
     actual = collected_count()

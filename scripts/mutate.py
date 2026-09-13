@@ -68,12 +68,12 @@ MUTATIONS = {
         '"insolvent": [False for x in lev]'),
     "measurable_never": (
         "src/firebreak/api.py",
-        "measurable = delta is not None and abs(delta) > resolution",
-        "measurable = False"),
+        "return delta is not None and abs(delta) > resolution",
+        "return False"),
     "measurable_always": (
         "src/firebreak/api.py",
-        "measurable = delta is not None and abs(delta) > resolution",
-        "measurable = delta is not None"),
+        "return delta is not None and abs(delta) > resolution",
+        "return delta is not None"),
     "resolution_halved": (
         "src/firebreak/api.py",
         "resolution = 2.0 * _SEARCH_TOLERANCE * 100.0",

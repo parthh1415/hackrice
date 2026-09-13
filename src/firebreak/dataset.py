@@ -16,7 +16,7 @@ CACHE = ROOT / "data" / "cache" / "dataset.json"
 _MILLION = 1_000_000.0
 
 
-def assemble(books, universe, adv_by_ticker, quarter):
+def assemble(books, universe, adv_by_ticker, quarter, observer_only=()):
     """Positions per fund -> the dict the API hands to the frontend.
 
     `universe` fixes the column order, so adv has to be reordered to match
@@ -29,6 +29,12 @@ def assemble(books, universe, adv_by_ticker, quarter):
     million times too strong and the whole thing detonates on any shock.
     """
     funds, tickers, matrix, kept = build_holdings(books, universe)
+    observer_only = set(observer_only)
+    unknown = observer_only - set(tickers)
+    if unknown:
+        raise ValueError(
+            f"observer-only names are not in the CUSIP universe: {sorted(unknown)}"
+        )
     return {
         "funds": funds,
         # which rows of the original manager list survived. anything that
@@ -41,6 +47,10 @@ def assemble(books, universe, adv_by_ticker, quarter):
         "adv_units": "USD",
         "quarter": quarter,
         "source": "SEC 13F-HR",
+        # A portfolio security can be directly stressed even when none of the
+        # selected 13F managers owns it. It is included in portfolio loss, but
+        # has no manager sale to feed back through the institutional network.
+        "observer_only": [ticker for ticker in tickers if ticker in observer_only],
     }
 
 
@@ -129,7 +139,8 @@ def load_dataset(refresh=False):
         )
 
     data = assemble(
-        books, config["cusips"], config["adv_usd_millions"], distinct.pop()
+        books, config["cusips"], config["adv_usd_millions"], distinct.pop(),
+        observer_only=config.get("observer_only", ()),
     )
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     CACHE.write_text(json.dumps(data, indent=2))
