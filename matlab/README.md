@@ -8,7 +8,8 @@ not available on this machine. Do this once and it reads
 
 ## 1. Get MATLAB (free, you already have it)
 
-Rice has a Total Academic Headcount licence. Two links, in this order:
+Rice has a Total Academic Headcount licence (number 40580441). Two links, in
+this order:
 
 1. **Rice's MATLAB portal** — sign in with your NetID@rice.edu:
    <https://www.mathworks.com/academia/tah-portal/rice-university-40580441.html>
@@ -21,13 +22,32 @@ not a reliable entry point — go straight to `matlab.mathworks.com`.)
 If the association doesn't work, MathWorks runs hackathon access directly:
 <hackathon@mathworks.com>.
 
+### Installing MATLAB does not install the toolboxes
+
+This cost an hour, so it is first now. The MathWorks installer defaults to
+**base MATLAB only**. A fresh install has no `fmincon` and no `patternsearch`,
+`stabilise.m` exits with `stabilise:noSolver`, and nothing about signing in
+changes it — a login is an entitlement, not a download.
+
+Add them from inside MATLAB: **Home → Add-Ons → Get Add-Ons**, then install
+**Optimization Toolbox** and **Global Optimization Toolbox**. Or re-run the
+product installer and tick them there.
+
 ### Check which toolboxes you actually got
 
 `patternsearch` is **Global Optimization Toolbox**. `fmincon` is
-**Optimization Toolbox**. Rice's published TAH bundle lists Optimization
-Toolbox and **does not list Global Optimization Toolbox**, so the likely
-outcome is that `fmincon` runs and the card reads **MATLAB · fmincon**, not
-`MATLAB · patternsearch`.
+**Optimization Toolbox**.
+
+An earlier version of this section predicted you would get `fmincon` and not
+`patternsearch`, because Rice's published TAH bundle does not list Global
+Optimization Toolbox. **That prediction was wrong.** Tested on licence
+40580441 with R2026a:
+
+    license('test','Optimization_Toolbox')   % 1
+    license('test','GADS_Toolbox')           % 1  <- patternsearch
+
+Both are entitled. So the full argument in the next section is available to
+you, and the card really does read `MATLAB · patternsearch`.
 
 In MATLAB, before anything else:
 
@@ -82,10 +102,27 @@ a fix costing **4.4e-04** of gross assets and the current search returns
 **4.2e-05** — about 10x finer. At band 1.30 the same comparison is
 **1.5e-04** against **2.0e-06**, about 78x.
 
-MATLAB's own recorded figure is **1.4e-06**. We are not going to tell you how
-that compares, because we no longer know what it was measured on and this
-machine has no licence to re-run it. If you have one, run it and write the
-number down beside the spec it came from.
+That comparison has now been run on a licensed machine, which the paragraph
+that used to sit here asked for. R2026a, `patternsearch`, the same spec handed
+to both, three scenarios:
+
+| spec | position both found | Python cost | MATLAB cost |
+|---|---|---|---|
+| band 1.05, breaches 3 | Citadel / NVDA | 4.2348e-05 | **4.2348e-05** |
+| band 1.30, breaches 3 | Citadel / NVDA | **1.9851e-06** | 2.6468e-06 |
+| band 1.05, breaches 2 | Renaissance / NVDA | **1.0802e-05** | 1.1119e-05 |
+
+Two things to take from that, and neither is the one the old text implied.
+
+**They agree on the answer.** Same fund, same asset, in all three — and on the
+golden-path spec, the same reduction to the last bit of a double.
+
+**MATLAB is not finer here.** On depth the Python bisection is equal or better
+in every case: identical on the first, 33% cheaper on the second, 3% on the
+third. The 1.4e-06 figure this section used to quote is not reproducible
+against any of these specs, and is best treated as lost.
+
+So do not claim precision for the MATLAB path. Claim agreement.
 
 > An earlier version of this section did the comparison anyway and got it
 > badly wrong. It read "1.99e-06 against 4.4e-04, within about 1.4x of MATLAB,
@@ -96,11 +133,11 @@ number down beside the spec it came from.
 > every Stabilise press, which is how two bands got crossed in one paragraph.
 > The section it corrupted was the one about a claim that had expired.
 
-So the honest case for `stabilise.m` is not precision any more. It is that the
-same problem, posed to a real optimiser as a constrained mixed-integer program
-with a continuous third variable, lands on the same position our own search
-does. That agreement is worth more than either number alone, and it is the
-thing we can actually still verify.
+So the honest case for `stabilise.m` is not precision. It is that the same
+problem, posed to a real optimiser as a constrained mixed-integer program with
+a continuous third variable, lands on the same position our own search does.
+That agreement is worth more than either number alone, and it is now measured
+rather than hoped for.
 
 ## 3. Run it
 

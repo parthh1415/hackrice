@@ -114,7 +114,11 @@ bindKeys("assumptions");
   const e = st && st.engine;
   if (!e) return;
 
-  const ms = e.solve_ms == null ? "not recorded" : `${e.solve_ms} ms`;
+  /* MATLAB reports a float and Python an int, so this printed
+     "936.2738333333334 ms" on one path and "12 ms" on the other. Nobody needs
+     femtoseconds of a wall clock. */
+  const ms = e.solve_ms == null ? "not recorded"
+    : `${e.solve_ms < 1 ? e.solve_ms.toFixed(2) : Math.round(e.solve_ms)} ms`;
   const b = st.bought || {};
   /* This card describes the INSTITUTIONAL patch — the fund-book cut solved by
      MATLAB or the Python fallback. It is not the "Sell $478 of NVDA" on
@@ -153,8 +157,8 @@ bindKeys("assumptions");
       ? "none in range" : `−${b.after_pct.toFixed(2)}%`;
     erows.push(["What it bought the funds",
       b.measurable || b.after_pct == null
-        ? `fund-book break point −${b.before_pct.toFixed(2)}% → ${after}`
-        : `fund-book break point −${b.before_pct.toFixed(2)}% → ${after} · no measurable change`,
+        ? `fund-book break point −${b.before_pct.toFixed(2)}% to ${after}`
+        : `fund-book break point −${b.before_pct.toFixed(2)}% to ${after}, no measurable change`,
       /* resolution_pct is deliberately TWICE the search tolerance: the delta is
          the difference of two independently bisected searches, so each one's
          error lands in it. Quoting the single-search figure alone here would
@@ -164,8 +168,16 @@ bindKeys("assumptions");
       `${(b.note || "").replace(/[^.]$/, "$&.")} Each search resolves to ±${num(b.resolution_pct / 2, 3)}pp, ` +
       `so a difference of two has to clear ${num(b.resolution_pct, 3)}pp to mean anything.`]);
   }
-  document.getElementById("engineNote").textContent =
-    e.kind === "matlab" ? "MATLAB · patternsearch" : "Python fallback · MATLAB not found";
+  /* The payload already carries this, built by engine_label() from the result
+     that actually came back. This line used to compose its own version and got
+     it wrong twice over: it tested `kind === "matlab"`, which is only the LIVE
+     engine, so an offline MATLAB result — the documented path, and the only
+     one that works without the Engine API — fell through to "Python fallback ·
+     MATLAB not found" while the body of the same card read "MATLAB ·
+     patternsearch". And it hardcoded the solver name, so had fmincon run, the
+     header would have said patternsearch anyway. One source, and it is the one
+     that cannot inflate what ran. */
+  document.getElementById("engineNote").textContent = e.name;
   document.getElementById("engineRows").innerHTML = erows.map(([k, v, note]) => `
     <tr><td style="width:150px"><b>${k}</b></td>
         <td class="num t" style="width:320px">${v}</td>

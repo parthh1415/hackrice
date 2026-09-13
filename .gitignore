@@ -10,6 +10,12 @@ tests/ui/node_modules/
 # silently does nothing.
 data/cache/*
 !data/cache/golden/
+# The MATLAB result, which is a real artefact and not a cache. Committing it is
+# what makes "solved offline, fingerprint matched" TRUE on a fresh clone rather
+# than merely recorded: write_spec runs on every /api/stabilise call, so the
+# spec is regenerated from the same knobs and the fingerprint matches. Change a
+# knob and it stops matching, and the app correctly falls back to Python.
+!data/cache/solve_out.json
 
 # dataset.json is "cache" only in the sense that we don't want to refetch it.
 # It's 4KB of one frozen quarter's 13F holdings, and it is what every test and
