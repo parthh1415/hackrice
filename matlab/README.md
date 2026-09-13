@@ -76,6 +76,32 @@ So:
 If you want the full argument, ask hackathon@mathworks.com for Global
 Optimization Toolbox; hackathon licences routinely include everything.
 
+## The systemic surface
+
+`matlab/boundary.m` is the second MATLAB entry point, and it does more than
+draw: it recomputes the whole 16x16 sweep with `cascade.m` — 256 full
+deleveraging cascades — rather than plotting numbers Python handed it.
+
+    PYTHONPATH=src python3 scripts/boundary_spec.py       # inputs + Python's grid
+    cd matlab && matlab -batch "boundary('../data/cache/boundary_spec.json', ...
+        '../data/cache/boundary_out.json', '../web/boundary-surface-g0.2-b1.05.png')"
+
+It checks itself against Python's grid before it draws anything and **refuses
+to produce a figure if the two disagree by more than 1e-4**, because a surface
+that contradicted the heatmap directly above it on the Boundary page would be
+worse than no surface at all. On this dataset they agree at **0.00e+00 across
+all 256 cells** — two independent implementations of the same cascade, same
+answer to four decimal places.
+
+`tests/test_matlab_agrees_with_python.py` keeps that true. It re-runs the sweep
+in Python and diffs it against the committed `boundary_out.json`, so the
+agreement is a standing claim rather than a number printed once on one machine.
+
+The PNG filename carries the configuration it was computed for. The page builds
+that filename from the session's live knobs, so a run at any other gamma or
+band simply 404s and the figure removes itself. There is no way to leave a
+stale surface on screen.
+
 ## 2. What MATLAB is actually doing here
 
 Only the stabilisation solve. That is deliberate, and it's the honest answer

@@ -876,6 +876,21 @@ function visibleText(d) {
     check("and its middle column is the same column the tiles read",
           top[1].includes(b.grid[b.grid.length - 1][jN].toFixed(2)), top[1]);
 
+    /* The MATLAB surface is a committed PNG for ONE (gamma, band). The page
+       builds the filename from the live knobs, so a run at any other
+       configuration 404s and the figure removes itself rather than sitting
+       under the heatmap describing a different system. Checked here as a
+       filename, since jsdom does not fetch images and neither the load nor
+       the error handler ever fires. */
+    {
+      const img = bd.d.getElementById("surfaceImg");
+      const src = img ? (img.getAttribute("src") || "") : "";
+      eq("the surface asks for the configuration this run is actually at", src,
+         `boundary-surface-g${Number(b.params.gamma)}-b${Number(b.params.band)}.png`);
+      const fig = bd.d.getElementById("surfaceFig");
+      check("and stays hidden until that file has loaded", !fig || fig.hidden);
+    }
+
     /* the contour is drawn on cell edges — an interpolated curve would be a
        line through points the model never computed, on a page whose own
        header says nothing is interpolated. */

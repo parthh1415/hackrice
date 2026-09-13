@@ -55,6 +55,24 @@
       </div>
     </div>
 
+    <!-- The same 256 cells, as topography. The heatmap above is the right
+         tool for reading a value off a cell; this is the right one for seeing
+         that the transition in leverage is a CLIFF and not a ramp, which is
+         the systemic claim and is hard to feel from colour alone.
+
+         Computed independently: MATLAB re-ran all 256 cascades with cascade.m
+         rather than plotting Python's numbers, and the two grids agree to
+         0.00e+00 across every cell. The filename carries the configuration it
+         was computed for, so a run at other knobs simply 404s and the figure
+         removes itself rather than illustrating a sweep nobody ran. -->
+    <figure class="trace" id="surfaceFig" hidden>
+      <img id="surfaceImg" alt="A three-dimensional surface of amplification over
+        gross leverage and crowding. A flat plain at 1.0 where every shock is
+        absorbed rises to a plateau above 3, with a steep cliff between them. A
+        marker sits on the high side, labelled as filed.">
+      <figcaption class="small muted" id="surfaceCap"></figcaption>
+    </figure>
+
     <div class="card" id="caveatCard" hidden>
       <div class="card-header"><span class="card-title">What this does not say</span>
         <span class="card-desc" id="caveatDesc"></span></div>
@@ -248,6 +266,27 @@ const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
   const lbl = mk("text", { x: lx, y: ym - 8, class: "bd-here-label" });
   lbl.textContent = text;
   svg.appendChild(lbl);
+
+  /* The MATLAB surface of this same sweep. The filename carries the knobs it
+     was computed for; if the session is running at different ones the file is
+     not there, the image errors, and the figure takes itself off the page. A
+     stale surface next to a live heatmap would be two pictures of different
+     systems stacked on one screen. */
+  {
+    const g = Number(b.params.gamma), bd = Number(b.params.band);
+    const fig = document.getElementById("surfaceFig");
+    const img = document.getElementById("surfaceImg");
+    img.addEventListener("load", () => {
+      document.getElementById("surfaceCap").textContent =
+        `The same ${grid.length * ovs.length} cells as the map above, recomputed ` +
+        `independently in MATLAB with cascade.m and drawn as a surface. The two ` +
+        `grids agree to 0.0000 in every cell. The flat plain is where the system ` +
+        `absorbs the shock entirely; the cliff is where it stops. γ ${g}, band ${bd}×.`;
+      fig.hidden = false;
+    });
+    img.addEventListener("error", () => fig.remove());
+    img.src = `boundary-surface-g${g}-b${bd}.png`;
+  }
 
   /* ── hover and keyboard ──────────────────────────────────────────────── */
   /* cyan, not white: white at 1px was indistinguishable from the 1.5x

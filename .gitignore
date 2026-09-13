@@ -16,6 +16,10 @@ data/cache/*
 # spec is regenerated from the same knobs and the fingerprint matches. Change a
 # knob and it stops matching, and the app correctly falls back to Python.
 !data/cache/solve_out.json
+# The MATLAB boundary sweep's own answer. Committed for the same reason: it is
+# what lets test_matlab_agrees_with_python assert the agreement on any clone
+# rather than trusting a number printed once on one machine.
+!data/cache/boundary_out.json
 
 # dataset.json is "cache" only in the sense that we don't want to refetch it.
 # It's 4KB of one frozen quarter's 13F holdings, and it is what every test and
