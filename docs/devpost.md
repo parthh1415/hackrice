@@ -89,7 +89,7 @@ seven.) The shape of the map is the finding; the location of the
 marker on it is a consequence of parameters we chose and show.
 
 **The defence.** The inverse search. It scans every (fund, asset) position and bisects on *how deep*
-the cut has to be. The answer at these settings: **Citadel sells $1.73M of NVDA** — 0.073% of a
+the cut has to be. The answer at these settings: **Citadel sells $2.24M of NVDA** — 0.095% of a
 $2.36B position, and 0.0042% of the system's $40.9B gross book. Four ten-thousandths of one percent.
 Re-run NVDA −5.27% against the patched books and the outcome goes from four breaches over three
 rounds to two breaches in one round, final loss 9.12% down to **6.48%**, amplification 1.87 down to
@@ -109,7 +109,7 @@ against the patched books and reports it as `bought`. The measured delta is +0.0
 search resolution of 0.01pp — *inside its own error bar* — so the payload sets `measurable: false`
 and the note reads **"no measurable change in break point — a targeted patch, not structural
 repair"**. We deliberately do not quote the delta as though it meant something; that would be the
-same fake-precision mistake as the hero number, one level up. $1.73M of Citadel's NVDA — under a
+same fake-precision mistake as the hero number, one level up. $2.24M of Citadel's NVDA — under a
 basis point of gross assets — clears *this* failure condition against *this* shock and buys nothing
 we can measure against the next one.
 That is the honest reading of a one-position, one-shock optimiser, and we would rather be the ones
@@ -237,7 +237,7 @@ reduction grid, so every scenario we recorded came back with the same answer: cu
 recordings, one number. That is not a result, it is the floor of the grid wearing a result's
 clothes, and we read it as a finding for hours. Bisecting on depth as well as position, the cheapest
 cuts come out between 0.0027% and 0.14% — and the headline got dramatically stronger, because the
-real answer is that selling $2.25M out of a $2.36B position prevents the whole cascade. We nearly
+real answer is that selling $2.24M out of a $2.36B position prevents the whole cascade. We nearly
 shipped a much weaker claim because we never questioned a number that looked round. Then we did it
 again one level down: the bisection's *tolerance* was absolute where the answer was shrinking, so it
 reported 2.15× the true minimum. Same lesson twice in one night — the resolution of your search is
@@ -357,7 +357,7 @@ everything turning red at once.
 Point72's number. 2.8% exposure, 0.75% direct loss, 5.70% total. That single line is the whole thesis
 about overlapping portfolios, and it came out of real filings rather than a constructed example.
 
-The fix is non-obvious and it is *priced*. Selling $1.73M out of a $2.36B position — 0.0042% of the
+The fix is non-obvious and it is *priced*. Selling $2.24M out of a $2.36B position — 0.0051% of the
 system's gross assets — stops a cascade that costs 9.1% of system equity. It is not the fund that
 breaches first, and it is a depth no one would have guessed, which is the whole argument for solving
 it rather than eyeballing it. The output is a trade a PM could actually place, not a risk score, and

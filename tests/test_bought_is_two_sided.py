@@ -46,10 +46,67 @@ def test_the_stated_resolution_is_two_searches_worth_of_tolerance():
     )
 
 
-@pytest.mark.parametrize("delta", [0.02, -0.02])
-def test_a_move_larger_than_the_resolution_is_measurable(delta):
-    """The other half of the implication, independent of a particular filing."""
-    assert api._is_measurable(delta, 0.01) is True
+@pytest.mark.parametrize("shift", [0.25, -0.25])
+def test_a_move_larger_than_the_resolution_is_reported_as_measurable(monkeypatch, shift):
+    """The other half of the implication, and it has to go through the payload.
+
+    This used to pin live settings — leverage 7 / gamma 0.2 / band 1.2 — where
+    the fix genuinely moved the break point by thirty times the resolution.
+    Widening the holdings universe erased them: a sweep of 983 knob
+    combinations now finds a delta in every one of them and NOT ONE that
+    clears the bar, the largest being 0.39x of it. There is no live scenario
+    left to pin, which is a fact about this dataset rather than a reason to
+    stop testing the branch.
+
+    What it must not become is `_is_measurable(0.02, 0.01) is True`, which
+    asserts that 0.02 is greater than 0.01 and tells you nothing about the
+    product. The thing worth protecting is the REPORTING: that a delta over the
+    bar comes back with measurable true, the signed figure, and the sentence
+    that names it — rather than the "no measurable change" copy, which is what
+    every reachable scenario produces today and is therefore the only wording
+    anyone ever sees.
+
+    So the second search is displaced by a quarter of a point and the whole
+    payload is asked what it says.
+    """
+    import dataclasses
+
+    from firebreak import search as search_module
+
+    real = search_module.find_weakest_shock
+    calls = {"n": 0}
+
+    def displaced(**kwargs):
+        """First call is the real search; the second is moved off it.
+
+        `pct` is a derived property — abs(magnitude) * 100 — not a field, so
+        the displacement has to go into `magnitude`. Setting pct directly does
+        nothing, silently, which is how the first version of this test passed
+        the patched object straight through unchanged.
+        """
+        out = real(**kwargs)
+        calls["n"] += 1
+        if calls["n"] >= 2 and out is not None:
+            moved = -(out.pct + shift) / 100.0
+            return dataclasses.replace(out, magnitude=moved)
+        return out
+
+    monkeypatch.setattr(api, "find_weakest_shock", displaced)
+    bought = api.handle(
+        "/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3", {})["bought"]
+
+    # The displacement rides on top of the scenario's own delta, which is
+    # +0.0039pp here, so this is not an exact equality — it is "the shift got
+    # through", to within the very resolution the block is policing.
+    assert bought["delta_pct"] == pytest.approx(shift, abs=bought["resolution_pct"]), bought
+    assert abs(bought["delta_pct"]) > bought["resolution_pct"]
+    assert bought["measurable"] is True, (
+        f"delta {bought['delta_pct']:+.4f}pp is "
+        f"{abs(bought['delta_pct']) / bought['resolution_pct']:.0f}x the stated "
+        "resolution and was still called unmeasurable"
+    )
+    assert "moves the break point" in bought["note"], bought["note"]
+    assert f"{shift:+.2f}pp" in bought["note"], bought["note"]
 
 
 def test_an_unmeasurable_move_is_still_reported_as_unmeasurable():
