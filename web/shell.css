@@ -22,22 +22,7 @@ html { background: var(--paper); }
 
 body.shell {
   margin: 0;
-  /* A dot matrix on the page ground, and nothing more than that: static, one
-     ink, no glow, no pulse.
-
-     It is the substrate the brief's own vernacular asks for — ordnance survey
-     sheet, engineering paper, actuarial table all sit on a grid — and it stops
-     a dark ground reading as a void. The animated cyan version of this effect
-     would put a second colour on screen that means nothing, competing with the
-     one colour that means a limit was crossed at exactly the moment it is
-     supposed to be the only thing you notice.
-
-     Panels are opaque --paper-raised, so they sit ON the grid rather than in
-     it, which is what keeps "raised" legible. */
-  background-color: var(--paper);
-  background-image: radial-gradient(var(--rule) 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-position: -1px -1px;
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--t-body);
@@ -195,6 +180,135 @@ h1 {
 
 .small { font-size: var(--t-label); }
 .muted, .sub, .card-desc { color: var(--ink-mid); }
+
+/* ---------- the entrance (home.html) ---------- */
+
+/* A screen with one job: say what this is, then get out of the way. It is the
+   only page in the product that is not an instrument, which is why it is the
+   only one that gets an atmosphere. */
+.entry {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.entry-glow {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.entry-stage {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s6);
+  padding: var(--s8) var(--s6);
+  max-width: 880px;
+  width: 100%;
+}
+
+/* The field is bright enough that a dot lands inside the counter of every "o"
+   in the headline. Rather than dim the whole thing back down to wallpaper, put
+   a soft pool of --paper under the words only: the type sits on ground, the
+   light carries on around it. */
+.entry-stage::before {
+  content: "";
+  position: absolute;
+  inset: -8% -14%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 56% at 44% 50%,
+    rgba(20, 23, 26, 0.95) 0%,
+    rgba(20, 23, 26, 0.88) 34%,
+    rgba(20, 23, 26, 0.55) 58%,
+    rgba(20, 23, 26, 0) 76%);
+}
+
+.entry-mark {
+  font-family: var(--font-prose);
+  font-weight: 600;
+  font-size: var(--t-lead);
+  color: var(--ink);
+  margin: 0;
+}
+
+.entry-line {
+  font-family: var(--font-prose);
+  font-weight: 600;
+  font-size: clamp(38px, 5.6vw, 76px);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.entry-sub {
+  font-family: var(--font-prose);
+  font-size: var(--t-lead);
+  line-height: var(--lh-body);
+  color: var(--ink-mid);
+  margin: 0;
+  max-width: var(--measure);
+}
+
+.entry-figs { display: flex; align-items: stretch; gap: var(--s6); flex-wrap: wrap; }
+.entry-rule { width: 1px; background: var(--rule); align-self: stretch; }
+.entry-fig { display: flex; flex-direction: column; gap: var(--s2); }
+.entry-fig .k { font-size: var(--t-label); color: var(--ink-mid); }
+.entry-fig .v {
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+.entry-fig .v.loss { color: var(--loss); }
+
+.entry-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
+
+/* The stage arrives in reading order, a beat apart. Short and small — it is a
+   door opening, not a title sequence. */
+@keyframes entry-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.entry-stage > * { animation: entry-rise 600ms cubic-bezier(0.16, 0.8, 0.3, 1) both; }
+.entry-stage > *:nth-child(1) { animation-delay: 40ms; }
+.entry-stage > *:nth-child(2) { animation-delay: 140ms; }
+.entry-stage > *:nth-child(3) { animation-delay: 300ms; }
+.entry-stage > *:nth-child(4) { animation-delay: 420ms; }
+.entry-stage > *:nth-child(5) { animation-delay: 540ms; }
+.entry-stage > *:nth-child(6) { animation-delay: 640ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-stage > * { animation: none; }
+}
+
+.entry-note {
+  font-family: var(--font-num);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .entry-stage { padding: var(--s7) var(--s4); gap: var(--s5); }
+  .entry-rule { display: none; }
+}
 
 /* ---------- the opener ---------- */
 

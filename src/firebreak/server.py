@@ -20,6 +20,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/"):
             return self._api()
+        # "/" is the entrance, not the portfolio page. Routed here rather than
+        # by renaming files: index.html is referenced by every page's rail, by
+        # the demo walk, and by fifteen call sites in the UI harness, and none
+        # of that is worth churning to move a front door.
+        if self.path in ("/", "/index"):
+            self.path = "/home.html"
         return super().do_GET()
 
     def do_POST(self):

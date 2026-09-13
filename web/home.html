@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firebreak</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2314171A'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23E5484D'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
+</head>
+<body class="entry">
+<canvas id="glow" class="entry-glow" aria-hidden="true"></canvas>
+
+<main class="entry-stage">
+  <p class="entry-mark">Firebreak</p>
+
+  <h1 class="entry-line">Your portfolio is fine<br>until someone else<br>is forced to sell.</h1>
+
+  <p class="entry-sub">Five leveraged funds get margin-called. They liquidate across
+    their whole books. The damage reaches you through the names they sell — including
+    the ones nobody shocked.</p>
+
+  <div class="entry-figs">
+    <div class="entry-fig">
+      <span class="k">the fall alone</span>
+      <span class="v num" id="eDirect">—</span>
+    </div>
+    <div class="entry-rule" aria-hidden="true"></div>
+    <div class="entry-fig">
+      <span class="k">after their selling</span>
+      <span class="v num loss" id="eCascade">—</span>
+    </div>
+  </div>
+
+  <div class="entry-actions">
+    <a class="btn btn-primary btn-lg" href="index.html">Import your portfolio</a>
+    <a class="btn btn-outline btn-lg" href="index.html?demo">Use the demo book</a>
+  </div>
+
+  <p class="entry-note" id="eNote">&nbsp;</p>
+</main>
+
+<script src="shared.js"></script>
+<script src="glow.js"></script>
+<script>
+dottedGlow(document.getElementById("glow"));
+
+/* The two figures come off the engine, like every other number in the product.
+   The entrance is the one screen where a hardcoded number would never be
+   caught by anything, which is exactly why it must not be one. */
+(async () => {
+  try {
+    const f = await api("/api/portfolio/full?limit=0.10", {});
+    if (!f || !f.found) return;
+    document.getElementById("eDirect").textContent = pct(f.direct_loss);
+    document.getElementById("eCascade").textContent = pct(f.cascade_loss);
+    document.getElementById("eNote").textContent =
+      `${f.asset} −${f.pct.toFixed(2)}% · ${f.breached.length} of ${(f.funds || []).length} ` +
+      `modelled books breach · ${num(f.amplification, 2)}× amplification · ` +
+      `SEC 13F-HR, ${(f.tickers || []).length} names`;
+  } catch { /* the entrance still works without its illustration */ }
+})();
+</script>
+</body>
+</html>
