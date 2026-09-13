@@ -334,7 +334,7 @@ function offerExclusion(body, rows, filename) {
   const card = document.getElementById("importOffer");
   card.hidden = false;
   card.innerHTML = `
-    <div class="card-header"><span class="card-title">Most of this book is outside the model</span>
+    <div class="card-header"><span class="card-title">${body.excluded_fraction > 0.5 ? "Most" : "Part"} of this book is outside the model</span>
       <span class="sub">${filename}</span></div>
     <div class="card-body tight"><table><tbody>
       ${(body.excluded || []).map(e => `<tr><td><b>${e.symbol}</b>

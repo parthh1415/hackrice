@@ -72,6 +72,9 @@ paintStatusBar("cascade", [["← →", "step"], ["space", "play"]]);
 bindKeys("cascade");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("cascade");
+/* No trajectory, nothing to step: the status bar was still offering "← →
+   step │ space play" over an empty state. */
+if (!r) paintStatusBar("cascade", []);
 if (r) (async () => {
   const limitX = (r.params.leverage * r.params.band).toFixed(2);
   document.getElementById("lede").textContent =
@@ -189,7 +192,7 @@ if (r) (async () => {
       /* this round's set, not the cascade's running total — the analysis page
          shows the total, and identical labels for two different counts read
          as a contradiction one click apart. */
-      ["Books over limit this round", String((f.breached || []).length), (f.breached || []).length ? "bad" : ""],
+      ["Over limit this round", String((f.breached || []).length), (f.breached || []).length ? "bad" : ""],
       ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],
       /* the size of the fire in this round, which is what the red edges are
          drawing. Without the number beside them the picture is impressionistic. */

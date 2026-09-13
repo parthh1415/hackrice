@@ -43,7 +43,10 @@
     <div class="grid-2" id="board" style="grid-template-columns:minmax(0,522px) minmax(0,1fr);align-items:start" hidden>
       <div class="card">
         <div class="card-header">
-          <span class="card-title" id="mapTitle">Amplification</span>
+          <!-- nowrap: the title wrapped at rest and un-wrapped on hover (the
+     readout is shorter), so the map, legend and footer jumped 16px
+     under the cursor and back again on leave. -->
+          <span class="card-title" id="mapTitle" style="white-space:nowrap">Amplification</span>
           <span class="sub num" id="readout" style="margin-left:auto;white-space:nowrap"></span>
         </div>
         <div class="card-body tight">
@@ -77,7 +80,7 @@
 <script src="shared.js"></script>
 <script>
 paintNav("boundary");
-paintStatusBar("boundary", [["↑↓←→", "cell"]]);
+paintStatusBar("boundary", [["↑ ↓ ← →", "cell"]]);
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 
 /* One hue, lightness carrying the reading. Amber is already this product's
@@ -227,7 +230,10 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
   svg.appendChild(lbl);
 
   /* ── hover and keyboard ──────────────────────────────────────────────── */
-  const hl = mk("rect", { fill: "none", stroke: "#d9d9d9", "stroke-width": 1,
+  /* cyan, not white: white at 1px was indistinguishable from the 1.5x
+     contour line, so hovering a cell ON the boundary showed nothing.
+     Cyan is "current" everywhere else, which is what a hover is. */
+  const hl = mk("rect", { fill: "none", stroke: "var(--accent)", "stroke-width": 1.5,
     "pointer-events": "none", width: PITCH - 1, height: PITCH - 1, x: -99, y: -99 });
   svg.appendChild(hl);
   const readout = document.getElementById("readout");
@@ -237,7 +243,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     hl.setAttribute("x", cx(j) + 0.5); hl.setAttribute("y", cy(i) + 0.5);
   };
   let ci = iN, cj = jN;
-  const home = () => say(iN, jN, " · nearest to the filed books");
+  const home = () => say(iN, jN, " · as filed");
   home();
   svg.addEventListener("mousemove", (ev) => {
     const t = ev.target;
@@ -262,12 +268,12 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
 
   document.getElementById("stats").innerHTML = [
     ["Amplification here", `${grid[iN][jN].toFixed(2)}×`,
-      `nearest cell: λ ${levs[iN].toFixed(2)}× · overlap ${ovs[jN].toFixed(2)}`,
+      `λ ${levs[iN].toFixed(2)}× · overlap ${ovs[jN].toFixed(2)}`,
       grid[iN][jN] >= 1.5 ? "bad" : ""],
     ["Critical leverage",
       iC < 0 ? `none to ${levs[levs.length - 1].toFixed(1)}×` : `${levs[iC].toFixed(2)}×`,
       iC < 0 ? "the shock is absorbed at every row tested"
-             : `${col[Math.max(0, iC - 1)].toFixed(2)}× at ${levs[Math.max(0, iC - 1)].toFixed(2)}× → ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×`, ""],
+             : `${levs[Math.max(0, iC - 1)].toFixed(2)}× ${col[Math.max(0, iC - 1)].toFixed(2)}× → ${levs[iC].toFixed(2)}× ${col[iC].toFixed(2)}×`, ""],
     ["Leverage headroom",
       headroom === null ? "—" : `${headroom >= 0 ? "+" : "−"}${Math.abs(headroom).toFixed(2)}×`,
       `resolved to one grid step, ${step.toFixed(2)}×`,

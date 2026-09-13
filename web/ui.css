@@ -298,7 +298,7 @@ input:focus,select:focus{border-color:var(--accent)}
    Amber, because it is a declared limitation rather than a breach. */
 .excl{
   border:1px solid var(--warn);background:rgba(255,153,0,.08);
-  color:var(--text-dim);padding:6px 10px;margin-bottom:12px;
+  color:var(--text-dim);padding:6px 10px;margin-bottom:0;
   font-size:var(--fs-1);line-height:16px;
 }
 .excl b{color:var(--warn);font-weight:500}
@@ -311,7 +311,10 @@ input:focus,select:focus{border-color:var(--accent)}
 svg.viz{width:100%;max-height:min(470px,48vh);display:block;background:var(--panel)}
 /* On a 1280x800 projector 48vh still pushed the cascade page's only call to
    action under the status bar. 1440x900 is unaffected. */
+/* 820px covers a 1280x800 projector. 780 covers the same screen once an
+   exclusion banner has taken two lines off the top. */
 @media (max-height:820px){svg.viz{max-height:40vh}}
+@media (max-height:790px){svg.viz{max-height:36vh}}
 /* A near-square map, which svg.viz's height cap would letterbox to 384px on an
    800px screen and throw away half the cells. */
 svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--panel)}
@@ -319,7 +322,9 @@ svg.map{width:100%;max-width:520px;height:auto;display:block;background:var(--pa
    key, so the two have to be the same object at two scales. */
 .swatch{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:5px}
 .cellsw{display:inline-block;width:7px;height:7px;vertical-align:0;margin-right:6px}
-#legend{gap:14px}#legend>span{white-space:nowrap}
+/* seven nowrap items are 553px in a 520px footer, and .card clips the
+   overflow, so the last label rendered as "as". */
+#legend{gap:2px 14px;flex-wrap:wrap}#legend>span{white-space:nowrap}
 
 /* value flash on update — OT's .flash-white, tuned to the accent */
 .flash{animation:flash 450ms ease-out}

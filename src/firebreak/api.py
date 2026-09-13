@@ -283,6 +283,16 @@ def load_golden(route, params):
         for name, (default, _) in KNOBS[route].items()
     )
     payload.pop("fallback_reason", None)
+    # NOTE: a served recording can never carry a clamp, and the two are
+    # mutually exclusive by construction rather than by accident. `cached_exact`
+    # compares the RAW request against the recording's knobs, so a recording is
+    # only served when the request equalled an in-range value — and a request
+    # that equalled an in-range value was not clamped. Verified exhaustively
+    # over 11 x 7 x 6 knob combinations. test_cache_knows_band pins it, because
+    # loosening cached_exact to compare clamped values would silently break it:
+    # leverage=12 would then be served the leverage=8 recording under
+    # `clamped: []`, stating that nothing was adjusted about a request where
+    # something was.
     return payload
 
 
