@@ -136,3 +136,63 @@ def test_the_fix_still_actually_works():
     result = api.handle("/api/stabilise?leverage=5&gamma=0.2&breaches=3", {})
 
     assert len(result["after"]["breached"]) < result["params"]["breaches"]
+
+
+def test_the_two_per_cent_guarantee_holds_where_the_floor_can_take_over():
+    """The depth floor is in DOLLARS, and the comment on it says why: stated as
+    a fraction of a position it is an absolute tolerance wearing a different
+    hat, and it silently takes over from the 2% relative bound as soon as the
+    answer gets small.
+
+    Nothing tested that. `depth_floor_is_a_fraction_again` — the mutation that
+    puts the fraction back — survived a full sweep, because every setting the
+    suite exercises returns a cut far above where the floor binds. It is not an
+    inert mutation: a scan of the knobs finds four reachable settings whose
+    answer is under 5e-6, and this is the deepest of them.
+
+    The guarantee is checked on its own terms rather than against a recorded
+    number: if the reported cut is within 2% of the smallest one that works,
+    then a cut 2% smaller must NOT work.
+    """
+    import numpy as np
+
+    from minima import api
+    from minima.engine import run_cascade
+    from minima.matlab_bridge import _python_fallback
+    from minima.search import at_least_n_breaches
+    from minima.stabilise import Fix
+
+    # the spec is written to disk by the route, so ask for the scenario first
+    api.handle("/api/stabilise?leverage=3.0&gamma=0.1&band=1.1&breaches=2", {})
+    root = pathlib.Path(__file__).resolve().parents[1]
+    spec = json.loads((root / "data" / "cache" / "solve_spec.json").read_text())
+
+    solved = _python_fallback(spec)
+    assert solved is not None, "this setting has to have a fix for the test to mean anything"
+    assert solved["reduction"] < 5e-6, (
+        f"reduction {solved['reduction']:.3e} is above where the floor can bind — "
+        "pick another setting or this tests nothing"
+    )
+
+    holdings = np.array(spec["holdings"], dtype=float)
+    kwargs = dict(
+        leverage=np.array(spec["leverage"], dtype=float),
+        max_leverage=np.array(spec["max_leverage"], dtype=float),
+        target_leverage=np.array(spec["target_leverage"], dtype=float),
+        gamma=float(spec["gamma"]),
+        adv=np.array(spec["adv"], dtype=float),
+    )
+    shock = np.array(spec["shock"], dtype=float)
+    fails = at_least_n_breaches(int(spec["breaches"]))
+
+    def clears(reduction):
+        fix = Fix(int(solved["fund_index"]), int(solved["asset_index"]), reduction, 0.0)
+        return not fails(run_cascade(holdings=fix.apply(holdings), shock=shock, **kwargs))
+
+    assert clears(solved["reduction"]), "the reported cut does not even work"
+    smaller = solved["reduction"] * 0.97      # 3% under, against a 2% guarantee
+    assert not clears(smaller), (
+        f"a cut 3% smaller ({smaller:.6e}) also clears the condition, so the "
+        f"reported {solved['reduction']:.6e} is more than 2% above the minimum — "
+        "the depth floor has taken over from the relative bound"
+    )
