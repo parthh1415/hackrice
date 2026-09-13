@@ -1,1 +1,1 @@
-{"fingerprint":"7846bd74370459ec","fund_index":4,"asset_index":0,"reduction":0.0003204345703125,"cost":1.1119373928964276E-5,"solver":"patternsearch","evaluations":658,"exit_flag":1,"solve_ms":916.64408333333336,"engine":"matlab"}
+{"fingerprint":"c38adb477297360d","fund_index":0,"asset_index":0,"reduction":0.000732421875,"cost":4.2348321490736168E-5,"solver":"patternsearch","evaluations":2392,"exit_flag":1,"solve_ms":1672.622,"engine":"matlab"}
