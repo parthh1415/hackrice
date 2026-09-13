@@ -642,6 +642,35 @@ function visibleText(d) {
     refuses("an unreadable number is refused rather than becoming NaN",
             "symbol,market_value\nNVDA,n/a", "not a number");
 
+    /* A real Fidelity Positions export. Every quirk in here is one the file
+       actually has: "Current Value" rather than market_value, dollar signs and
+       quoted thousands, a settlement fund suffixed with **, a "Pending
+       Activity" line that is not a holding, and two lines of legal footer. */
+    const FIDELITY = [
+      "Account Number,Account Name,Symbol,Description,Quantity,Last Price,Current Value,Percent Of Account,Cost Basis Total,Type",
+      'Z12345678,INDIVIDUAL,NVDA,NVIDIA CORP,20.000,$180.00,"$3,600.00",29.27%,"$2,700.00",Cash',
+      'Z12345678,INDIVIDUAL,MSFT,MICROSOFT CORP,7.000,$450.00,"$3,150.00",25.61%,"$3,000.00",Cash',
+      'Z12345678,INDIVIDUAL,SPAXX**,FIDELITY GOVERNMENT MONEY MARKET,1050.000,$1.00,"$1,050.00",8.54%,"$1,050.00",Cash',
+      "Z12345678,INDIVIDUAL,Pending Activity,,,,$0.00,0.00%,,",
+      '"Brokerage services are provided by Fidelity Brokerage Services LLC (FBS), Member NYSE, SIPC."',
+      '"Date downloaded 09/12/2026 6:41 PM ET"',
+    ].join("\n");
+    const fid = (() => { try { return parse(FIDELITY); } catch (e) { return { error: e.message }; } })();
+    check("a Fidelity positions export parses", !fid.error, fid.error);
+    if (!fid.error) {
+      eq("its Current Value column is read as the market value",
+         fid.rows.map((r) => `${r.symbol}=${r.market_value}`).join(","),
+         "NVDA=3600,MSFT=3150,CASH=1050");
+      eq("the settlement fund is counted as cash", fid.cashRolled, 1);
+      eq("the Pending Activity line is set aside", fid.skipped, 1);
+      eq("and the legal footer is not mistaken for data", fid.footer, 2);
+    }
+    /* The footer rule must not eat real rows: a two-column file's data rows are
+       also "narrow", and stripping them left "header row only — no holdings". */
+    const narrow = parse("symbol,market_value\nNVDA,3600\nCASH,1050");
+    eq("a two-column file keeps both of its rows", narrow.rows.length, 2);
+    eq("and reports no footer", narrow.footer, 0);
+
     const blank = parse("symbol,market_value\nNVDA,3600\nMSFT,3150\n,6750");
     eq("a row with no symbol is skipped", blank.rows.length, 2);
     eq("and counted, so the note can say so", blank.skipped, 1);
@@ -750,6 +779,52 @@ function visibleText(d) {
             my < rowY(iLo) && my > rowY(iLo + 1),
             `marker at ${my}, rows at ${rowY(iLo)} and ${rowY(iLo + 1)}`);
     }
+  }
+
+  /* ---- a partly-modelled book, and the disclosure that must follow it ---- */
+  {
+    /* A real brokerage export is mostly funds outside the ten-name universe —
+       half a Fidelity book is often one S&P ETF. Excluding them is offered
+       with its price attached, and the note then has to appear on every page
+       that shows a number about what is left. A disclosure that appears only
+       where you agreed to it stops being one the moment you click through. */
+    const rows = [
+      { symbol: "VOO", market_value: 13000 }, { symbol: "NVDA", market_value: 3600 },
+      { symbol: "MSFT", market_value: 3150 }, { symbol: "VTI", market_value: 5220 },
+      { symbol: "CASH", market_value: 6030 },
+    ];
+    const post = (q) => fetch(ORIGIN + q, { method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }) }).then((r) => r.json());
+
+    const refused = await post("/api/portfolio/full?limit=0.10");
+    check("an unmodellable book is refused", refused.refused === true);
+    const kept = await post("/api/portfolio/full?limit=0.10&exclude_unmodelled=1");
+    check("and can be answered on the modellable part when asked", kept.found === true,
+          kept.reason || "");
+
+    const seeded = { fb: JSON.stringify({ portfolio: kept.portfolio, rows,
+      limit: 0.10, excludeUnmodelled: true, result: kept }) };
+    for (const page of ["cascade.html", "defend.html", "verify.html",
+                        "boundary.html", "assumptions.html"]) {
+      const pg = await load(page, seeded);
+      await until(() => !!pg.d.getElementById("exclBanner"), 4000);
+      const banner = pg.d.getElementById("exclBanner");
+      check(`${page} says what was left out of its numbers`, !!banner,
+            "no exclusion banner");
+      if (banner) {
+        const t = banner.textContent;
+        check(`${page} names the excluded holdings and the share`,
+              t.includes("VOO") && t.includes("VTI") && /58\.8%/.test(t),
+              t.replace(/\s+/g, " ").slice(0, 110));
+      }
+    }
+
+    /* and it must NOT appear when nothing was excluded */
+    const clean = await load("defend.html", store);
+    await sleep(250);
+    check("a fully modelled book carries no such banner",
+          !clean.d.getElementById("exclBanner"));
   }
 
   /* ---- the demo path, walked rather than deep-linked ---- */

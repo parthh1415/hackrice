@@ -55,6 +55,7 @@ function paintNav(current) {
   const s = FB.state;
   /* the bar reports the same state the nav does, so they cannot disagree */
   if (document.querySelector(".statusbar")) paintStatusBar(current);
+  paintExclusionBanner();
   /* A page missing from this map reads as `undefined`, and `!undefined` locks
      it. `assumptions` was missing, so the Model link was dead on every page
      including its own — the page was reachable only by typing its URL. Nothing
@@ -176,6 +177,29 @@ function invalidateStaleResult() {
   if (answered === asking) return false;
   FB.set({ result: null });
   return true;
+}
+
+/* If part of the book was set aside, say so on every page that shows a number
+   about it. A disclosure that appears only on the screen where you agreed to
+   it stops being a disclosure the moment you click through — and the pages
+   after that one are the ones with the money on them. */
+function paintExclusionBanner() {
+  const note = FB.state.result && FB.state.result.excluded_note;
+  const existing = document.getElementById("exclBanner");
+  if (!note) { if (existing) existing.remove(); return; }
+  const names = (note.excluded || []).map((e) => e.symbol).join(", ");
+  const bar = existing || document.createElement("div");
+  bar.id = "exclBanner";
+  bar.className = "excl";
+  bar.innerHTML =
+    `<b>${pct(note.excluded_fraction, 1)} of this book is not modelled and is not in any ` +
+    `number below.</b> ${names} — ${usdExact(note.excluded_value)} of ` +
+    `${usdExact(note.whole_book_value)} — ${(note.excluded || []).length > 1 ? "are" : "is"} ` +
+    `outside the ten-name universe. Everything here describes the rest.`;
+  if (!bar.isConnected) {
+    const main = document.querySelector("main .wrap");
+    if (main) main.insertBefore(bar, main.firstChild);
+  }
 }
 
 function requireResult(current) {

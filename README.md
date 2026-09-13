@@ -40,7 +40,7 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ```sh
 git clone <this repo> && cd firebreak
 python3 -m pip install numpy pytest      # the only dependencies
-python3 -m pytest tests/ -q              # 393 passing
+python3 -m pytest tests/ -q              # 397 passing
 PYTHONPATH=src python3 -m firebreak.server
 ```
 
@@ -152,7 +152,7 @@ you if the dataset moves out from under them.
 ## Tests
 
 ```sh
-python3 -m pytest tests/ -q      # 393, no network required
+python3 -m pytest tests/ -q      # 397, no network required
 ```
 
 The frontend has its own jsdom harness. It needs one extra install, because

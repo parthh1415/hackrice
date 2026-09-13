@@ -88,7 +88,8 @@ bindKeys("analysis");
   const payload = s.rows ? { holdings: s.rows, source: "csv" } : {};
   let body;
   try {
-    body = await api(`/api/portfolio/full?limit=${s.limit || 0.10}`, payload);
+    body = await api(`/api/portfolio/full?limit=${s.limit || 0.10}` +
+      (s.excludeUnmodelled ? "&exclude_unmodelled=1" : ""), payload);
   } catch (e) {
     document.getElementById("title").textContent = "The engine did not answer";
     document.getElementById("sub").textContent = e.message;
@@ -115,13 +116,41 @@ bindKeys("analysis");
 
   if (body.refused) {
     const missing = (body.unmodelled || []).join(", ");
-    document.getElementById("title").textContent = "We can't model this portfolio";
+    document.getElementById("title").textContent = "We can't model all of this portfolio";
     document.getElementById("sub").innerHTML = missing
       ? `<b>${missing}</b> ${body.unmodelled.length > 1 ? "are" : "is"} outside the modelled
-         universe, so there is no crowding network to reason about. Rather than drop the holding
-         and quietly renormalise everything else, we stop.<br><br>
-         Modelled names: ${(body.modelled || []).join(", ")}.`
+         universe, so ${body.unmodelled.length > 1 ? "they have" : "it has"} no place in the
+         crowding network. We will not drop ${body.unmodelled.length > 1 ? "them" : "it"} and
+         renormalise the rest around the hole without saying so.`
       : body.reason;
+
+    /* A real brokerage export is mostly funds we do not model — half a Fidelity
+       book is often one S&P ETF — so refusing outright ends the road for
+       anybody who uploads one. The way through is offered with its price
+       attached, and the exclusion is then carried onto every screen. */
+    if (body.can_exclude) {
+      const frac = pct(body.excluded_fraction, 1);
+      document.getElementById("attrCard").outerHTML = `
+        <div class="card">
+          <div class="card-header"><span class="card-title">What we can and cannot model</span>
+            <span class="sub">${(body.modelled || []).length} modelled names, and cash</span></div>
+          <div class="card-body tight"><table><tbody>
+            ${(body.excluded || []).map(e => `<tr><td><b>${e.symbol}</b>
+              <span class="badge badge-warn"><i></i>not modelled</span></td>
+              <td class="r num">${usdExact(e.market_value)}</td></tr>`).join("")}
+            <tr><td><b>Excluded</b></td><td class="r num warn"><b>${usdExact(body.excluded_value)} · ${frac}</b></td></tr>
+            <tr><td><b>Modellable</b></td><td class="r num"><b>${usdExact(body.modellable_value)}</b></td></tr>
+          </tbody></table></div>
+          <div class="card-footer">
+            <button class="btn btn-primary" id="excludeBtn">Model the ${usdExact(body.modellable_value)} we can</button>
+            <span class="small muted">Every number after this would describe that part of the
+              book only. ${frac} of it would not be represented at all.</span></div>
+        </div>`;
+      document.getElementById("excludeBtn").addEventListener("click", () => {
+        FB.set({ excludeUnmodelled: true });
+        location.reload();
+      });
+    }
     return;
   }
   if (!body.found) {

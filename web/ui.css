@@ -294,6 +294,14 @@ input:focus,select:focus{border-color:var(--accent)}
    is neither. */
 .empty{padding:34px 12px;text-align:center;color:var(--text-dim)}
 .empty h2{color:var(--text)}
+/* Carried onto every page that shows a number about a partially-modelled book.
+   Amber, because it is a declared limitation rather than a breach. */
+.excl{
+  border:1px solid var(--warn);background:rgba(255,153,0,.08);
+  color:var(--text-dim);padding:6px 10px;margin-bottom:12px;
+  font-size:var(--fs-1);line-height:16px;
+}
+.excl b{color:var(--warn);font-weight:500}
 .empty h2{margin-bottom:6px}
 /* The diagram scales with the panel's width, so on a short screen — a 1280x800
    projector, say — it took the height the aspect ratio demanded and pushed the

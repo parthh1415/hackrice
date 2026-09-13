@@ -318,6 +318,14 @@ MUTATIONS = {
         "src/firebreak/api.py",
         "V.synthetic_stress(before, after, n=400, limit=limit,",
         "V.synthetic_stress(before, after, n=400, shock_range=(0.01, 0.05), limit=limit,"),
+    "pm_exclusion_is_not_opt_in": (
+        "src/firebreak/api.py",
+        '        if not _truthy(params.get("exclude_unmodelled")) or not offer["can_exclude"]:',
+        '        if not offer["can_exclude"]:'),
+    "pm_exclusion_note_is_dropped": (
+        "src/firebreak/api.py",
+        '        "excluded_note": excluded_note,',
+        '        "excluded_note": None,'),
     "pm_refusal_looks_like_a_null_result": (
         "src/firebreak/api.py",
         '            "found": False,\n            "refused": True,',
@@ -425,6 +433,14 @@ MUTATIONS = {
         "web/boundary.html",
         "const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];",
         "const fillFor = (a) => BANDS[2][1];"),
+    "fidelity_footer_eats_data": (
+        "web/index.html",
+        "    return n < head.length && n <= Math.max(2, head.length / 3);",
+        "    return n <= Math.max(2, head.length / 3);"),
+    "exclusion_banner_only_on_analysis": (
+        "web/shared.js",
+        "  paintExclusionBanner();",
+        "  if (current === \"analysis\") paintExclusionBanner();"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -473,7 +489,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order",
                 "solver_card_hardcodes_its_scenario",
                 "cta_points_at_the_wrong_page", "boundary_contour_interpolated",
-                "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value"}
+                "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value",
+                "fidelity_footer_eats_data", "exclusion_banner_only_on_analysis"}
 
 
 def build(name):

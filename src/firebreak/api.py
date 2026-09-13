@@ -104,6 +104,13 @@ def handle(path, body):
     return payload
 
 
+def _truthy(raw):
+    """A query flag the way a human types it: `?x`, `?x=1`, `?x=true`."""
+    if raw is None:
+        return False
+    return str(raw).strip().lower() not in ("", "0", "false", "no")
+
+
 def _demo_requested(query):
     """?demo=1 on any request, or FIREBREAK_DEMO=1 for the whole process.
 
@@ -894,19 +901,53 @@ def _solve_portfolio(params, body):
     #
     # And the input that triggers it is VOO, or SPY, or VTI — the single most
     # likely line in a real brokerage CSV.
+    excluded_note = None
     try:
         portfolio = normalise(rows, source=source)
         vector, cash = weight_vector(portfolio, data["tickers"])
     except UnknownSymbol as exc:
-        return {
+        # A real brokerage export is mostly funds we do not model — a Fidelity
+        # book is often half VOO — so refusing outright is the end of the road
+        # for anybody who actually uploads one. `exclude_unmodelled` is the way
+        # through, and it is opt-in for a reason: dropping a holding and
+        # renormalising the rest around the hole is the silent undercount this
+        # project exists to refuse. Chosen, priced and carried onto every
+        # screen, it is a different thing from done quietly.
+        drop = {s.upper() for s in exc.symbols}
+        kept = [r for r in rows if str(r.get("symbol", "")).strip().upper() not in drop]
+        whole = normalise(rows, source=source).total_value
+        excluded = [
+            {"symbol": h.symbol, "market_value": h.market_value}
+            for h in normalise(rows, source=source).holdings
+            if h.symbol.upper() in drop
+        ]
+        gone = sum(h["market_value"] for h in excluded)
+        offer = {
             "found": False,
             "refused": True,
             "reason": str(exc),
             "unmodelled": exc.symbols,
             "modelled": data["tickers"] + ["CASH"],
+            # what saying yes would cost, in the units the user thinks in
+            "excluded": excluded,
+            "excluded_value": gone,
+            "excluded_fraction": (gone / whole) if whole else None,
+            "modellable_value": whole - gone,
+            "can_exclude": bool(kept) and (whole - gone) > 0,
             "params": dict(knobs, limit=limit),
             "tickers": data["tickers"],
-        }, None, None, scenario, data
+        }
+        if not _truthy(params.get("exclude_unmodelled")) or not offer["can_exclude"]:
+            return offer, None, None, scenario, data
+
+        portfolio = normalise(kept, source=source)
+        vector, cash = weight_vector(portfolio, data["tickers"])
+        excluded_note = {
+            "excluded": excluded,
+            "excluded_value": gone,
+            "excluded_fraction": (gone / whole) if whole else None,
+            "whole_book_value": whole,
+        }
     except ValueError as exc:
         return {
             "found": False, "refused": True, "reason": str(exc),
@@ -950,6 +991,10 @@ def _solve_portfolio(params, body):
         # needs the denominator to say "3 of 5" rather than hardcoding how many
         # managers the dataset happens to hold today.
         "funds": list(data["funds"]),
+        # Carried onto the result so every downstream screen can say what is
+        # missing. A disclosure that only appears on the screen where you
+        # agreed to it is not a disclosure.
+        "excluded_note": excluded_note,
         # End-of-cascade prices, aligned to `tickers`. The analysis page needs
         # them to attribute the loss name by name — which is the question a
         # portfolio holder actually has, and the one number on that screen the

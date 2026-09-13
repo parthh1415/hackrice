@@ -210,9 +210,23 @@ function money(cell, what) {
 /* Exact names first, and only then a contains-match — never the other way
    round. `value` alone is accepted as market value; `book_value` is not, and
    is named in the error rather than quietly used. */
-const VALUE_NAMES = ["market_value", "market value", "marketvalue", "value"];
+const VALUE_NAMES = ["market_value", "market value", "marketvalue", "value",
+  /* Fidelity's Positions export calls it this, and it is unambiguous — the
+     same file also carries "cost basis total", which is not a market value and
+     must not be mistaken for one. */
+  "current value", "market value ($)"];
 const QTY_NAMES = ["quantity", "shares", "qty", "units"];
-const PRICE_NAMES = ["price", "share_price", "price_per_share"];
+const PRICE_NAMES = ["price", "share_price", "price_per_share", "last price"];
+
+/* Money-market funds are cash. Fidelity settles into one of these and suffixes
+   it with ** on the positions page; leaving it as a ticker makes the book look
+   like it holds a fund nobody models, and refusing the whole file over the
+   sweep account would be absurd. */
+const CASH_LIKE = new Set(["SPAXX", "FDRXX", "SPRXX", "FZFXX", "FDIC", "FCASH",
+  "QACDS", "VMFXX", "SWVXX", "CASH"]);
+/* Rows that are not holdings at all. Fidelity writes a "Pending Activity" line
+   with no quantity and no price. */
+const NOT_A_HOLDING = new Set(["PENDING ACTIVITY", "ACCOUNT TOTAL", "TOTAL"]);
 
 function parseCsv(text) {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/)
@@ -234,9 +248,29 @@ function parseCsv(text) {
       : "need a market_value column, or quantity and price");
   }
 
+  /* Brokerage exports end in legal boilerplate — Fidelity writes a disclaimer
+     and a "Date downloaded" line after the last holding. Those are one or two
+     fields wide, so the ragged-row check below would refuse the whole file over
+     them. Strip them from the END only, and only while they are far narrower
+     than the header: a genuinely ragged row in the middle of the data is still
+     an error, because that is the unquoted-thousands bug this check exists for. */
+  const body = lines.slice(1);
+  let footer = 0;
+  /* Strictly FEWER fields than the header, as well as far fewer — without the
+     first condition a two-column file has every data row stripped as footer,
+     because two is also "narrow". */
+  const isFooter = (line) => {
+    const n = splitCsvLine(line).length;
+    return n < head.length && n <= Math.max(2, head.length / 3);
+  };
+  while (body.length && isFooter(body[body.length - 1])) {
+    body.pop();
+    footer++;
+  }
+
   const rows = [];
-  let skipped = 0;
-  lines.slice(1).forEach((line, i) => {
+  let skipped = 0, cashRolled = 0;
+  body.forEach((line, i) => {
     const at_ = `row ${i + 2}`;
     const c = splitCsvLine(line);
     if (c.length !== head.length) {
@@ -244,8 +278,14 @@ function parseCsv(text) {
         "A number like 3,600 needs quoting, or it reads as two columns and every " +
         "column after it lands in the wrong place");
     }
-    const symbol = (c[iSym] || "").trim();
+    let symbol = (c[iSym] || "").trim();
     if (!symbol) { skipped++; return; }
+    /* Fidelity's positions page suffixes the settlement fund with ** and
+       writes a "Pending Activity" line that is not a holding. */
+    symbol = symbol.replace(/\*+$/, "").trim();
+    const upper = symbol.toUpperCase();
+    if (NOT_A_HOLDING.has(upper)) { skipped++; return; }
+    if (CASH_LIKE.has(upper)) { symbol = "CASH"; if (upper !== "CASH") cashRolled++; }
     const r = { symbol };
     const v = iVal >= 0 ? money(c[iVal], `${at_} market value`) : null;
     const q = iQty >= 0 ? money(c[iQty], `${at_} quantity`) : null;
@@ -282,7 +322,7 @@ function parseCsv(text) {
     rows.push(r);
   });
   if (!rows.length) throw new Error("header row only — no holdings in that file");
-  return { rows, skipped };
+  return { rows, skipped, footer, cashRolled };
 }
 
 document.getElementById("csvLabel").addEventListener("keydown", (ev) => {
@@ -297,7 +337,7 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
   if (!file) return;
   const note = document.getElementById("loadNote");
   try {
-    const { rows, skipped } = parseCsv(await file.text());
+    const { rows, skipped, footer, cashRolled } = parseCsv(await file.text());
     const body = await api("/api/portfolio/firebreak?limit=0.10", { holdings: rows, source: "csv" });
     if (body.refused) throw new Error(body.reason);
     FB.set({ rows });
@@ -306,9 +346,15 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
        symbols are summed server-side and blank rows are dropped, so
        rows.length was reporting holdings the user does not have. */
     const n = body.portfolio.holdings.length;
+    /* Say what was set aside, every time. A file that silently loses rows is
+       the same failure as a book that silently renormalises. */
+    const aside = [];
+    if (skipped) aside.push(`${skipped} row${skipped === 1 ? "" : "s"} that are not holdings`);
+    if (footer) aside.push(`${footer} line${footer === 1 ? "" : "s"} of export footer`);
+    if (cashRolled) aside.push(`${cashRolled} money-market line${cashRolled === 1 ? "" : "s"} counted as cash`);
+    if (n !== rows.length && !skipped) aside.push(`${rows.length} rows merged into ${n}`);
     note.textContent = `Loaded ${n} holding${n === 1 ? "" : "s"} from ${file.name}` +
-      (skipped ? ` (${skipped} row${skipped === 1 ? "" : "s"} with no symbol skipped)` : "") +
-      (n !== rows.length - 0 && !skipped ? ` — ${rows.length} rows merged into ${n}` : "") + ".";
+      (aside.length ? ` — ${aside.join(", ")}` : "") + ".";
   } catch (e) {
     note.textContent = `${file.name}: ${e.message}`;
   }

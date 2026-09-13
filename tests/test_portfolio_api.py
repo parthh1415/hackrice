@@ -438,3 +438,70 @@ def test_cached_for_reports_the_knobs_the_answer_was_computed_with(query, knob, 
         f"cached_for says {out['cached_for'][knob]} where the engine used "
         f"{out['params'][knob]}"
     )
+
+
+FIDELITY_BOOK = [
+    {"symbol": "VOO", "market_value": 13000},
+    {"symbol": "NVDA", "market_value": 3600},
+    {"symbol": "MSFT", "market_value": 3150},
+    {"symbol": "VTI", "market_value": 5220},
+    {"symbol": "CASH", "market_value": 6030},
+]
+
+
+def test_an_unmodellable_book_is_refused_but_priced():
+    """A real brokerage export is mostly funds we do not model.
+
+    Half a Fidelity book is often one S&P ETF, so refusing outright ends the
+    road for anybody who actually uploads one. The refusal now carries what
+    saying yes would cost, in the units the user thinks in — otherwise the
+    choice is "drop something" with no way to see how much.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10",
+                     {"holdings": FIDELITY_BOOK, "source": "csv"})
+
+    assert out["found"] is False and out["refused"] is True
+    assert sorted(out["unmodelled"]) == ["VOO", "VTI"]
+    assert out["can_exclude"] is True
+    assert out["excluded_value"] == pytest.approx(18220.0)
+    assert out["modellable_value"] == pytest.approx(12780.0)
+    assert out["excluded_fraction"] == pytest.approx(18220.0 / 31000.0)
+
+
+def test_excluding_is_opt_in_and_never_silent():
+    """Dropping a holding and renormalising the rest around the hole is the
+    silent undercount this project exists to refuse. Chosen, priced, and
+    carried onto every screen, it is a different thing — but only if the note
+    travels with the answer.
+    """
+    out = api.handle("/api/portfolio/full?limit=0.10&exclude_unmodelled=1",
+                     {"holdings": FIDELITY_BOOK, "source": "csv"})
+
+    assert out["found"] is True
+    # the book that was scored is the modellable part, not the whole
+    assert out["portfolio"]["total_value"] == pytest.approx(12780.0)
+
+    note = out["excluded_note"]
+    assert note is not None, "the answer does not say anything was left out"
+    assert sorted(e["symbol"] for e in note["excluded"]) == ["VOO", "VTI"]
+    assert note["excluded_value"] == pytest.approx(18220.0)
+    assert note["whole_book_value"] == pytest.approx(31000.0)
+    assert note["excluded_fraction"] == pytest.approx(18220.0 / 31000.0)
+
+
+def test_a_fully_modelled_book_carries_no_exclusion_note():
+    """The banner must not appear when nothing was excluded."""
+    out = api.handle("/api/portfolio/full?limit=0.10&exclude_unmodelled=1", {})
+    assert out["found"] is True
+    assert out["excluded_note"] is None
+
+
+def test_a_book_with_nothing_modellable_is_still_refused():
+    """Excluding everything leaves no portfolio, and the flag must not force
+    an answer out of an empty book."""
+    out = api.handle("/api/portfolio/full?limit=0.10&exclude_unmodelled=1", {"holdings": [
+        {"symbol": "VOO", "market_value": 10000},
+        {"symbol": "VTI", "market_value": 5000},
+    ], "source": "csv"})
+    assert out["found"] is False and out["refused"] is True
+    assert out["can_exclude"] is False
