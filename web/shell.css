@@ -406,6 +406,34 @@ table.pairs td:first-child { color: var(--ink-mid); }
 .cx-fund { fill: var(--ink-faint); }
 .cx-fund.breached { fill: var(--loss); }
 
+/* A name you actually hold. The left column used to be a list of other
+   people's positions with no indication of which were yours. */
+.cx-yours { fill: var(--ink); }
+
+/* Cumulative fall per name. The figure alone made every round after the first
+   look identical; a bar that grows is the cascade happening. */
+.cx-fall-track { fill: var(--paper-sunk); }
+.cx-fall { fill: var(--ink-mid); }
+
+/* Leverage against the band. The threshold a book is compared against was
+   never on screen, so red against grey had no visible rule. */
+.cx-gauge-track { fill: var(--paper-sunk); }
+.cx-gauge { fill: var(--ink-mid); }
+.cx-gauge.breached { fill: var(--loss); }
+.cx-gauge-limit { stroke: var(--ink); stroke-width: 1.5; }
+
+/* Your book: the thing all of this is being done to. */
+.cx-you-track { fill: var(--paper-sunk); }
+.cx-you { fill: var(--ink); }
+.cx-you.breached { fill: var(--loss); }
+.cx-you-limit { stroke: var(--loss); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.cx-you-val {
+  fill: var(--ink);
+  font-family: var(--font-num);
+  font-size: var(--t-label);
+}
+.cx-you-val.breached { fill: var(--loss); }
+
 .cx-label { fill: var(--ink-mid); font-family: var(--font-num); font-size: var(--t-micro); }
 .cx-name { fill: var(--ink); font-family: var(--font-ui); font-size: var(--t-label); }
 .cx-sub { fill: var(--ink-faint); font-family: var(--font-num); font-size: var(--t-micro); }

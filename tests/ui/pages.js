@@ -305,15 +305,22 @@ function visibleText(d) {
   {
     const c = await load("cascade.html", store);
     check("cascade.html runs clean", c.errors.length === 0, c.errors.join("; "));
-    const ok = await until(() => c.d.querySelectorAll("#net circle").length > 0);
+    const ok = await until(() => c.d.querySelectorAll("#net circle.cx-asset").length > 0);
     check("the network draws", ok, c.navigated.join(",") || "");
 
     const cas = await (await fetch(ORIGIN + `/api/cascade?asset=${encodeURIComponent(full.asset)}` +
       `&magnitude=${Math.abs(full.magnitude)}&leverage=${full.params.leverage}` +
       `&gamma=${full.params.gamma}&band=${full.params.band}`)).json();
 
-    eq("one node per modelled ticker", c.d.querySelectorAll("#net circle").length, cas.tickers.length);
-    eq("one box per modelled fund", c.d.querySelectorAll("#net rect").length, cas.funds.length);
+    /* Selected by class. These counted every circle and every rect in the
+       diagram, which was fine while the only shapes were nodes — the moment it
+       gained bars and gauges the rect count stopped meaning "one box per
+       fund". Same lesson as the flow edges: name the thing, do not count
+       whatever happens to share its tag. */
+    eq("one node per modelled ticker",
+       c.d.querySelectorAll("#net circle.cx-asset").length, cas.tickers.length);
+    eq("one box per modelled fund",
+       c.d.querySelectorAll("#net rect.cx-fund").length, cas.funds.length);
 
     /* An asset nobody shocked must read 0.00%, not -0.00%. The minus sign is
        written by hand in front of the formatter, so a price of exactly 1.0
@@ -494,7 +501,7 @@ function visibleText(d) {
       if (onecas && onecas.trajectory.length === 1) {
         const z = await load("cascade.html", { fb: JSON.stringify(
           { portfolio: one.portfolio, rows, limit: 0.03, result: one }) });
-        await until(() => z.d.querySelectorAll("#net circle").length > 0);
+        await until(() => z.d.querySelectorAll("#net circle.cx-asset").length > 0);
         check("a one-frame cascade renders without error", z.errors.length === 0,
               z.errors.join("; "));
         const zt = [...z.d.querySelectorAll(".stat")]
@@ -1192,7 +1199,7 @@ function visibleText(d) {
       ["analysis.html", /see why the loss grows/i, "cascade.html", () =>
         (txt(legDoc, "big") || "").includes(full.asset)],
       ["cascade.html", /cheapest single-position fix/i, "defend.html", () =>
-        legDoc.querySelectorAll("#net circle").length > 0],
+        legDoc.querySelectorAll("#net circle.cx-asset").length > 0],
       ["defend.html", /check it actually helped/i, "verify.html", () =>
         legDoc.getElementById("root").textContent.includes(full.fix.symbol)],
     ];
@@ -1226,8 +1233,8 @@ function visibleText(d) {
           /No analysis yet/i.test(visibleText(cold.d)),
           visibleText(cold.d).trim().slice(0, 120));
     check("and draws no network, which would read as an all-clear",
-          cold.d.querySelectorAll("#net circle").length === 0,
-          cold.d.querySelectorAll("#net circle").length + " nodes drawn");
+          cold.d.querySelectorAll("#net circle.cx-asset").length === 0,
+          cold.d.querySelectorAll("#net circle.cx-asset").length + " nodes drawn");
 
     const nav = await load("index.html", {});
     const locked = [...nav.d.querySelectorAll('.nav-links a[data-locked]')].map((n) => n.dataset.page);

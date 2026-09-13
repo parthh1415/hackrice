@@ -65,8 +65,14 @@ if (r) (async () => {
   /* 470 put the round-by-round log below the fold at 1440x900 — and this is
      the one page where the picture and the log have to be read together. 400
      leaves 34px a row, which still clears an 11px label over a 10px figure. */
-  const W = 1000, H = 400, LX = 250, RX = 750;
+  const W = 1000, H = 620;
   const svg = document.getElementById("net");
+  /* The viewBox was written into the markup and the drawing size lives here,
+     so the two drifted the moment the diagram grew: everything below y=400 —
+     two assets, a fund's readout and the whole "your book" strip — was being
+     drawn and then clipped away by an attribute in a different file. One
+     source. */
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const ns = "http://www.w3.org/2000/svg";
   const mk = (t, a) => { const e = document.createElementNS(ns, t);
     for (const k in a) e.setAttribute(k, a[k]); return e; };
@@ -80,8 +86,18 @@ if (r) (async () => {
   const rowOf = [];
   order.forEach((assetIndex, row) => { rowOf[assetIndex] = row; });
 
-  const ay = (i) => 46 + rowOf[i] * ((H - 92) / (T.length - 1));
-  const fy = (j) => 80 + j * ((H - 160) / (F.length - 1));
+  /* The network occupies the top; the strip underneath is the user's own book,
+     which the diagram never showed before. That omission mattered: the page
+     explains how damage reaches YOU, and the only thing on screen was other
+     people's balance sheets. */
+  const NET_H = 500;
+  const AX = 300, FX = 620;                    // the two node columns
+  const BAR_X = 100, BAR_W = 120;              // per-asset cumulative fall
+  const GAUGE_X = 644, GAUGE_W = 150;          // per-fund leverage gauge
+  const YOU_X = 132, YOU_W = 760, YOU_Y = 556; // the book's loss bar
+
+  const ay = (i) => 44 + rowOf[i] * ((NET_H - 88) / (T.length - 1));
+  const fy = (j) => 96 + j * ((NET_H - 200) / (F.length - 1));
   const maxPos = Math.max(...body.holdings.flat());
   /* The busiest round, so flow widths are comparable ACROSS rounds — scaling
      each frame to its own maximum would make the last round's trickle look
@@ -108,62 +124,155 @@ if (r) (async () => {
        Now round 1 lights up thick, round 2 thinner, round 3 a trickle, and the
        diagram shows deleveraging chasing itself down to nothing — which is the
        one idea this page exists to land. */
+    /* ── the substrate: who owns what ─────────────────────────────────── */
     body.holdings.forEach((row, j) => row.forEach((v, i) => {
       if (v <= 0) return;
-      svg.appendChild(mk("line", { class: "cx-hold", x1: LX, y1: ay(i), x2: RX, y2: fy(j),
+      svg.appendChild(mk("line", { class: "cx-hold", x1: AX, y1: ay(i), x2: FX, y2: fy(j),
         "stroke-width": Math.max(.4, (v / maxPos) * 2.6) }));
     }));
+
+    /* ── the flow: what was SOLD this round ───────────────────────────── */
     (f.sold || []).forEach((row, j) => row.forEach((usd, i) => {
       if (usd <= 0) return;
       const share = usd / maxSold;
       /* Forced selling IS a limit being crossed — a book over its leverage
          band, liquidating. That is the one thing §1 lets colour mean, and it
          is the whole subject of this page. */
-      svg.appendChild(mk("line", { class: "cx-sell", x1: LX, y1: ay(i), x2: RX, y2: fy(j),
-        "stroke-opacity": (0.25 + 0.6 * share).toFixed(3),
-        "stroke-width": Math.max(.6, share * 5.0), "stroke-linecap": "round" }));
+      svg.appendChild(mk("line", { class: "cx-sell", x1: FX, y1: fy(j), x2: AX, y2: ay(i),
+        "stroke-opacity": (0.22 + 0.6 * share).toFixed(3),
+        "stroke-width": Math.max(.6, share * 5.2), "stroke-linecap": "round" }));
     }));
+
+    /* ── assets: name, whether you hold it, and how far it has fallen ─── */
+    const worstDrop = Math.max(0.0001, ...frames.map(fr =>
+      Math.max(...fr.prices.map(pr => 1 - pr))));
     T.forEach((sym, i) => {
       const drop = 1 - f.prices[i];
       const hot = drop > 1e-9;
-      /* A price that fell is not a limit being crossed. These were red, which
-         put the one colour on ten names that had merely lost value — on the
-         same frame as the four books that actually breached. Ink for a name
-         that moved, faint ink for one that has not. */
-      svg.appendChild(mk("circle", { class: `cx-asset${hot ? " hot" : ""}`,
-        cx: LX, cy: ay(i), r: 6 }));
-      const lbl = mk("text", { class: "cx-label num", x: LX - 16, y: ay(i) + 4,
-        "text-anchor": "end" });
+      const y = ay(i);
+
+      /* The names YOU hold, marked on the diagram that explains what happens
+         to them. Without this the left column is a list of other people's
+         positions and the page never says which of them are yours. */
+      if (weightOf(sym) > 0) {
+        svg.appendChild(mk("rect", { class: "cx-yours", x: 14, y: y - 4, width: 5, height: 8 }));
+      }
+
+      const lbl = mk("text", { class: "cx-label num", x: 88, y: y + 4, "text-anchor": "end" });
       lbl.textContent = sym; svg.appendChild(lbl);
-      const val = mk("text", { class: `cx-sub${hot ? " hot" : ""}`, x: LX - 16,
-        y: ay(i) + 18, "text-anchor": "end" });
-      /* Nine of ten names read 0.00% on the shock frame, which is dead ink on
-         the densest panel in the app — and worse, it makes the frame where
-         contagion arrives look identical to the one before it. Leaving the
-         slot empty until a name actually moves turns the spread into
-         something you can watch: one number at round 0, ten by round 1.
-         (The original bug here was "−0.00%" — a minus in front of a
-         formatter, trusted. An asset that has not moved must not report a
-         loss, of either sign.) */
+
+      /* Cumulative fall, as a bar. The figure alone made every round after the
+         first look the same; a bar that grows is the cascade happening. Scaled
+         to the worst fall across ALL rounds so the bars are comparable frame
+         to frame rather than rescaling under the cursor. */
+      svg.appendChild(mk("rect", { class: "cx-fall-track",
+        x: BAR_X, y: y - 4, width: BAR_W, height: 8 }));
+      if (hot) {
+        svg.appendChild(mk("rect", { class: "cx-fall",
+          x: BAR_X, y: y - 4, width: Math.max(1, (drop / worstDrop) * BAR_W), height: 8 }));
+      }
+
+      /* An asset that has not moved shows nothing: nine of ten reading 0.00%
+         is dead ink, and it made the frame where contagion arrives look
+         identical to the one before it. (The original bug was "−0.00%" — a
+         minus written by hand in front of a formatter, trusted.) */
+      const val = mk("text", { class: `cx-sub${hot ? " hot" : ""}`,
+        x: BAR_X + BAR_W + 10, y: y + 4 });
       val.textContent = hot ? `−${(drop * 100).toFixed(2)}%` : "";
       svg.appendChild(val);
+
+      svg.appendChild(mk("circle", { class: `cx-asset${hot ? " hot" : ""}`,
+        cx: AX, cy: y, r: 5.5 }));
     });
+
+    /* ── funds: leverage against the band, and what they sold ─────────── */
+    const limitLev = r.params.leverage * r.params.band;
+    const levMax = Math.max(limitLev * 1.35, ...frames.flatMap(fr =>
+      fr.leverage.map(l => (l === null ? limitLev * 1.35 : l))));
+    /* Two different moments, and the diagram has to keep them apart.
+
+       A frame's `breached` is who was over the limit at the START of the round
+       — the funds that actually sold in it. A frame's `leverage` is where they
+       ended up AFTER selling and repricing. So a book can finish a round above
+       its band having not sold during it: it crosses now and liquidates next
+       round.
+
+       Drawing the gauge from `leverage` and the box from `breached` is right,
+       but putting them side by side unlabelled produced "5.38× / 5.25×" next
+       to a grey box reading "holding", which looks like the picture
+       contradicting itself. Named properly it is the most interesting thing on
+       the screen — you can watch a fund cross the line one round before it
+       acts. */
     F.forEach((name, j) => {
-      const breached = (f.breached || []).includes(j);
-      /* §7: no radius, anywhere. */
-      svg.appendChild(mk("rect", { class: `cx-fund${breached ? " breached" : ""}`,
-        x: RX - 7, y: fy(j) - 7, width: 14, height: 14 }));
-      const lbl = mk("text", { class: "cx-name", x: RX + 20, y: fy(j) + 1 });
+      const sold = (f.breached || []).includes(j);
+      const y = fy(j);
+      const lev = f.leverage[j];
+      const over = lev === null || lev > limitLev + 1e-9;
+      const isLast = t >= frames.length - 1;
+      const soldRow = (f.sold || [])[j] || [];
+      const soldUsd = soldRow.reduce((a, b) => a + b, 0);
+
+      svg.appendChild(mk("rect", { class: `cx-fund${sold ? " breached" : ""}`,
+        x: FX - 7, y: y - 7, width: 14, height: 14 }));
+
+      const lbl = mk("text", { class: "cx-name", x: FX + 24, y: y - 10 });
       lbl.textContent = name; svg.appendChild(lbl);
-      const lev = mk("text", { class: `cx-sub${breached ? " breached" : ""}`,
-        x: RX + 20, y: fy(j) + 17 });
-      /* "L 6.00" gave no unit and no threshold, so red against grey had no
-         visible rule — the number the boxes are compared against never
-         appeared anywhere on the page. */
-      lev.textContent = f.leverage[j] === null
-        ? "INSOLVENT" : `lev ${f.leverage[j].toFixed(2)}×`;
-      svg.appendChild(lev);
+
+      /* The gauge is the whole reason a book sells. The number alone ("lev
+         6.00x") gave no threshold, so red against grey had no visible rule —
+         the limit these boxes are compared against never appeared on screen. */
+      svg.appendChild(mk("rect", { class: "cx-gauge-track",
+        x: GAUGE_X, y: y - 4, width: GAUGE_W, height: 7 }));
+      if (lev !== null && lev > 0) {
+        svg.appendChild(mk("rect", { class: `cx-gauge${over ? " breached" : ""}`,
+          x: GAUGE_X, y: y - 4,
+          width: Math.max(1, Math.min(1, lev / levMax) * GAUGE_W), height: 7 }));
+      }
+      const tick = GAUGE_X + (limitLev / levMax) * GAUGE_W;
+      svg.appendChild(mk("line", { class: "cx-gauge-limit",
+        x1: tick, y1: y - 8, x2: tick, y2: y + 7 }));
+
+      const sub = mk("text", { class: `cx-sub${(sold || over) ? " breached" : ""}`,
+        x: GAUGE_X, y: y + 20 });
+      /* Kept short on purpose: at the previous width this line ran off the
+         right edge of the viewBox, taking the gauge track with it. */
+      const state = soldUsd > 0 ? `${usd(soldUsd)} sold`
+                  : over ? (isLast ? "over its limit" : "over — sells next round")
+                  : "within";
+      sub.textContent = lev === null
+        ? `insolvent · ${usd(soldUsd)} sold`
+        : `${lev.toFixed(2)}× / ${limitLev.toFixed(2)}× · ${state}`;
+      svg.appendChild(sub);
     });
+
+    /* ── your book, which is what all of this is doing to you ─────────── */
+    {
+      const cumNow = 1 - f.prices.reduce((acc, pr, i) => acc + pr * weightOf(T[i]), 0) - cashW;
+      const scale = Math.max(r.params.limit, cumNow) * 1.25 || 1;
+      const lim = YOU_X + (r.params.limit / scale) * YOU_W;
+      const over = cumNow >= r.params.limit;
+
+      const cap = mk("text", { class: "cx-name", x: 14, y: YOU_Y + 4 });
+      cap.textContent = "your book"; svg.appendChild(cap);
+
+      svg.appendChild(mk("rect", { class: "cx-you-track",
+        x: YOU_X, y: YOU_Y - 7, width: YOU_W, height: 14 }));
+      svg.appendChild(mk("rect", { class: `cx-you${over ? " breached" : ""}`,
+        x: YOU_X, y: YOU_Y - 7,
+        width: Math.max(1, (cumNow / scale) * YOU_W), height: 14 }));
+      svg.appendChild(mk("line", { class: "cx-you-limit",
+        x1: lim, y1: YOU_Y - 13, x2: lim, y2: YOU_Y + 13 }));
+
+      const lt = mk("text", { class: "cx-sub", x: lim + 6, y: YOU_Y + 26 });
+      lt.textContent = `your limit ${pct(r.params.limit, 0)}`;
+      svg.appendChild(lt);
+
+      const amt = mk("text", { class: `cx-you-val${over ? " breached" : ""}`,
+        x: YOU_X, y: YOU_Y + 26 });
+      amt.textContent = `${pct(cumNow)} lost so far`;
+      svg.appendChild(amt);
+    }
+
     document.getElementById("roundTitle").textContent =
       t === 0 ? "Round 0 — shock applied" : `Round ${t} of ${frames.length - 1}`;
     const cum = 1 - f.prices.reduce((acc, p, i) => acc + p * weightOf(T[i]), 0) - cashW;
