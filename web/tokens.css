@@ -29,9 +29,11 @@
 
    The app renders γ seven times, λ eight, and Δ once — `Price impact · γ = 0.2`
    and `Δp/p = −γ · (dollars sold) / ADV` on the Model page. None of the three
-   is in any latin cut of any of these families. The previous typeface hit this
-   too and lost: see the note in fonts.css, where γ, ≥ and → have always fallen
-   through to -apple-system. A greek letter set in the system UI font, inside a
+   is in any latin cut of any of these families. Geist, which this replaced,
+   hit the same wall and lost — it publishes no greek subset at all, so γ, ≥
+   and → fell through to -apple-system for the life of that stylesheet, and
+   fonts.css said so in a comment right up until it was deleted along with the
+   typeface. A greek letter set in the system UI font, inside a
    mono formula, in the middle of the one page whose entire job is showing our
    work, is exactly the seam a judge notices.
 
@@ -51,7 +53,7 @@
    === what is still missing, and will stay missing ===
 
    ─ │ ● → ← ≥ appear in no subset Google publishes for ANY of these three
-   families, the same way they were missing from Geist. The box-drawing rule
+   families, and were missing from Geist before them. The box-drawing rule
    (─, 934 uses) is the heavy one. They fall through to the system monospace
    today and will keep doing so. The fix, if it ever matters, is to draw the
    rules in CSS instead of typing them — which §3 of the brief wants anyway,

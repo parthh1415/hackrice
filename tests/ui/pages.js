@@ -1200,9 +1200,10 @@ function visibleText(d) {
           ["analysis", "cascade", "defend", "verify"].every((p) => locked.includes(p)),
           "locked: " + locked.join(","));
     /* A page absent from paintNav's map reads as undefined and gets locked.
-       `assumptions` was missing, so ui.css's pointer-events:none killed the
-       Model link on all six pages including its own — the methodology was
-       reachable only by typing the URL. */
+       `assumptions` was missing, so the stylesheet's pointer-events:none on a
+       locked link killed the Model link on all six pages including its own —
+       the methodology was reachable only by typing the URL. (That rule lived
+       in ui.css at the time; it is shell.css's .stepper a[data-locked] now.) */
     check("the Model link is never locked — it needs no analysis to be true",
           !locked.includes("assumptions"), "locked: " + locked.join(","));
   }
