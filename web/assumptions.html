@@ -14,6 +14,23 @@
       <p class="lede">Firebreak is a stress-testing model, not a forecast. Every input below is
         labelled by where it came from.</p>
     </header>
+    <!-- First on the page, not last. This is the only screen that says what
+         actually computed anything, and it used to sit under an eight-row
+         table where you had to scroll to find it. §8: every page has exactly
+         one hero figure, and this page had none — it is the number of full
+         cascades the solver simulated to find the patch. -->
+    <div class="card" id="engineCard" hidden>
+      <div class="card-header"><span class="card-title">What computed the institutional patch</span>
+        <span class="sub" id="engineNote"></span></div>
+      <div class="card-body">
+        <div class="figure">
+          <span class="big num" id="engineEvals">—</span>
+          <span class="small muted" id="engineLede">—</span>
+        </div>
+      </div>
+      <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
+    </div>
+
     <div class="card">
       <div class="card-body tight"><table>
         <!-- every other table on the site has a header row; this one did not,
@@ -23,11 +40,6 @@
         <tbody id="rows"></tbody></table></div>
     </div>
 
-    <div class="card" id="engineCard" hidden>
-      <div class="card-header"><span class="card-title">What computed the institutional patch</span>
-        <span class="sub" id="engineNote"></span></div>
-      <div class="card-body tight"><table><tbody id="engineRows"></tbody></table></div>
-    </div>
 </main>
 <script src="shared.js"></script>
 <script src="shell.js"></script>
@@ -178,6 +190,20 @@ bindKeys("assumptions");
      header would have said patternsearch anyway. One source, and it is the one
      that cannot inflate what ran. */
   document.getElementById("engineNote").textContent = e.name;
+
+  /* The hero. A solver name is not a figure, so the figure is the work it did:
+     every one of these is a full cascade simulated to price one candidate
+     patch. It reads honestly on either engine — MATLAB's patternsearch runs
+     658 of them, the Python fallback 301 — so the page never has to pretend
+     MATLAB was here when it was not. */
+  document.getElementById("engineEvals").textContent =
+    e.evaluations == null ? "—" : Number(e.evaluations).toLocaleString("en-US");
+  document.getElementById("engineLede").textContent =
+    e.evaluations == null
+      ? `${e.name} — evaluation count not recorded.`
+      : `full cascades simulated by ${e.name} to find the cheapest single cut that ` +
+        `holds the five institutional books under ${K.breaches}+ breaching. ` +
+        `${e.note.charAt(0).toUpperCase()}${e.note.slice(1)}.`;
   document.getElementById("engineRows").innerHTML = erows.map(([k, v, note]) => `
     <tr><td style="width:150px"><b>${k}</b></td>
         <td class="num t" style="width:320px">${v}</td>
