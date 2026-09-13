@@ -80,6 +80,8 @@
       </div>
     </div>
 
+    <div class="card" id="importOffer" hidden></div>
+
     <div class="card" id="limitCard" hidden>
       <div class="card-header">
         <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Firebreak searches for the smallest single-name shock that crosses this.</span>
@@ -325,6 +327,54 @@ function parseCsv(text) {
   return { rows, skipped, footer, cashRolled };
 }
 
+/* The refusal, priced, at the point of import. Nothing is dropped until this
+   is answered, and what it would cost is on screen before you answer it. */
+function offerExclusion(body, rows, filename) {
+  const frac = pct(body.excluded_fraction, 1);
+  const card = document.getElementById("importOffer");
+  card.hidden = false;
+  card.innerHTML = `
+    <div class="card-header"><span class="card-title">Most of this book is outside the model</span>
+      <span class="sub">${filename}</span></div>
+    <div class="card-body tight"><table><tbody>
+      ${(body.excluded || []).map(e => `<tr><td><b>${e.symbol}</b>
+        <span class="badge badge-warn"><i></i>not modelled</span></td>
+        <td class="r num muted">${usdExact(e.market_value)}</td></tr>`).join("")}
+      <tr><td><b>Not modelled</b></td>
+        <td class="r num warn"><b>${usdExact(body.excluded_value)} · ${frac}</b></td></tr>
+      <tr><td><b>Modellable</b></td>
+        <td class="r num"><b>${usdExact(body.modellable_value)} · ${pct(1 - body.excluded_fraction, 1)}</b></td></tr>
+    </tbody></table></div>
+    <div class="card-footer" style="flex-wrap:wrap">
+      <button class="btn btn-primary" id="offerYes">Model the ${usdExact(body.modellable_value)} we can</button>
+      <button class="btn btn-outline" id="offerNo">Cancel</button>
+      <span class="small muted">Firebreak models ten large-cap US names and cash, because that is
+        what the five 13F books it reasons about actually hold. An index fund is not one of them.
+        Every number after this would describe ${pct(1 - body.excluded_fraction, 1)} of your book,
+        and every page would say so.</span></div>`;
+  document.getElementById("offerNo").addEventListener("click", () => {
+    card.hidden = true;
+    document.getElementById("loadNote").textContent =
+      `${filename}: not loaded. ${(body.unmodelled || []).join(", ")} ${
+        (body.unmodelled || []).length > 1 ? "are" : "is"} outside the modelled universe.`;
+  });
+  document.getElementById("offerYes").addEventListener("click", async () => {
+    try {
+      const kept = await api("/api/portfolio/firebreak?limit=0.10&exclude_unmodelled=1",
+                             { holdings: rows, source: "csv" });
+      if (kept.refused) throw new Error(kept.reason);
+      FB.set({ rows, excludeUnmodelled: true });
+      card.hidden = true;
+      render(kept.portfolio);
+      document.getElementById("loadNote").innerHTML =
+        `Loaded ${kept.portfolio.holdings.length} of ${rows.length} holdings from ${filename}. ` +
+        `<b class="warn">${frac} of the book is not modelled and will not appear in any number.</b>`;
+    } catch (e) {
+      document.getElementById("loadNote").textContent = `${filename}: ${e.message}`;
+    }
+  });
+}
+
 document.getElementById("csvLabel").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" || ev.key === " ") {
     ev.preventDefault();
@@ -339,7 +389,15 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
   try {
     const { rows, skipped, footer, cashRolled } = parseCsv(await file.text());
     const body = await api("/api/portfolio/firebreak?limit=0.10", { holdings: rows, source: "csv" });
-    if (body.refused) throw new Error(body.reason);
+    if (body.refused) {
+      /* A real brokerage export is mostly funds outside the ten-name universe.
+         Throwing the engine's sentence into the note ended the road right
+         here, at the point of upload, with no way forward — the offer to model
+         the rest lived on a page the user could never reach. It belongs where
+         the refusal happens. */
+      if (body.can_exclude) { offerExclusion(body, rows, file.name); return; }
+      throw new Error(body.reason);
+    }
     FB.set({ rows });
     render(body.portfolio);
     /* count what landed in the book, not what was in the file. Duplicate

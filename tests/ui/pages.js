@@ -797,6 +797,27 @@ function visibleText(d) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ holdings: rows, source: "csv" }) }).then((r) => r.json());
 
+    /* The offer has to be at the point of IMPORT. It lived on the analysis
+       page, which a refused upload never reaches — so a real Fidelity export
+       died in the note on the portfolio screen with the engine's sentence and
+       no way forward. */
+    {
+      const p2 = await load("index.html", {});
+      const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
+      check("the import path is told it can exclude", body.can_exclude === true);
+      p2.window.offerExclusion(body, rows, "positions.csv");
+      await sleep(120);
+      const offer = p2.d.getElementById("importOffer");
+      check("the upload screen offers the way through", offer && !offer.hidden);
+      has("and prices it before anything is dropped", offer.textContent,
+          "$18,220");
+      has("naming every holding it would set aside", offer.textContent, "VOO");
+      check("with a cancel that leaves the book untouched",
+            !!p2.d.getElementById("offerNo"));
+    }
+
     const refused = await post("/api/portfolio/full?limit=0.10");
     check("an unmodellable book is refused", refused.refused === true);
     const kept = await post("/api/portfolio/full?limit=0.10&exclude_unmodelled=1");
