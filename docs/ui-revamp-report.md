@@ -114,7 +114,7 @@ Concrete gaps, in order of how much they cost you:
    undefended book crossing the limit line, the defended one stopping above it
    — is the single most persuasive image in the product, and a judge reaches it
    only by clicking four times.
-3. **The number that matters is never dramatised.** 7.23% → 10.00% is the whole
+3. **The number that matters is never dramatised.** 7.33% → 10.00% is the whole
    thesis and it is rendered at the same weight as everything else.
 4. **No empty-state story.** A cold visit shows a form, not the product.
 
@@ -170,7 +170,7 @@ Firebreak finds the smallest shock that breaks your limit, shows you how
 crowded institutional selling amplifies it on the way to you, and tests
 whether the fix actually helped.
 
-                 7.23%  →  10.00%
+                 7.33%  →  10.00%
         the shock alone     after other people's selling
 ```
 

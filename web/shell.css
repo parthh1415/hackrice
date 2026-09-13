@@ -22,7 +22,22 @@ html { background: var(--paper); }
 
 body.shell {
   margin: 0;
-  background: var(--paper);
+  /* A dot matrix on the page ground, and nothing more than that: static, one
+     ink, no glow, no pulse.
+
+     It is the substrate the brief's own vernacular asks for — ordnance survey
+     sheet, engineering paper, actuarial table all sit on a grid — and it stops
+     a dark ground reading as a void. The animated cyan version of this effect
+     would put a second colour on screen that means nothing, competing with the
+     one colour that means a limit was crossed at exactly the moment it is
+     supposed to be the only thing you notice.
+
+     Panels are opaque --paper-raised, so they sit ON the grid rather than in
+     it, which is what keeps "raised" legible. */
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--rule) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--t-body);

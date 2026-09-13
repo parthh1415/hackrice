@@ -70,7 +70,7 @@ observer and the cut does not change what the five books are forced to do.
 This is the strongest single frame in the product. Hold on it.
 
 **2. The Break page waterfall.** Cumulative loss falling left to right:
-`7.23% → 9.28% → 9.85% → 10.00%`, one band per cascade round, against a dashed
+`7.33% → 9.28% → 9.85% → 10.00%`, one band per cascade round, against a dashed
 line at your limit. The first band is the shock alone. Everything after it is
 other people selling. The segments draw in over about a third of a second on
 load, so refresh the page rather than cutting to it cold.
@@ -119,6 +119,21 @@ previewed, and the reason GOOGL is the name that bleeds.
 
 ---
 
+## The recorded video quotes the ten-name numbers
+
+The universe was widened from ten names to eighteen AFTER the video was shot,
+which moved every headline figure slightly: the break point from −24.69% to
+−25.05%, the direct loss from 7.23% to 7.33%, amplification from 1.38× to
+1.36×, the fix from $478 to $472. Nothing changed direction and nothing changed
+by more than half a point, but the video and the live app now disagree in the
+second decimal.
+
+If anybody notices, the true answer is a good one: *the model covers eighteen
+securities now instead of ten, so a real brokerage export is modellable and the
+cascade has more paths through it.* Do not claim the video matches.
+
+The table below is the LIVE build, not the video.
+
 ## The numbers, verified against this build
 
 Speak these or none. Every one was read off the engine while writing this file.
@@ -126,15 +141,15 @@ Speak these or none. Every one was read off the engine while writing this file.
 | | |
 |---|---|
 | demo book | $12,300, 5 holdings |
-| break point | NVDA **−24.69%** |
-| direct loss | **7.23%** |
+| break point | NVDA **−25.05%** |
+| direct loss | **7.33%** |
 | after cascade | **10.00%** |
-| amplification | **1.38×** over **3** rounds |
+| amplification | **1.36×** over **3** rounds |
 | books breached | **5 of 5** |
-| the fix | sell **$478** of NVDA — 13.3% of a $3,600 position |
+| the fix | sell **$472** of NVDA — 13.1% of a $3,600 position |
 | same shock, defended | 10.00% → **9.00%** |
-| break point, defended | −24.69% → **−27.76%** (3.07 pp further out) |
-| 400 scenarios | stayed under the limit **392 → 396** |
+| break point, defended | −25.05% → **−28.17%** (3.07 pp further out) |
+| 400 scenarios | stayed under the limit **395 → 398** |
 | worst of 400 | 11.94% → **10.73%** |
 | boundary | **108 of 256** cells amplify; worst **3.10×** |
 | headroom | **−0.03×** |

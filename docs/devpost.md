@@ -16,8 +16,8 @@ stress scenarios.
 Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
 ```
 
-On the demo portfolio at a 10% limit: **NVDA −24.69%** breaks it, a **7.23%** direct loss becomes
-**10.00%** after the cascade, and reducing NVDA by **$478** moves the break point out to **−27.76%**.
+On the demo portfolio at a 10% limit: **NVDA −25.05%** breaks it, a **7.33%** direct loss becomes
+**10.00%** after the cascade, and reducing NVDA by **$472** moves the break point out to **−28.17%**.
 
 The same engine, asked the institutional question instead, is Risk Desk Mode: *what is the smallest
 market move that forces three leveraged funds to deleverage at once?* That is the prime-brokerage

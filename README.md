@@ -66,16 +66,16 @@ On the demo portfolio ($12,300 across five names), at a 10% loss limit:
 
 | | |
 |---|---|
-| Break point | **NVDA −24.69%** |
-| Direct loss | 7.23% |
+| Break point | **NVDA −25.05%** |
+| Direct loss | 7.33% |
 | After cascade | **10.00%** |
-| Amplification | 1.38× |
-| Fix | reduce NVDA by **$478** (13.3% of the position, to cash) |
+| Amplification | 1.36× |
+| Fix | reduce NVDA by **$472** (13.3% of the position, to cash) |
 | Same shock, after | 10.00% FAIL → **9.00% PASS** |
-| New break point | −24.69% → **−27.76%** (+3.07pp) |
+| New break point | −25.05% → **−28.17%** (+3.07pp) |
 | Worst of 400 simulated | 11.94% → **10.73%** |
 
-The gap between 7.23% and 10.00% is the entire argument: the shock is the trigger, the
+The gap between 7.33% and 10.00% is the entire argument: the shock is the trigger, the
 crowding is the damage.
 
 ### Why your fix does not change the cascade
