@@ -665,6 +665,30 @@ function visibleText(d) {
       eq("the Pending Activity line is set aside", fid.skipped, 1);
       eq("and the legal footer is not mistaken for data", fid.footer, 2);
     }
+    /* Fidelity exports several accounts into one file, separated by blank
+       lines, and the same name can appear in each. Summing them is the
+       server's job; the parser must not lose the rows on the way there. */
+    const MULTI = [
+      "Account Number,Account Name,Symbol,Description,Quantity,Last Price,Current Value,Type",
+      'Z11111111,ROTH IRA,NVDA,NVIDIA CORP,10.000,$180.00,"$1,800.00",Cash',
+      'Z11111111,ROTH IRA,SPAXX**,FIDELITY GOVERNMENT MONEY MARKET,500.000,$1.00,$500.00,Cash',
+      "",
+      'Z22222222,INDIVIDUAL,NVDA,NVIDIA CORP,10.000,$180.00,"$1,800.00",Cash',
+      'Z22222222,INDIVIDUAL,AMZN,AMAZON.COM INC,8.000,$187.50,"$1,500.00",Cash',
+      "",
+      '"Date downloaded 09/12/2026 6:41 PM ET"',
+    ].join("\n");
+    const multi = parse(MULTI);
+    eq("a two-account export keeps every row", multi.rows.length, 4);
+    eq("including the same name twice, for the server to sum",
+       multi.rows.filter((r) => r.symbol === "NVDA").length, 2);
+    const merged = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: multi.rows, source: "csv" }) })).json();
+    eq("and the two NVDA lines become one holding",
+       merged.portfolio.holdings.filter((h) => h.symbol === "NVDA").length, 1);
+    eq("worth the sum of both", merged.portfolio.total_value, 5600);
+
     /* The footer rule must not eat real rows: a two-column file's data rows are
        also "narrow", and stripping them left "header row only — no holdings". */
     const narrow = parse("symbol,market_value\nNVDA,3600\nCASH,1050");
