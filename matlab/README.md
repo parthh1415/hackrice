@@ -121,7 +121,7 @@ In MATLAB Online:
 
 3. Download `solve_out.json` back into `data/cache/`
 
-Reload the app and press `7`. The card now reads **MATLAB · patternsearch** with
+Reload the app and press `8` for the Model page. The card now reads **MATLAB · patternsearch** with
 the real evaluation count, exit flag and wall time. (`engine_label` and
 `solve_stabilisation` in `src/firebreak/matlab_bridge.py` pick between three
 paths — `matlab`, `matlab-offline`, `python` — and the UI is told which one
