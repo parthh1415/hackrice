@@ -431,8 +431,8 @@ MUTATIONS = {
         "  const xm = cx(jN) + 14;\n  const ym = cy(iN) + 14;"),
     "boundary_colour_ignores_the_value": (
         "web/boundary.html",
-        "const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];",
-        "const fillFor = (a) => BANDS[2][1];"),
+        "const bandOf = (a) => BANDS.findIndex(([hi]) => a < hi);",
+        "const bandOf = (a) => 2;"),
     "fidelity_footer_eats_data": (
         "web/index.html",
         "    return n < head.length && n <= Math.max(2, head.length / 3);",

@@ -4,54 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Boundary · Firebreak</title>
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status">LIMIT <b id="navLimit">—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8">
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 6 — Systemic boundary</span>
+<body class="shell">
+<main class="col">
+    <header>
       <h1 id="title">Where the system stops absorbing</h1>
       <p class="lede" id="lede">—</p>
-      <p class="lede" id="clampNote" hidden style="color:var(--warn)"></p>
-    </div>
+      <p class="small muted" id="clampNote" hidden></p>
+    </header>
 
     <!-- five tiles do not fit in a 522px column: they wrapped to two rows and
          left one tile alone on the second. The strip spans both cards. -->
     <div class="card" id="statCard" hidden><div class="stats" id="stats"></div></div>
 
-    <div class="grid-2" id="board" style="grid-template-columns:minmax(0,522px) minmax(0,1fr);align-items:start" hidden>
+    <div class="board" id="board" hidden>
       <div class="card">
         <div class="card-header">
           <!-- nowrap: the title wrapped at rest and un-wrapped on hover (the
      readout is shorter), so the map, legend and footer jumped 16px
      under the cursor and back again on leave. -->
-          <span class="card-title" id="mapTitle" style="white-space:nowrap">Amplification</span>
-          <span class="sub num" id="readout" style="margin-left:auto;white-space:nowrap"></span>
+          <span class="card-title nowrap" id="mapTitle">Amplification</span>
+          <span class="sub num readout" id="readout"></span>
         </div>
         <div class="card-body tight">
-          <svg class="map" id="map" viewBox="0 0 520 500" tabindex="0" role="img"
-               aria-label="Heatmap of amplification by leverage and crowding. The table beside it lists the same values."></svg>
+          <!-- §5: the cells are painted into a 2D context; the axes, the
+               contour, the marker and the hover box stay in SVG on top of it,
+               where text is text and lines are lines. -->
+          <div class="map-stack">
+            <canvas class="map-cells" id="mapCells" width="1040" height="1000" aria-hidden="true"></canvas>
+            <svg class="map" id="map" viewBox="0 0 520 500" tabindex="0" role="img"
+                 aria-label="Heatmap of amplification by leverage and crowding. The table beside it lists the same values."></svg>
+          </div>
         </div>
         <div class="card-footer small muted" id="legend"></div>
         <div class="card-footer small muted" id="mapDesc"></div>
@@ -75,27 +60,45 @@
         <span class="card-desc" id="caveatDesc"></span></div>
       <div class="card-body tight"><table><tbody id="caveats"></tbody></table></div>
     </div>
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
 <script>
-paintNav("boundary");
-paintStatusBar("boundary", [["↑ ↓ ← →", "cell"]]);
+paintShell("boundary");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 
-/* One hue, lightness carrying the reading. Amber is already this product's
-   word for contagion — the analysis page's "from contagion" column is
-   var(--warn) — so the map borrows it rather than inventing a scale. Red and
-   green stay reserved: red is a breach, green is within limit, and a heatmap
-   that spent them here would make every other page's colours ambiguous. */
+/* The sequential ramp from tokens.css, §2 — paper at no amplification,
+   through to the darkest stop where the system is worst. Read off the custom
+   properties rather than copied here, so §7's rule holds: there is no raw hex
+   outside tokens.css, including inside a canvas call.
+
+   Six bands for six stops, and 1.5 is deliberately one of the edges — it is
+   the threshold the contour is drawn at and the one the tiles count against,
+   so a colour change happens exactly where the line does. */
+const RAMP = (() => {
+  const css = getComputedStyle(document.documentElement);
+  return [0, 1, 2, 3, 4, 5].map((i) => css.getPropertyValue(`--ramp-${i}`).trim());
+})();
 const BANDS = [
-  [1.0005, "#111111", "1.00"],
-  [1.5,    "#603800", "1.00–1.49"],
-  [2.0,    "#a46400", "1.50–1.99"],
-  [2.5,    "#ea9602", "2.00–2.49"],
-  [1e9,    "#ffd083", "≥ 2.50"],
+  [1.0005, 0, "1.00"],
+  [1.25,   1, "1.00–1.24"],
+  [1.5,    2, "1.25–1.49"],
+  [2.0,    3, "1.50–1.99"],
+  [2.5,    4, "2.00–2.49"],
+  /* Unbounded, and written as such. 1e9 was a stand-in for "no upper edge" and
+     it is not one: a lookup of the band's own edge falls off the end of the
+     list, because 1e9 < 1e9 is false. */
+  [Infinity, 5, "≥ 2.50"],
 ];
-const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
+/* Which band a value falls in. Split out from the colour lookup on purpose:
+   this is the half that can be wrong, and it is pure — no CSS, no DOM — so the
+   harness can run it over every value in a real grid. RAMP[k] after it is an
+   array index. */
+const bandOf = (a) => BANDS.findIndex(([hi]) => a < hi);
+
+/* The single mapping from a value to a colour. The painter uses it and the
+   legend uses it, so a cell and its key cannot disagree. */
+const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
 
 (async () => {
   const P = (FB.state.result && FB.state.result.params) || {};
@@ -135,7 +138,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     : `As filed, the ${nFunds} books overlap ${here.overlap.toFixed(2)} and absorb a ` +
       `${shockPct.toFixed(2)}% ${asset} shock up to ${levs[Math.max(0, iC - 1)].toFixed(2)}× leverage ` +
       `and amplify it ${col[iC].toFixed(2)}× at ${levs[iC].toFixed(2)}×. Every cell is a full cascade ` +
-      `at that fixed shock; the white line is where amplification crosses 1.5×.`;
+      `at that fixed shock; the line is where amplification crosses 1.5×.`;
 
   document.getElementById("mapTitle").textContent = `${asset} −${shockPct.toFixed(2)}%, everywhere`;
   document.getElementById("mapDesc").textContent =
@@ -153,10 +156,27 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
      "worse" in. */
   const cy = (i) => Y1 - PITCH * (i + 1);
 
-  grid.forEach((row, i) => row.forEach((a, j) => {
-    svg.appendChild(mk("rect", { x: cx(j) + 0.5, y: cy(i) + 0.5, width: PITCH - 1, height: PITCH - 1,
-      fill: fillFor(a), "data-i": i, "data-j": j }));
-  }));
+  /* §5: rects in a 2D context. The backing store is twice the drawing size so
+     the cell edges stay sharp; everything below is written in the SVG's own
+     520x500 coordinates, which is also what the hit test reads. */
+  const cvs = document.getElementById("mapCells");
+  const ctx = cvs.getContext && cvs.getContext("2d");
+  if (ctx) {
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.clearRect(0, 0, 520, 500);
+    grid.forEach((row, i) => row.forEach((a, j) => {
+      ctx.fillStyle = fillFor(a);
+      ctx.fillRect(cx(j) + 0.5, cy(i) + 0.5, PITCH - 1, PITCH - 1);
+    }));
+  } else {
+    /* jsdom, and any browser with canvas switched off. The table beside the
+       map carries every one of these numbers, so say that rather than leave a
+       blank rectangle under a heading promising a map. */
+    const note = document.getElementById("mapDesc");
+    if (note) note.textContent =
+      "This browser did not provide a drawing context, so the map is not painted. " +
+      "Every value it would show is in the table beside it.";
+  }
 
   /* The 1.5x line, drawn on cell EDGES. Marching squares would interpolate a
      curve between cells the model never computed, on a page whose own header
@@ -166,33 +186,33 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     for (let j = 0; j < ovs.length - 1; j++)
       if (over(i, j) !== over(i, j + 1))
         svg.appendChild(mk("line", { x1: cx(j + 1), x2: cx(j + 1), y1: cy(i), y2: cy(i) + PITCH,
-          stroke: "#d9d9d9", "stroke-width": 1.5, "stroke-linecap": "square", "pointer-events": "none" }));
+          class: "bd-contour", "stroke-linecap": "square", "pointer-events": "none" }));
   for (let i = 0; i < grid.length - 1; i++)
     for (let j = 0; j < ovs.length; j++)
       if (over(i, j) !== over(i + 1, j))
         svg.appendChild(mk("line", { y1: cy(i), y2: cy(i), x1: cx(j), x2: cx(j) + PITCH,
-          stroke: "#d9d9d9", "stroke-width": 1.5, "stroke-linecap": "square", "pointer-events": "none" }));
+          class: "bd-contour", "stroke-linecap": "square", "pointer-events": "none" }));
 
   levs.forEach((l, i) => {
     const t = mk("text", { x: X0 - 5, y: cy(i) + 17.5, "text-anchor": "end",
-      "font-family": "var(--mono)", "font-size": 10, fill: "#808080" });
+      class: "bd-tick" });
     t.textContent = l.toFixed(1); svg.appendChild(t);
   });
   const yt = mk("text", { x: 14, y: 234, "text-anchor": "middle", transform: "rotate(-90 14 234)",
-    "font-family": "var(--mono)", "font-size": 10, fill: "#808080", "letter-spacing": ".08em" });
-  yt.textContent = "GROSS LEVERAGE λ →"; svg.appendChild(yt);
+    class: "bd-axis" });
+  yt.textContent = "Gross leverage λ"; svg.appendChild(yt);
 
   ovs.forEach((o, j) => {
-    svg.appendChild(mk("line", { x1: cx(j) + 14, x2: cx(j) + 14, y1: Y1, y2: Y1 + 4, stroke: "#262626" }));
+    svg.appendChild(mk("line", { x1: cx(j) + 14, x2: cx(j) + 14, y1: Y1, y2: Y1 + 4, class: "bd-rule" }));
     /* every column would collide at this pitch — 0.99 beside 1.00 */
     if (![0, 2, 4, 6, 8, 10, 12, ovs.length - 1].includes(j)) return;
     const t = mk("text", { x: cx(j) + 14, y: 474, "text-anchor": "middle",
-      "font-family": "var(--mono)", "font-size": 10, fill: "#808080" });
+      class: "bd-tick" });
     t.textContent = o.toFixed(2); svg.appendChild(t);
   });
   const xt = mk("text", { x: 280, y: 492, "text-anchor": "middle",
-    "font-family": "var(--mono)", "font-size": 10, fill: "#808080", "letter-spacing": ".08em" });
-  xt.textContent = "MEAN PAIRWISE OVERLAP (COSINE) →"; svg.appendChild(xt);
+    class: "bd-axis" });
+  xt.textContent = "Mean pairwise overlap (cosine)"; svg.appendChild(xt);
 
   /* "You are here", placed by VALUE. The real book is not a grid point —
      5.0x sits between two rows and 0.7117 between two columns — so snapping it
@@ -208,24 +228,24 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
   const ym = between(levs, here.leverage, (k, t) => cy(k) + 14 - PITCH * t);
   [[X0, ym, xm - 9, ym], [xm + 9, ym, X0 + PITCH * ovs.length, ym],
    [xm, 10, xm, ym - 9], [xm, ym + 9, xm, Y1]].forEach(([x1, y1, x2, y2]) =>
-    svg.appendChild(mk("line", { x1, y1, x2, y2, stroke: "var(--accent)", "stroke-opacity": .4,
-      "stroke-width": 1, "stroke-dasharray": "2 3", "pointer-events": "none" })));
-  svg.appendChild(mk("circle", { cx: xm, cy: ym, r: 5.5, fill: "none",
-    stroke: "var(--accent)", "stroke-width": 1.5 }));
-  svg.appendChild(mk("circle", { cx: xm, cy: ym, r: 1.5, fill: "var(--accent)" }));
+    svg.appendChild(mk("line", { x1, y1, x2, y2, class: "bd-crosshair" })));
+  /* §5: a small ink cross. It was a cyan ring, and there is no cyan any more —
+     nor any second colour for it to be. */
+  svg.appendChild(mk("line", { x1: xm - 6, y1: ym, x2: xm + 6, y2: ym, class: "bd-here" }));
+  svg.appendChild(mk("line", { x1: xm, y1: ym - 6, x2: xm, y2: ym + 6, class: "bd-here" }));
   /* The label sits over its own dashed crosshair and over the brightest cells
      on the map, so it needs a ground of its own. getBBox() is the obvious way
      to size that ground and it returns zeros here — the text has not been laid
      out at the moment it is appended — so the plate is measured from the
      string instead: 10px of this mono face is 6px per character, which is
      exact for a monospace and needs no layout to be true. */
-  const text = `AS FILED · λ ${here.leverage.toFixed(1)} · overlap ${here.overlap.toFixed(2)}`;
+  /* §6: no ALL-CAPS labels. */
+  const text = `As filed — λ ${here.leverage.toFixed(1)}, overlap ${here.overlap.toFixed(2)}`;
   const w = text.length * 6, right = xm > 300;
   const lx = right ? xm - 12 - w : xm + 12;
   svg.appendChild(mk("rect", { x: lx - 4, y: ym - 19, width: w + 8, height: 15,
-    fill: "#000", "fill-opacity": .88, "pointer-events": "none" }));
-  const lbl = mk("text", { x: lx, y: ym - 8, "font-family": "var(--mono)", "font-size": 10,
-    fill: "var(--accent)", "pointer-events": "none" });
+    class: "bd-plate" }));
+  const lbl = mk("text", { x: lx, y: ym - 8, class: "bd-here-label" });
   lbl.textContent = text;
   svg.appendChild(lbl);
 
@@ -233,22 +253,40 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
   /* cyan, not white: white at 1px was indistinguishable from the 1.5x
      contour line, so hovering a cell ON the boundary showed nothing.
      Cyan is "current" everywhere else, which is what a hover is. */
-  const hl = mk("rect", { fill: "none", stroke: "var(--accent)", "stroke-width": 1.5,
-    "pointer-events": "none", width: PITCH - 1, height: PITCH - 1, x: -99, y: -99 });
+  const hl = mk("rect", { class: "bd-hover", width: PITCH - 1, height: PITCH - 1,
+    x: -99, y: -99 });
   svg.appendChild(hl);
   const readout = document.getElementById("readout");
+  /* §5 wants the exact knob values and the value under the cursor, in mono, in
+     a readout that does not move. It lives in the card header, which is why
+     both it and the title are nowrap: the header used to re-wrap as the string
+     changed length and the whole map jumped 16px under the cursor. */
   const say = (i, j, tail) => {
-    readout.textContent = `λ ${levs[i].toFixed(2)}× · overlap ${ovs[j].toFixed(2)} · ` +
-      `${grid[i][j].toFixed(2)}×${tail || ""}`;
+    readout.textContent = `λ ${levs[i].toFixed(2)}×   overlap ${ovs[j].toFixed(2)}   ` +
+      `amplification ${grid[i][j].toFixed(2)}×${tail || ""}`;
     hl.setAttribute("x", cx(j) + 0.5); hl.setAttribute("y", cy(i) + 0.5);
   };
   let ci = iN, cj = jN;
-  const home = () => say(iN, jN, " · as filed");
+  const home = () => say(iN, jN, "   (as filed)");
   home();
+  /* The cells are painted, so there is nothing to be the event target any
+     more. cellAt maps a pointer position to a grid index using the same X0,
+     Y1 and PITCH the painter used — one geometry, read forwards to draw and
+     backwards to hit-test, so the two cannot drift apart. */
+  const cellAt = (clientX, clientY) => {
+    const box = svg.getBoundingClientRect();
+    if (!box.width || !box.height) return null;
+    const x = (clientX - box.left) * (520 / box.width);
+    const y = (clientY - box.top) * (500 / box.height);
+    const j = Math.floor((x - X0) / PITCH);
+    const i = Math.floor((Y1 - y) / PITCH);
+    if (i < 0 || i >= levs.length || j < 0 || j >= ovs.length) return null;
+    return [i, j];
+  };
   svg.addEventListener("mousemove", (ev) => {
-    const t = ev.target;
-    if (!t || t.dataset.i === undefined) return;
-    ci = +t.dataset.i; cj = +t.dataset.j; say(ci, cj);
+    const at = cellAt(ev.clientX, ev.clientY);
+    if (!at) return;
+    ci = at[0]; cj = at[1]; say(ci, cj);
   });
   svg.addEventListener("mouseleave", () => { ci = iN; cj = jN; home(); });
   bindKeys("boundary", {
@@ -273,7 +311,7 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     ["Critical leverage",
       iC < 0 ? `none to ${levs[levs.length - 1].toFixed(1)}×` : `${levs[iC].toFixed(2)}×`,
       iC < 0 ? "the shock is absorbed at every row tested"
-             : `${levs[Math.max(0, iC - 1)].toFixed(2)}× ${col[Math.max(0, iC - 1)].toFixed(2)}× → ${levs[iC].toFixed(2)}× ${col[iC].toFixed(2)}×`, ""],
+             : `${levs[Math.max(0, iC - 1)].toFixed(2)}× gives ${col[Math.max(0, iC - 1)].toFixed(2)}×, ${levs[iC].toFixed(2)}× gives ${col[iC].toFixed(2)}×`, ""],
     ["Leverage headroom",
       headroom === null ? "—" : `${headroom >= 0 ? "+" : "−"}${Math.abs(headroom).toFixed(2)}×`,
       `resolved to one grid step, ${step.toFixed(2)}×`,
@@ -286,11 +324,19 @@ const fillFor = (a) => BANDS.find(([hi]) => a < hi)[1];
     `<div class="stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div><div class="s">${s}</div></div>`
   ).join("");
 
+  /* The key reads its colours through fillFor, the same function that painted
+     the cells. A legend with its own copy of the ramp is a legend that can be
+     wrong about the map beside it. */
   document.getElementById("legend").innerHTML =
-    BANDS.map(([, fill, label]) =>
-      `<span><i class="swatch" style="background:${fill}"></i>${label}</span>`).join("") +
-    `<span><i class="swatch" style="background:#d9d9d9;height:2px"></i>1.5× line</span>` +
-    `<span><i class="swatch" style="background:none;border:1.5px solid var(--accent);border-radius:50%"></i>as filed</span>`;
+    /* Each swatch asks fillFor for the colour of a value INSIDE its own band,
+       which is its lower edge — the previous band's upper one. Asking with the
+       band's own upper edge is the one value guaranteed to land in the next
+       band along, and on the last band it lands nowhere at all. */
+    BANDS.map(([, , label], k) =>
+      `<span><i class="swatch" style="background:${fillFor(k === 0 ? 1.0 : BANDS[k - 1][0])}"></i>${label}</span>`).join("") +
+    `<span><i class="swatch swatch-line"></i>1.5× line</span>` +
+    `<span><i class="swatch swatch-here"><svg viewBox="0 0 12 12" aria-hidden="true">` +
+    `<path d="M1 6h10M6 1v10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></i>as filed</span>`;
 
   /* ── the table, which is the key ─────────────────────────────────────── */
   document.getElementById("atCol").textContent = `At ${ovs[jN].toFixed(2)}`;

@@ -770,22 +770,61 @@ function visibleText(d) {
        rather than out of the drawing. */
     const bd = await load("boundary.html", store);
     check("boundary.html runs clean", bd.errors.length === 0, bd.errors.join("; "));
-    const drew = await until(() => bd.d.querySelectorAll("#map rect[data-i]").length > 0);
+    /* The cells are painted into a canvas now, per §5, so the axes are what
+       says the drawing ran. */
+    const drew = await until(() => bd.d.querySelectorAll("#map text.bd-tick").length > 0);
     check("the map draws", drew, bd.navigated.join(",") || "");
 
     const kp = full.params;
     const b = await (await fetch(ORIGIN +
       `/api/boundary?leverage=${kp.leverage}&gamma=${kp.gamma}&band=${kp.band}`)).json();
-    const cells = [...bd.d.querySelectorAll("#map rect[data-i]")];
-    eq("one cell per computed pair", cells.length, b.grid.length * b.overlap_axis.length);
 
-    /* the fill IS the reading, so it has to follow the value */
-    const band = (a) => a < 1.0005 ? "#111111" : a < 1.5 ? "#603800"
-      : a < 2.0 ? "#a46400" : a < 2.5 ? "#ea9602" : "#ffd083";
-    const wrong = cells.filter((c) =>
-      c.getAttribute("fill") !== band(b.grid[+c.dataset.i][+c.dataset.j]));
-    check("every cell's colour matches its own amplification", wrong.length === 0,
-          wrong.slice(0, 3).map((c) => `[${c.dataset.i},${c.dataset.j}] ${c.getAttribute("fill")}`).join(" "));
+    /* WHAT THIS COVERS, AND WHAT IT NO LONGER CAN.
+       This used to read the fill attribute off 256 <rect>s and compare each to
+       its own amplification — the fill IS the reading, so that was the check
+       that mattered most on this page. Canvas has no elements to read, and
+       jsdom has no 2D context to sample, so that exact check is not available
+       here any more.
+       What is checked instead is the half that can actually be wrong: which
+       BAND a value lands in. bandOf is pure and is the only thing standing
+       between a number and its colour — RAMP[k] after it is an array index —
+       so it is run over every value in a real grid. That the painter then
+       called fillRect is verified by eye and by pixel sampling in a real
+       browser, not here; do not read the checks below as proof that anything
+       was painted. */
+    const src = fs.readFileSync(path.join(WEB, "boundary.html"), "utf8");
+    const m = src.match(/const BANDS = \[[\s\S]*?\];/);
+    const f = src.match(/const bandOf = [^;]+;/);
+    check("the band table and its lookup are still where this reads them", !!m && !!f);
+    const sandbox = {};
+    new Function("exports", `${m[0]}\n${f[0]}\nexports.BANDS = BANDS; exports.bandOf = bandOf;`)(sandbox);
+    const { BANDS, bandOf } = sandbox;
+
+    eq("six bands for the six ramp stops", BANDS.length, 6);
+    check("the last band is unbounded, so no value falls off the end",
+          BANDS[BANDS.length - 1][0] === Infinity, String(BANDS[BANDS.length - 1][0]));
+    check("1.5 is a band edge, so the colour changes where the contour is drawn",
+          BANDS.some(([hi]) => hi === 1.5));
+    check("the bands are in ascending order",
+          BANDS.every((x, i) => i === 0 || x[0] > BANDS[i - 1][0]));
+
+    const flatGrid = b.grid.flat();
+    const misbanded = flatGrid.filter((a) => {
+      const k = bandOf(a);
+      if (k < 0) return true;
+      const lo = k === 0 ? -Infinity : BANDS[k - 1][0];
+      return !(a >= lo && a < BANDS[k][0]);
+    });
+    check("every computed amplification lands in the band that contains it",
+          misbanded.length === 0, misbanded.slice(0, 3).join(" "));
+    /* A mapping that puts everything in one band would satisfy the above and
+       draw a flat rectangle. The grid genuinely spans the threshold, so the
+       colours have to as well. */
+    const used = new Set(flatGrid.map(bandOf));
+    check("and the grid actually spans more than one band", used.size > 1,
+          `bands used: ${[...used].sort().join(",")}`);
+    check("a cell under 1.5x and a cell over it are never the same colour",
+          bandOf(1.49) !== bandOf(1.5));
 
     /* the readings down the column the real books actually sit in */
     const jN = b.overlap_axis.reduce((k, o, j) =>
@@ -827,19 +866,29 @@ function visibleText(d) {
     for (let i = 0; i < b.grid.length - 1; i++)
       for (let j = 0; j < b.overlap_axis.length; j++)
         if ((b.grid[i][j] >= 1.5) !== (b.grid[i + 1][j] >= 1.5)) crossings++;
-    const contour = [...bd.d.querySelectorAll("#map line")]
-      .filter((l) => (l.getAttribute("stroke") || "") === "#d9d9d9");
+    /* By class, not by stroke value — the same lesson the cascade page's flow
+       edges taught: a correctness check tied to a hex literal breaks on a
+       recolour and says nothing about correctness when it does. */
+    const contour = [...bd.d.querySelectorAll("#map line.bd-contour")];
     eq("one contour segment per edge the threshold actually crosses",
        contour.length, crossings);
 
     /* the marker is placed by value: 5.0x is not a row and 0.7117 is not a
        column, so snapping it to the nearest cell would put it where the books
        are not. */
-    const marker = [...bd.d.querySelectorAll("#map circle")]
-      .find((c) => c.getAttribute("r") === "5.5");
-    check("the map marks where the books actually are", !!marker);
-    if (marker) {
-      const my = Number(marker.getAttribute("cy"));
+    /* §5 asks for a small ink cross, which is two lines rather than a ring. */
+    const marker = [...bd.d.querySelectorAll("#map line.bd-here")];
+    eq("the map marks where the books actually are, with a cross", marker.length, 2);
+
+    /* §0: a browser with no 2D context must say so rather than leave a blank
+       rectangle under a heading promising a map. jsdom is exactly that
+       browser, which makes this the one place it can be checked. */
+    has("and says so when it cannot paint the cells",
+        txt(bd.d, "mapDesc"), "not painted");
+    if (marker.length === 2) {
+      /* The horizontal arm of the cross is drawn first, so its y IS the
+         marker's y. It used to be a circle's cy. */
+      const my = Number(marker[0].getAttribute("y1"));
       const rowY = (i) => 458 - 28 * (i + 1) + 14;
       const iLo = b.leverage_axis.findIndex((l) => l > b.here.leverage) - 1;
       check("and places it between two rows rather than on one",

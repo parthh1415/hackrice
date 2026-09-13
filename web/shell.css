@@ -416,6 +416,53 @@ table.pairs td:first-child { color: var(--ink-mid); }
 .transport { display: inline-flex; gap: var(--s2); margin-left: auto; }
 .btn-sm { padding: var(--s1) var(--s3); font-size: var(--t-micro); }
 
+/* ---------- the boundary map (§5) ---------- */
+
+/* Two layers in one box: cells painted into a 2D context underneath, and the
+   axes, contour, marker and hover box in SVG on top, where text stays text. */
+/* Stacked, not side by side. The content column caps at 1040px and the map is
+   522 of it, which left the row table about 420 — it clipped its own last
+   column and scrolled it out of sight inside the panel. The table is the map's
+   key and has to be readable, so it goes underneath at full width. */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s7);
+}
+.board > .card:first-child { max-width: 552px; }
+.map-stack { position: relative; }
+.map-cells { position: absolute; inset: 0; width: 100%; height: 100%; }
+.map { position: relative; width: 100%; height: auto; display: block; }
+.map:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* Drawn on cell edges, not interpolated between them. */
+.bd-contour { stroke: var(--ink); stroke-width: 1.5; stroke-linecap: square; pointer-events: none; }
+
+.bd-tick { fill: var(--ink-mid); font-family: var(--font-num); font-size: var(--t-micro); }
+.bd-axis { fill: var(--ink-mid); font-family: var(--font-ui); font-size: var(--t-micro); }
+.bd-rule { stroke: var(--rule); }
+
+/* "You are here", placed by value rather than snapped to a cell. */
+.bd-crosshair { stroke: var(--ink); stroke-opacity: .35; stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
+.bd-here { stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.bd-plate { fill: var(--paper-raised); fill-opacity: .92; pointer-events: none; }
+.bd-here-label { fill: var(--ink); font-family: var(--font-num); font-size: var(--t-micro); pointer-events: none; }
+
+.bd-hover { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+
+/* The readout must not move. Both it and the title are nowrap so the header
+   cannot re-wrap as the string changes length under the cursor. */
+.nowrap { white-space: nowrap; }
+.readout { margin-left: auto; white-space: nowrap; }
+
+#legend, #mapDesc { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
+#legend span { display: inline-flex; align-items: center; gap: var(--s1); }
+.swatch { display: inline-block; width: var(--s4); height: var(--s3); }
+.swatch-line { height: 2px; background: var(--ink); }
+/* The same cross the map marks the filed books with. */
+.swatch-here { background: none; color: var(--ink); width: var(--s3); }
+.swatch-here svg { display: block; width: 100%; height: 100%; }
+
 /* ---------- buttons ---------- */
 
 .btn {
