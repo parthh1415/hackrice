@@ -1,5 +1,5 @@
 {
-  "name": "firebreak-ui-tests",
+  "name": "minima-ui-tests",
   "private": true,
   "description": "jsdom harness for the six pages in web/. node_modules is gitignored, so run `npm install` here once after cloning. Needs a server on 8765.",
   "scripts": {

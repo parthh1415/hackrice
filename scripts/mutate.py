@@ -40,54 +40,54 @@ COPY = ["src", "tests", "data", "web", "matlab", "docs", "scripts",
 # name -> (path, exact text to find, what to put there)
 MUTATIONS = {
     "prune_unsound": (
-        "src/firebreak/stabilise.py",
+        "src/minima/stabilise.py",
         "floor_cost = position * (step - 1) / _STEPS / total",
         "floor_cost = position * step / _STEPS / total"),
     "depth_absolute": (
-        "src/firebreak/stabilise.py",
+        "src/minima/stabilise.py",
         "while hi - lo > max(floor, _DEPTH_RTOL * hi):",
         "while hi - lo > 0.002:"),
     # the floor taking over from the relative bound: 1e-7 as a fraction of a
     # position is what silently overstated the cut by 5.1% at settings the
     # sliders ship with.
     "depth_floor_is_a_fraction_again": (
-        "src/firebreak/stabilise.py",
+        "src/minima/stabilise.py",
         "                floor = _DEPTH_FLOOR_USD / position if position > 0 else _DEPTH_RTOL",
         "                floor = 1e-7"),
     "report_grid_point": (
-        "src/firebreak/stabilise.py",
+        "src/minima/stabilise.py",
         "candidate = Fix(fund, asset, hi, position * hi / total)",
         "candidate = Fix(fund, asset, reduction, position * reduction / total)"),
     "vwap_to_book": (
-        "src/firebreak/engine.py",
+        "src/minima/engine.py",
         "execution = (before + after) / 2.0  # round VWAP",
         "execution = before"),
     "insolvent_false": (
-        "src/firebreak/engine.py",
+        "src/minima/engine.py",
         '"insolvent": [bool(np.isinf(x)) for x in lev]',
         '"insolvent": [False for x in lev]'),
     "measurable_never": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "return delta is not None and abs(delta) > resolution",
         "return False"),
     "measurable_always": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "return delta is not None and abs(delta) > resolution",
         "return delta is not None"),
     "resolution_halved": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "resolution = 2.0 * _SEARCH_TOLERANCE * 100.0",
         "resolution = _SEARCH_TOLERANCE * 100.0"),
     "search_tol_loose": (
-        "src/firebreak/search.py",
+        "src/minima/search.py",
         "DEFAULT_TOLERANCE = 0.00005",
         "DEFAULT_TOLERANCE = 0.0005"),
     "sell_usd_wrong": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         'sell_usd=float(scenario["holdings"][fix.fund, fix.asset] * fix.reduction)',
         'sell_usd=float(scenario["holdings"][fix.fund, fix.asset] * fix.reduction * 1.01)'),
     "gross_usd_wrong": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         'gross_usd=float(scenario["holdings"].sum())',
         'gross_usd=float(scenario["holdings"].sum() * 1.02)'),
 
@@ -104,24 +104,24 @@ MUTATIONS = {
         '"02079K30": "GOOGL",',
         '"02079K3": "GOOGL",'),
     "adv_units_thousands": (
-        "src/firebreak/dataset.py",
+        "src/minima/dataset.py",
         "_MILLION = 1_000_000.0",
         "_MILLION = 1_000.0"),
 
     "ds_missing_manager_ok": (
-        "src/firebreak/dataset.py",
+        "src/minima/dataset.py",
         "    if missing:\n        raise RuntimeError(",
         "    if False:\n        raise RuntimeError("),
     "ds_mixed_periods_ok": (
-        "src/firebreak/dataset.py",
+        "src/minima/dataset.py",
         "    if len(distinct) > 1:",
         "    if False:"),
     "near_enough_wide": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "_NEAR_ENOUGH = 0.25 ** 2",
         "_NEAR_ENOUGH = 16.0"),
     "near_enough_110": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "_NEAR_ENOUGH = 0.25 ** 2",
         "_NEAR_ENOUGH = 110.0"),
     "cusip_jpm_typo": (
@@ -129,7 +129,7 @@ MUTATIONS = {
         '"46625H10": "JPM"',
         '"46625H20": "JPM"'),
     "restatement_ignored": (
-        "src/firebreak/thirteenf.py",
+        "src/minima/thirteenf.py",
         'if form not in ("13F-HR", "13F-HR/A"):',
         'if form != "13F-HR":'),
 
@@ -137,70 +137,70 @@ MUTATIONS = {
     # mutation that changes it — because a test that has never been red is a
     # test nobody has checked.
     "pm_observer_ignores_weights": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    return float(1.0 - (float(np.dot(vector, prices)) + cash))",
         "    return float(1.0 - (float(np.dot(vector, prices)) * 1.05 + cash))"),
     "pm_predicate_is_strict": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    return lambda result: portfolio_loss(vector, cash, result.prices) >= limit",
         "    return lambda result: portfolio_loss(vector, cash, result.prices) > limit * 1.5"),
     "pm_fix_has_no_margin": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    target = limit * (1.0 - margin)",
         "    target = limit"),
     "pm_cut_loses_the_money": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    return out, cash + moved",
         "    return out, cash"),
     "pm_validation_uses_two_cascades": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '    after_loss = portfolio_loss(after["vector"], after["cash"], result.prices)',
         '    after_loss = portfolio_loss(after["vector"], after["cash"], result.prices) * 0.5'),
     "pm_synthetic_draws_differ": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         "    rng = np.random.default_rng(seed)",
         "    rng = np.random.default_rng()"),
     "pm_historical_invents_a_number": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '        "available": False,',
         '        "available": True, "worst_loss": 0.182,'),
 
     "pm_fix_dollars_inflated": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '"dollars": fix["weight_moved"] * total,',
         '"dollars": fix["weight_moved"] * total * 1.35,'),
     "pm_direct_is_scaled_cascade": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "    direct = portfolio_loss(vector, cash, 1.0 + found.shock)",
         "    direct = portfolio_loss(vector, cash, result.prices) * 0.5"),
     "pm_newbreak_derived": (
-        "src/firebreak/validate.py",
-        '    now = find_portfolio_firebreak(after["vector"], after["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)',
-        '    now = find_portfolio_firebreak(before["vector"], before["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)'),
+        "src/minima/validate.py",
+        '    now = find_portfolio_breakpoint(after["vector"], after["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)',
+        '    now = find_portfolio_breakpoint(before["vector"], before["cash"], limit,\n                                   holdings=holdings, **cascade_kwargs)'),
     "pm_after_scored_with_before": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '        after_losses.append(portfolio_loss(after["vector"], after["cash"], result.prices))',
         '        after_losses.append(portfolio_loss(before["vector"], before["cash"], result.prices))'),
     "pm_p95_is_p50": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '        "p95_loss": float(np.percentile(a, 95)),',
         '        "p95_loss": float(np.percentile(a, 50)),'),
     "pm_worst_is_mean": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '        "worst_loss": float(a.max()),',
         '        "worst_loss": float(a.mean()),'),
     "pm_empty_upload_is_demo": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '    if "holdings" not in body or body["holdings"] is None:',
         "    if not body.get('holdings'):"),
 
     "pm_fix_first_feasible": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "        if best is None or moved < best[0]:",
         "        if best is None:"),
 
     "pm_unknown_symbol_dropped": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    if unknown:\n        raise UnknownSymbol(unknown, tickers)",
         "    if False:\n        raise UnknownSymbol(unknown, tickers)"),
     # The anchor here used to be bare "    if total <= 0:", which str.replace
@@ -209,11 +209,11 @@ MUTATIONS = {
     # one it is named after, found nothing, and reported GREEN as if the
     # weight_vector check were untested. Anchor on the line above it.
     "pm_zero_value_scored": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "    total = portfolio.total_value\n    if total <= 0:",
         "    total = portfolio.total_value\n    if False:"),
     "pm_zero_weights_divide": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         "        total = self.total_value\n        if total <= 0:\n            return {}",
         "        total = self.total_value\n        if False:\n            return {}"),
     # NB: the first version of this commented out a line that had a
@@ -221,31 +221,31 @@ MUTATIONS = {
     # mutation "caught" it with 12 collection errors. A mutation that breaks
     # the build proves nothing about the suite.
     "pm_limit_clamped_silently": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "    used = min(max(value, lo), hi)\n    if used != value:",
         "    used = min(max(value, lo), hi)\n    if False:"),
     "pm_settles_at_the_close": (
-        "src/firebreak/engine.py",
+        "src/minima/engine.py",
         "        execution = (before + after) / 2.0  # round VWAP",
         "        execution = after  # round VWAP"),
     "pm_deleverages_too_far": (
-        "src/firebreak/engine.py",
+        "src/minima/engine.py",
         "            raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j], 0.0, assets[j]))",
         "            raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j] * 1.1, 0.0, assets[j]))"),
     "pm_hero_pct_inflated": (
-        "src/firebreak/search.py",
+        "src/minima/search.py",
         "        return abs(self.magnitude) * 100.0",
         "        return abs(self.magnitude) * 100.0 * 1.2"),
     "pm_moved_ratio_inverted": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         'out["moved_ratio"] = now.pct / was.pct if was.pct else None',
         'out["moved_ratio"] = was.pct / now.pct if now.pct else None'),
     "pm_shock_range_is_a_literal": (
-        "src/firebreak/validate.py",
+        "src/minima/validate.py",
         '        "shock_range_pct": [lo * 100.0, hi * 100.0],',
         '        "shock_range_pct": [1.0, 30.0],'),
     "pm_demo_serves_a_neighbours_answer": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '        if cached is not None and cached["cached_exact"]:',
         '        if cached is not None and cached["cached_near"]:'),
     # The whole parse, reverted to the state the bug was in. Mutating either
@@ -256,7 +256,7 @@ MUTATIONS = {
     # reported GREEN for exactly that reason; a permanently-green mutation is
     # noise in every future run, so it is gone rather than annotated.)
     "pm_inf_breaches_escapes_the_guard": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         """            value = float(raw)
             if value != value or value in (float("inf"), float("-inf")):
                 raise ValueError("not a finite number")
@@ -271,31 +271,31 @@ MUTATIONS = {
         """            wanted = int(float(raw))
         except (TypeError, ValueError):"""),
     "pm_magnitude_unbounded": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "    used = min(abs(wanted), 1.0)",
         "    used = abs(wanted)"),
     "pm_nameless_money_is_dropped": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         '            if value in (None, "", 0) and qty in (None, "", 0):\n                continue',
         "            continue"),
     "pm_nan_value_scored": (
-        "src/firebreak/portfolio.py",
+        "src/minima/portfolio.py",
         '        if value != value or value in (float("inf"), float("-inf")):\n            raise ValueError(f"{symbol}: market value {value} is not a finite number.")',
         "        pass"),
     "pm_cached_for_echoes_the_request": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '    used = payload.get("params")\n    payload["cached_for"] = ({k: v for k, v in used.items()\n                              if k in KNOBS.get(route, {})}\n                             if isinstance(used, dict) else _knobs(route, params))',
         '    payload["cached_for"] = _knobs(route, params)'),
     "pm_orphan_supplement_is_a_book": (
-        "src/firebreak/thirteenf.py",
+        "src/minima/thirteenf.py",
         '    if chosen and all(kind_of(r) == "NEW HOLDINGS" for r in chosen):',
         "    if False:"),
     "pm_dataset_reaches_for_the_network": (
-        "src/firebreak/dataset.py",
+        "src/minima/dataset.py",
         "    if CACHE.exists() and not refresh:",
         "    if False:"),
     "pm_boundary_cliff_flattened": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "_REF_SHOCK = -0.05",
         "_REF_SHOCK = -0.005"),
     # The WIRING, not the functions. validate.py and portfolio.py are well
@@ -303,31 +303,31 @@ MUTATIONS = {
     # not, and eleven of fifteen corruptions of those call sites left the suite
     # green. These four each put a wrong number on a screen.
     "pm_wiring_swaps_the_two_books": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '"synthetic": V.synthetic_stress(before, after,',
         '"synthetic": V.synthetic_stress(after, before,'),
     "pm_wiring_publishes_direct_prices": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '"prices": result.prices.tolist(),',
         '"prices": (1.0 + found.shock).tolist(),'),
     "pm_wiring_scores_a_looser_limit": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "V.synthetic_stress(before, after, n=400, limit=limit,",
         "V.synthetic_stress(before, after, n=400, limit=limit * 2,"),
     "pm_wiring_narrows_the_shock_range": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         "V.synthetic_stress(before, after, n=400, limit=limit,",
         "V.synthetic_stress(before, after, n=400, shock_range=(0.01, 0.05), limit=limit,"),
     "pm_exclusion_is_not_opt_in": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '        if not _truthy(params.get("exclude_unmodelled")) or not offer["can_exclude"]:',
         '        if not offer["can_exclude"]:'),
     "pm_exclusion_note_is_dropped": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '        "excluded_note": excluded_note,',
         '        "excluded_note": None,'),
     "pm_refusal_looks_like_a_null_result": (
-        "src/firebreak/api.py",
+        "src/minima/api.py",
         '            "found": False,\n            "refused": True,',
         '            "found": False,\n            "refused": False,'),
 
@@ -567,7 +567,7 @@ def build(name):
 def demo_payload(scratch):
     """The demo-path numbers, so an inert edit is distinguishable from a gap."""
     code = (
-        "import json;from firebreak import api;"
+        "import json;from minima import api;"
         "b=api.handle('/api/break?leverage=5&gamma=0.2&breaches=3',{});"
         "s=api.handle('/api/stabilise?leverage=5&gamma=0.2&breaches=3',{});"
         "print(json.dumps({'pct':b['pct'],'metrics':b['metrics'],'rounds':b['rounds'],"
@@ -575,7 +575,7 @@ def demo_payload(scratch):
     out = subprocess.run([sys.executable, "-c", code], cwd=scratch, text=True,
                          capture_output=True, env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin",
                                       # the anchor test is about THIS tree, not a mutant of it
-                                      "FIREBREAK_MUTANT": "1"})
+                                      "MINIMA_MUTANT": "1"})
     return (out.stdout or out.stderr).strip()
 
 
@@ -613,7 +613,7 @@ def main():
                                  cwd=scratch, text=True, capture_output=True,
                                  env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin",
                                       # the anchor test is about THIS tree, not a mutant of it
-                                      "FIREBREAK_MUTANT": "1"})
+                                      "MINIMA_MUTANT": "1"})
             tail = [l for l in run.stdout.splitlines() if l.startswith("FAILED")]
             summary = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else "no output"
             caught = run.returncode != 0

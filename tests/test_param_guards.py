@@ -10,7 +10,7 @@ clamp. So: clamp to the physically meaningful range, and SAY SO in the payload
 so nothing is silent.
 """
 
-from firebreak import api
+from minima import api
 
 
 def test_negative_impact_is_refused_not_modelled():

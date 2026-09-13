@@ -15,7 +15,7 @@ import time
 
 sys.path.insert(0, "src")
 
-from firebreak.dataset import CACHE, load_dataset
+from minima.dataset import CACHE, load_dataset
 
 if __name__ == "__main__":
     started = time.time()

@@ -1,6 +1,6 @@
 import numpy as np
 
-from firebreak.thirteenf import build_holdings, parse_info_table
+from minima.thirteenf import build_holdings, parse_info_table
 
 # trimmed-down version of a real infotable — namespaced, because that's
 # what SEC actually serves and it's what breaks naive XML parsing

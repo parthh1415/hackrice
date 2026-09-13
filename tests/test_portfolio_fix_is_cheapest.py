@@ -32,9 +32,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from firebreak.engine import run_cascade
-from firebreak.portfolio import (
-    FIX_MARGIN, cheapest_portfolio_fix, cut_to_cash, find_portfolio_firebreak,
+from minima.engine import run_cascade
+from minima.portfolio import (
+    FIX_MARGIN, cheapest_portfolio_fix, cut_to_cash, find_portfolio_breakpoint,
     normalise, portfolio_loss, weight_vector,
 )
 
@@ -96,7 +96,7 @@ def test_the_fix_is_the_cheapest_position_not_the_first_workable_one(
     vector, cash = weight_vector(portfolio, TICKERS)
     kw = scenario(leverage, gamma)
 
-    found = find_portfolio_firebreak(vector, cash, limit, **kw)
+    found = find_portfolio_breakpoint(vector, cash, limit, **kw)
     if found is None:
         pytest.skip("these settings do not break this portfolio")
 
@@ -133,7 +133,7 @@ def test_the_first_feasible_position_really_is_not_always_the_cheapest(monkeypat
     prices[TICKERS.index("AAPL")] = 0.90
     prices[TICKERS.index("MSFT")] = 0.30
     monkeypatch.setattr(
-        "firebreak.engine.run_cascade",
+        "minima.engine.run_cascade",
         lambda **_kwargs: SimpleNamespace(prices=prices),
     )
 

@@ -15,7 +15,7 @@
  * right.
  *
  *   npm --prefix tests/ui install                     # once
- *   PYTHONPATH=src python3 -m firebreak.server &
+ *   PYTHONPATH=src python3 -m minima.server &
  *   node tests/ui/pages.js
  */
 const { JSDOM } = require("jsdom");
@@ -90,10 +90,10 @@ async function load(file, store, query = "") {
   window.addEventListener("error", (e) => errors.push("error: " + e.message));
   window.onerror = (m) => errors.push("onerror: " + m);
 
-  /* Classic scripts share one global lexical environment, so `const FB` in
+  /* Classic scripts share one global lexical environment, so `const MN` in
      shared.js is visible to the page's own script. An indirect window.eval()
      per script does NOT reproduce that — each eval gets a fresh lexical scope
-     that is thrown away, and every page died on "FB is not defined". Joining
+     that is thrown away, and every page died on "MN is not defined". Joining
      them in document order is what the browser actually gives them. */
   const code = [...window.document.querySelectorAll("script")].map((s) => {
     const src = s.getAttribute("src");
@@ -102,7 +102,7 @@ async function load(file, store, query = "") {
   try { window.eval(code); }
   catch (e) { errors.push("throw: " + e.message); }
   return { window, d: window.document, errors, navigated,
-           dump: () => ({ fb: window.sessionStorage.getItem("fb") }) };
+           dump: () => ({ mn: window.sessionStorage.getItem("mn") }) };
 }
 
 const txt = (d, id) => { const n = d.getElementById(id); return n ? n.textContent.trim() : null; };
@@ -512,7 +512,7 @@ function visibleText(d) {
         `/api/cascade?asset=${one.asset}&magnitude=${Math.abs(one.magnitude)}` +
         `&leverage=${one.params.leverage}&gamma=${one.params.gamma}&band=${one.params.band}`)).json();
       if (onecas && onecas.trajectory.length === 1) {
-        const z = await load("cascade.html", { fb: JSON.stringify(
+        const z = await load("cascade.html", { mn: JSON.stringify(
           { portfolio: one.portfolio, rows, limit: 0.03, result: one }) });
         await until(() => z.d.querySelectorAll("#net circle.cx-asset").length > 0);
         check("a one-frame cascade renders without error", z.errors.length === 0,
@@ -829,7 +829,7 @@ function visibleText(d) {
     eq("a two-account export keeps every row", multi.rows.length, 4);
     eq("including the same name twice, for the server to sum",
        multi.rows.filter((r) => r.symbol === "NVDA").length, 2);
-    const merged = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+    const merged = await (await fetch(ORIGIN + "/api/portfolio/breakpoint?limit=0.10", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ holdings: multi.rows, source: "csv" }) })).json();
     eq("and the two NVDA lines become one holding",
@@ -1183,7 +1183,7 @@ function visibleText(d) {
     check("the unmoved-holding case still produces an answer", flat.found === true,
           flat.reason || "");
     if (flat.found) {
-      const v = await load("analysis.html", { fb: JSON.stringify(
+      const v = await load("analysis.html", { mn: JSON.stringify(
         { portfolio: flat.portfolio, rows, limit: 0.10, result: flat }) });
       await until(() => v.d.querySelectorAll("#attrRows tr").length > 0);
       const cells = [...v.d.querySelectorAll("#attrRows tr")]
@@ -1207,8 +1207,8 @@ function visibleText(d) {
        percent, so ?limit=10 is the natural hand-edit and lands in the same
        place. */
     const c = await load("cascade.html", {}, "?demo&limit=99");
-    await until(() => JSON.parse(c.window.sessionStorage.getItem("fb") || "{}").result);
-    const st = JSON.parse(c.window.sessionStorage.getItem("fb") || "{}");
+    await until(() => JSON.parse(c.window.sessionStorage.getItem("mn") || "{}").result);
+    const st = JSON.parse(c.window.sessionStorage.getItem("mn") || "{}");
     eq("a clamped limit is stored as the engine's, not the query's",
        st.limit, st.result.params.limit);
     check("so no screen can quote a limit that was never tested",
@@ -1218,17 +1218,17 @@ function visibleText(d) {
        return fired before ?limit was read, so the same URL showed one answer
        in a fresh tab and the previous scenario's answer in a used one. */
     const first = await load("analysis.html", {}, "?demo&limit=0.10");
-    await until(() => JSON.parse(first.window.sessionStorage.getItem("fb") || "{}").result);
+    await until(() => JSON.parse(first.window.sessionStorage.getItem("mn") || "{}").result);
     const warm = await load("cascade.html",
-      { fb: first.window.sessionStorage.getItem("fb") }, "?demo&limit=0.05");
+      { mn: first.window.sessionStorage.getItem("mn") }, "?demo&limit=0.05");
     /* wait for the RESULT to be the new scenario's: the seeder writes the
        limit first and the answer a request later, so waiting on the limit
        alone reads the old answer beside the new number. */
     await until(() => {
-      const x = JSON.parse(warm.window.sessionStorage.getItem("fb") || "{}");
+      const x = JSON.parse(warm.window.sessionStorage.getItem("mn") || "{}");
       return x.result && x.result.params && x.result.params.limit === 0.05;
     });
-    const w = JSON.parse(warm.window.sessionStorage.getItem("fb") || "{}");
+    const w = JSON.parse(warm.window.sessionStorage.getItem("mn") || "{}");
     eq("a warm session honours the limit in the link", w.limit, 0.05);
     eq("and re-runs the scenario rather than showing the old one",
        w.result.params.limit, 0.05);
@@ -1241,11 +1241,11 @@ function visibleText(d) {
        requireResult passes it through and `if (r && r.validation)` fell out
        with no else, leaving a heading and a lede promising three sections over
        an empty div. */
-    const base = JSON.parse(store.fb);
+    const base = JSON.parse(store.mn);
     const maimed = { ...base.result, fix: null,
                      fix_reason: "no single holding carries enough of the loss" };
     delete maimed.validation;
-    const v = await load("verify.html", { fb: JSON.stringify({ ...base, result: maimed }) });
+    const v = await load("verify.html", { mn: JSON.stringify({ ...base, result: maimed }) });
     await sleep(250);
     const root = v.d.getElementById("root");
     check("verify renders something when there is no validation in the payload",
@@ -1269,7 +1269,7 @@ function visibleText(d) {
       limit: 0.175, result: full });
 
     for (const page of ["index.html", "cascade.html", "defend.html"]) {
-      const h = await load(page, { fb: seed });
+      const h = await load(page, { mn: seed });
       await sleep(250);
       const seen = visibleText(h.d);
       check(`${page} does not round a half-point limit to a whole one`,
@@ -1289,7 +1289,7 @@ function visibleText(d) {
       body: JSON.stringify({ holdings: rows, source: "csv" }),
     })).json();
     const c = await load("cascade.html", {
-      fb: JSON.stringify({ rows, portfolio: { source: "csv", total_value: 100000, holdings: rows },
+      mn: JSON.stringify({ rows, portfolio: { source: "csv", total_value: 100000, holdings: rows },
                            limit: 0.05, result: full }),
     });
     await until(() => c.d.querySelectorAll("#net .cx-sub").length > 0);
@@ -1312,7 +1312,7 @@ function visibleText(d) {
        viewBox, clipped away. Reachable from any imported book: this fixture is
        eight real names. */
     const b = await load("index.html", {
-      fb: JSON.stringify({ portfolio: { source: "csv", total_value: 10000000, holdings: [
+      mn: JSON.stringify({ portfolio: { source: "csv", total_value: 10000000, holdings: [
         { symbol: "AAPL", market_value: 98780, weight: 0.0099 },
         { symbol: "MSFT", market_value: 3008062, weight: 0.3008 },
         { symbol: "NVDA", market_value: 2218754, weight: 0.2219 },
@@ -1368,7 +1368,7 @@ function visibleText(d) {
        describes the limit in force — otherwise moving the slider afterwards
        leaves "95% was pulled in to 90%" sitting under a 5% run. */
     const a = await load("analysis.html", {
-      fb: JSON.stringify({ ...JSON.parse(store.fb), limit: 0.05,
+      mn: JSON.stringify({ ...JSON.parse(store.mn), limit: 0.05,
                            limitClamp: { name: "limit", given: 0.95, used: 0.90 } }),
     });
     await until(() => /break/i.test(visibleText(a.d)));
@@ -1391,13 +1391,13 @@ function visibleText(d) {
        none it posts {} and the server answers with the demo book — so a
        fixture without rows tests the demo, not the import. */
     const a = await load("analysis.html", {
-      fb: JSON.stringify({ rows: mixed,
+      mn: JSON.stringify({ rows: mixed,
                            portfolio: { source: "csv", total_value: 100000, holdings: mixed },
                            limit: 0.10 }),
     });
     await until(() => /can't model/.test(visibleText(a.d)));
 
-    const st = JSON.parse(a.window.sessionStorage.getItem("fb") || "{}");
+    const st = JSON.parse(a.window.sessionStorage.getItem("mn") || "{}");
     check("a refused portfolio is not stored as an answer", !st.result,
           st.result ? "stored, found=" + st.result.found : "");
     const locked = [...a.d.querySelectorAll(".nav-links a[data-locked]")]
@@ -1449,7 +1449,7 @@ function visibleText(d) {
                  { symbol: "NVDA", market_value: 3600 },
                  { symbol: "CASH", market_value: 1000 }];
     const p = await load("index.html", {});
-    const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+    const body = await (await fetch(ORIGIN + "/api/portfolio/breakpoint?limit=0.10", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ holdings: etf, source: "csv" }) })).json();
     p.window.offerExclusion(body, etf, "etf.csv");
@@ -1478,7 +1478,7 @@ function visibleText(d) {
     check("a one-dollar book still gets an answer", tiny.found === true, tiny.reason || "");
     if (tiny.found && tiny.fix) {
       check("whose fix is smaller than a dollar", tiny.fix.dollars < 1, String(tiny.fix.dollars));
-      const v = await load("defend.html", { fb: JSON.stringify(
+      const v = await load("defend.html", { mn: JSON.stringify(
         { portfolio: tiny.portfolio, rows, limit: 0.01, result: tiny }) });
       await until(() => v.d.getElementById("root").textContent.trim().length > 40);
       const body = v.d.getElementById("root").textContent;
@@ -1510,7 +1510,7 @@ function visibleText(d) {
        no way forward. */
     {
       const p2 = await load("index.html", {});
-      const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+      const body = await (await fetch(ORIGIN + "/api/portfolio/breakpoint?limit=0.10", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
       check("the import path is told it can exclude", body.can_exclude === true);
@@ -1548,7 +1548,7 @@ function visibleText(d) {
     check("and can be answered on the modellable part when asked", kept.found === true,
           kept.reason || "");
 
-    const seeded = { fb: JSON.stringify({ portfolio: kept.portfolio, rows,
+    const seeded = { mn: JSON.stringify({ portfolio: kept.portfolio, rows,
       limit: 0.10, excludeUnmodelled: true, result: kept }) };
     for (const page of ["cascade.html", "defend.html", "verify.html"]) {
       const pg = await load(page, seeded);
@@ -1664,20 +1664,20 @@ function visibleText(d) {
        Cascade/Defend/Verify unlocked and they rendered the PREVIOUS book. The
        server refuses this mix-up by design; it used to happen on the client. */
     const other = { symbol: "JPM", market_value: 50000 };
-    const stale = JSON.parse(store.fb);
+    const stale = JSON.parse(store.mn);
     const p = await load("index.html", {
-      fb: JSON.stringify({ ...stale,
+      mn: JSON.stringify({ ...stale,
         portfolio: { source: "csv", total_value: 100000,
           holdings: [other, { symbol: "CASH", market_value: 50000, weight: 0.5 }] }}),
     });
     await sleep(200);
-    const st = JSON.parse(p.window.sessionStorage.getItem("fb") || "{}");
+    const st = JSON.parse(p.window.sessionStorage.getItem("mn") || "{}");
     check("a new book drops the answer computed for the old one", !st.result,
           st.result ? "result kept: " + (st.result.asset || "?") : "");
 
-    const p2 = await load("index.html", { fb: store.fb });
+    const p2 = await load("index.html", { mn: store.mn });
     await sleep(200);
-    const kept = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
+    const kept = JSON.parse(p2.window.sessionStorage.getItem("mn") || "{}");
     check("but returning to the page with the same book keeps its answer", !!kept.result);
 
     /* The control is a range input now. `change` is what a release fires and
@@ -1687,7 +1687,7 @@ function visibleText(d) {
     slider.value = "25";
     slider.dispatchEvent(new p2.window.Event("change", { bubbles: true }));
     await sleep(200);
-    const moved = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
+    const moved = JSON.parse(p2.window.sessionStorage.getItem("mn") || "{}");
     check("changing the limit drops an answer computed for the old limit", !moved.result,
           moved.result ? "kept" : "");
     eq("and the limit that is stored is the one the slider was moved to",
@@ -1699,7 +1699,7 @@ function visibleText(d) {
        agrees with STORED state — not with its own HTML — is this one: reload
        with a limit no page ever writes and see whether the control follows. */
     const p3 = await load("index.html", {
-      fb: JSON.stringify({ ...JSON.parse(store.fb), limit: 0.175 }),
+      mn: JSON.stringify({ ...JSON.parse(store.mn), limit: 0.175 }),
     });
     await sleep(200);
     eq("and a stored limit the markup never carried is what the control shows",
@@ -1721,7 +1721,7 @@ function visibleText(d) {
     })).json();
     const nb = safeFull.validation && safeFull.validation.new_breaking_point;
     if (safeFull.found && nb && nb.after_unbreakable) {
-      const v = await load("verify.html", { fb: JSON.stringify(
+      const v = await load("verify.html", { mn: JSON.stringify(
         { portfolio: safeFull.portfolio, rows, limit: 0.15, result: safeFull }) });
       const ok = await until(() => v.d.getElementById("root").children.length > 0);
       check("verify renders when the defended book has no break point in range", ok,
@@ -1749,7 +1749,7 @@ function visibleText(d) {
     })).json();
     check("a book with no cash row still gets a fix to check", !!noCash.fix, noCash.reason || "");
     if (noCash.fix) {
-      const v = await load("defend.html", { fb: JSON.stringify(
+      const v = await load("defend.html", { mn: JSON.stringify(
         { portfolio: noCash.portfolio, rows, limit: 0.10, result: noCash }) });
       await until(() => v.d.querySelectorAll("#root tbody tr").length > 0);
       const cells = [...v.d.querySelectorAll("#root tbody tr")].map((tr) =>

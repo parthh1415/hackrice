@@ -1,6 +1,6 @@
-# Firebreak Portfolio Pivot — design
+# Minima Portfolio Pivot — design
 
-**Source of truth:** `FIREBREAK_PRODUCT_PIVOT_FOR_CLAUDE.md` (the brief).
+**Source of truth:** `MINIMA_PRODUCT_PIVOT_FOR_CLAUDE.md` (the brief).
 **Goal:** wrap the existing engine in a user workflow — *my portfolio → my failure limit →
 my breaking shock → why it breaks → smallest fix → validate the fix* — without touching the
 numerical core, and without deleting Risk Desk mode.
@@ -55,7 +55,7 @@ conserved and visible — §18's "do not quietly change portfolio value."
 1. **Identical shock replay.** Same shock vector, same assumptions, same cascade, only the
    weights differ. This is exact and cheap: the price path is already computed.
 2. **New breaking point.** Re-run the reverse search against the adjusted weights. Uniquely
-   Firebreak, and the brief is right that it beats a return chart.
+   Minima, and the brief is right that it beats a return chart.
 3. **Synthetic stress.** N deterministic sampled shock vectors through the same engine,
    both portfolios scored on identical draws. Seeded, reproducible, offline.
 4. **Historical replay.** *We do not ship the price history for this.* Building it against

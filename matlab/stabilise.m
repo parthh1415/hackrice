@@ -1,7 +1,7 @@
 function result = stabilise(specFile, outFile, plotFile)
 %STABILISE  Minimum-cost intervention that survives a given shock.
 %
-%   This is the part of Firebreak that genuinely needs MATLAB. The
+%   This is the part of Minima that genuinely needs MATLAB. The
 %   objective is a *simulation* — you cannot differentiate it, the feasible
 %   set is defined by whether a cascade crosses a discrete failure
 %   condition, and breach events make the landscape piecewise constant.

@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-from firebreak import dataset
+from minima import dataset
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / "data" / "universe.json").read_text())

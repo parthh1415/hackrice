@@ -12,7 +12,7 @@ Everything it writes lands in data/cache/golden/ and comes back out via
 
 import sys
 
-from firebreak import api
+from minima import api
 
 
 def main():

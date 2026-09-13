@@ -18,8 +18,8 @@ import pathlib
 import numpy as np
 import pytest
 
-from firebreak import api
-from firebreak.engine import run_cascade
+from minima import api
+from minima.engine import run_cascade
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "cache" / "boundary_out.json"

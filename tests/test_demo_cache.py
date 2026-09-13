@@ -14,7 +14,7 @@ import os
 
 import pytest
 
-from firebreak import api
+from minima import api
 
 # grabbed at import time, before the fixture below points api.GOLDEN elsewhere
 SHIPPED_GOLDEN = api.GOLDEN
@@ -30,7 +30,7 @@ def golden(tmp_path_factory):
         yield
     finally:
         api.GOLDEN = shipped
-        os.environ.pop("FIREBREAK_DEMO", None)
+        os.environ.pop("MINIMA_DEMO", None)
 
 
 def test_the_committed_recordings_still_load_and_cover_the_demo_spots():
@@ -90,11 +90,11 @@ def test_demo_flag_survives_alongside_the_real_sliders():
 
 
 def test_env_var_puts_the_whole_server_in_demo_mode():
-    os.environ["FIREBREAK_DEMO"] = "1"
+    os.environ["MINIMA_DEMO"] = "1"
     try:
         result = api.handle("/api/break?leverage=5&gamma=0.2&breaches=3", {})
     finally:
-        os.environ.pop("FIREBREAK_DEMO", None)
+        os.environ.pop("MINIMA_DEMO", None)
 
     assert result["cached"] is True
 
@@ -314,7 +314,7 @@ def test_the_near_enough_threshold_is_held_from_above_as_well_as_below():
     than hidden — but labelling is not the job of this threshold. Its job is
     to not answer a different question in the first place.
     """
-    from firebreak.api import _NEAR_ENOUGH, _distance
+    from minima.api import _NEAR_ENOUGH, _distance
 
     # The distance is a sum of squared, scale-normalised knob differences, so
     # 1.0 means "one full scale-unit away on one knob, or the equivalent

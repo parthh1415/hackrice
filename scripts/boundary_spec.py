@@ -14,9 +14,9 @@ import pathlib
 
 import numpy as np
 
-from firebreak import api
-from firebreak.engine import run_cascade
-from firebreak.matlab_bridge import read_palette
+from minima import api
+from minima.engine import run_cascade
+from minima.matlab_bridge import read_palette
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "cache" / "boundary_spec.json"

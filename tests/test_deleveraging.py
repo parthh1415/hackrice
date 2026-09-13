@@ -13,7 +13,7 @@ says what happens once impact is switched on.
 
 import numpy as np
 
-from firebreak.engine import run_cascade
+from minima.engine import run_cascade
 
 # one fund, so nothing that happens to it can be blamed on anybody else
 LEVERED = np.array([[60.0, 30.0, 10.0]])

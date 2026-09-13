@@ -16,7 +16,7 @@ from unittest import mock
 
 import pytest
 
-from firebreak import api
+from minima import api
 
 ROUTES = [
     "/api/health",

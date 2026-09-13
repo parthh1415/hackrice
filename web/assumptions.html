@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Model · Firebreak</title>
+<title>Model · Minima</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="shell.css">
 </head>
@@ -11,7 +11,7 @@
 <main class="col">
     <header>
       <h1>What is measured, and what we declared</h1>
-      <p class="lede">Firebreak is a stress-testing model, not a forecast. Every input below is
+      <p class="lede">Minima is a stress-testing model, not a forecast. Every input below is
         labelled by where it came from.</p>
     </header>
     <!-- First on the page, not last. This is the only screen that says what
@@ -82,7 +82,7 @@ bindKeys("assumptions");
   /* The knobs this session actually ran with; failing that, the engine's own
      declared defaults off /api/dataset — never a literal typed here, which is
      how the value on a methodology page drifts from the value in the model. */
-  const P = (FB.state.result && FB.state.result.params) || d.defaults || {};
+  const P = (MN.state.result && MN.state.result.params) || d.defaults || {};
   const gross = (d.holdings || []).flat().reduce((sum, value) => sum + value, 0);
   const rows = [
     ["measured", "Holdings", `Real, and the only thing here that is. SEC 13F-HR filings, period

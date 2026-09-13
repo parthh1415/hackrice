@@ -20,7 +20,7 @@ import json
 
 import pytest
 
-from firebreak import api
+from minima import api
 
 # What a recording is allowed to differ by, and nothing else.
 #

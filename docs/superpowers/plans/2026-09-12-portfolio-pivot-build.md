@@ -16,7 +16,7 @@
 
 ## Task 1 — the portfolio-loss predicate  ✅ smallest real step
 
-**Files:** `src/firebreak/portfolio.py` (new), `tests/test_portfolio_predicate.py` (new)
+**Files:** `src/minima/portfolio.py` (new), `tests/test_portfolio_predicate.py` (new)
 
 A `Portfolio` dataclass, a normaliser that every ingestion path calls, a weight-vector
 adapter aligned to the engine's ticker order, and `portfolio_loss_above(weights, limit)`.
@@ -27,9 +27,9 @@ surfaced rather than dropped.
 
 ## Task 2 — reverse search over a portfolio
 
-**Files:** `src/firebreak/portfolio.py`, `tests/test_portfolio_search.py`
+**Files:** `src/minima/portfolio.py`, `tests/test_portfolio_search.py`
 
-`find_portfolio_firebreak(portfolio, limit, **scenario)` — composes the predicate with the
+`find_portfolio_breakpoint(portfolio, limit, **scenario)` — composes the predicate with the
 existing `find_weakest_shock`. No new search code.
 
 Tests: the result crosses the limit; one tolerance below it does not; a tighter limit never
@@ -37,7 +37,7 @@ yields a larger shock (monotonicity); display precision is earned.
 
 ## Task 3 — portfolio stabilisation
 
-**Files:** `src/firebreak/portfolio.py`, `tests/test_portfolio_stabilise.py`
+**Files:** `src/minima/portfolio.py`, `tests/test_portfolio_stabilise.py`
 
 Cheapest single-position cut to cash that survives the identical shock.
 
@@ -46,7 +46,7 @@ reported dollar figure equals weight × total value.
 
 ## Task 4 — validation layer
 
-**Files:** `src/firebreak/validate.py` (new), `tests/test_validation.py` (new)
+**Files:** `src/minima/validate.py` (new), `tests/test_validation.py` (new)
 
 - `replay_identical(portfolio, fixed, shock, scenario)` — one cascade, two scorings.
 - `new_breaking_point(fixed, limit, scenario)` — re-runs the search.
@@ -59,9 +59,9 @@ scenario ids for both portfolios; the seed reproduces; no NaN/Inf anywhere.
 
 ## Task 5 — API endpoints
 
-**Files:** `src/firebreak/api.py`, `tests/test_portfolio_api.py`
+**Files:** `src/minima/api.py`, `tests/test_portfolio_api.py`
 
-`/api/portfolio/demo`, `/api/portfolio/parse` (CSV), `/api/portfolio/firebreak`,
+`/api/portfolio/demo`, `/api/portfolio/parse` (CSV), `/api/portfolio/breakpoint`,
 `/api/portfolio/stabilise`, `/api/portfolio/validate`. Same guarded-knobs and cached
 discipline as the existing routes.
 
@@ -69,7 +69,7 @@ discipline as the existing routes.
 
 **Files:** `web/index.html`, `web/app.js`, `web/style.css`
 
-Five steps: Portfolio → Risk limit → Firebreak → Cascade → Stabilise → Validate. Risk Desk
+Five steps: Portfolio → Risk limit → Break → Cascade → Stabilise → Validate. Risk Desk
 behind a toggle, reachable and unchanged. Existing cascade animation reused verbatim —
 it still reads real `trajectory[t]` frames.
 

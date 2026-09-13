@@ -1,7 +1,7 @@
 """Dev server. Stdlib only — no pip install at 3am.
 
 Serves web/ and exposes the engine over a couple of JSON endpoints.
-Run it with:  python3 -m firebreak.server
+Run it with:  python3 -m minima.server
 """
 
 import json
@@ -93,9 +93,9 @@ class Handler(SimpleHTTPRequestHandler):
 
 def serve():
     with ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
-        print(f"firebreak dev server -> http://localhost:{PORT}")
-        if os.environ.get("FIREBREAK_DEMO", "").strip().lower() in ("1", "true", "yes", "on"):
-            print("FIREBREAK_DEMO is on — every /api/ response comes off disk")
+        print(f"minima dev server -> http://localhost:{PORT}")
+        if os.environ.get("MINIMA_DEMO", "").strip().lower() in ("1", "true", "yes", "on"):
+            print("MINIMA_DEMO is on — every /api/ response comes off disk")
         httpd.serve_forever()
 
 

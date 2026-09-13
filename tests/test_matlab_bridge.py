@@ -9,7 +9,7 @@ import json
 import numpy as np
 import pytest
 
-from firebreak.matlab_bridge import solve_stabilisation, write_spec
+from minima.matlab_bridge import solve_stabilisation, write_spec
 
 SPEC = dict(
     holdings=[[20.0, 80.0, 0.0], [0.0, 80.0, 20.0]],
@@ -26,8 +26,8 @@ SPEC = dict(
 def genuine_fix(spec):
     """A fix that really does clear `spec` — the bridge re-simulates now, so a
     made-up payload is rejected for being wrong rather than for being stale."""
-    from firebreak.search import at_least_n_breaches
-    from firebreak.stabilise import find_cheapest_fix
+    from minima.search import at_least_n_breaches
+    from minima.stabilise import find_cheapest_fix
 
     fix = find_cheapest_fix(
         condition=at_least_n_breaches(spec["breaches"]),
@@ -74,7 +74,7 @@ def test_the_spec_it_writes_is_what_matlab_reads(tmp_path):
 def test_a_stale_matlab_result_is_ignored(tmp_path):
     # MATLAB Online writes a result file by hand; if the parameters have
     # moved on since, using it would silently show the wrong answer
-    from firebreak.matlab_bridge import _spec_fingerprint
+    from minima.matlab_bridge import _spec_fingerprint
 
     other = dict(SPEC, gamma=0.9)
 
@@ -89,7 +89,7 @@ def test_a_stale_result_file_is_not_served_as_a_matched_solve(tmp_path, monkeypa
     then move a slider. api._stabilise writes the spec for scenario B and asks
     the bridge, which used to hand back A's answer under scenario B's label.
     """
-    from firebreak import matlab_bridge as mb
+    from minima import matlab_bridge as mb
 
     spec_path, out_path = tmp_path / "solve_spec.json", tmp_path / "solve_out.json"
     monkeypatch.setattr(mb, "SPEC_PATH", spec_path)
@@ -109,7 +109,7 @@ def test_a_stale_result_file_is_not_served_as_a_matched_solve(tmp_path, monkeypa
 
 def test_re_asking_the_same_question_keeps_the_offline_answer(tmp_path, monkeypatch):
     """Rejecting stale results is worthless if it also rejects fresh ones."""
-    from firebreak import matlab_bridge as mb
+    from minima import matlab_bridge as mb
 
     spec_path, out_path = tmp_path / "solve_spec.json", tmp_path / "solve_out.json"
     monkeypatch.setattr(mb, "SPEC_PATH", spec_path)
@@ -125,7 +125,7 @@ def test_re_asking_the_same_question_keeps_the_offline_answer(tmp_path, monkeypa
 
 def _offline(tmp_path, monkeypatch, payload):
     """Put `payload` on disk as a fresh, fingerprint-matching MATLAB result."""
-    from firebreak import matlab_bridge as mb
+    from minima import matlab_bridge as mb
 
     spec_path, out_path = tmp_path / "solve_spec.json", tmp_path / "solve_out.json"
     monkeypatch.setattr(mb, "SPEC_PATH", spec_path)
@@ -152,7 +152,7 @@ def test_a_nonsense_solver_result_is_not_handed_to_the_ui(tmp_path, monkeypatch,
     Every one of these used to go straight through: a negative index silently
     picks the last fund, reduction > 1 flips the position negative, NaN makes
     the whole response invalid JSON, and a reduction that doesn't clear the
-    condition is shown as the firebreak with the cascade still burning.
+    condition is shown as the minima with the cascade still burning.
     """
     mb = _offline(tmp_path, monkeypatch, dict(payload, cost=0.01, solver="patternsearch"))
 
@@ -178,7 +178,7 @@ def test_a_bad_matlab_file_falls_through_to_python(tmp_path, monkeypatch):
 def test_the_python_path_reports_the_solves_it_actually_did(tmp_path, monkeypatch):
     """The readout sits next to MATLAB's funccount. It used to print
     rows*cols*20 — the size of the search space, not the search."""
-    from firebreak import matlab_bridge as mb
+    from minima import matlab_bridge as mb
 
     monkeypatch.setattr(mb, "OUT_PATH", tmp_path / "nothing.json")
     result = mb._python_fallback(SPEC)
@@ -204,7 +204,7 @@ def test_two_solves_at_once_do_not_answer_each_other_s_question():
     """
     import concurrent.futures
 
-    from firebreak import api
+    from minima import api
 
     def solve(leverage):
         out = api.handle(f"/api/stabilise?leverage={leverage}&gamma=0.2&band=1.05&breaches=3", {})

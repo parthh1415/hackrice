@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Boundary · Firebreak</title>
+<title>Boundary · Minima</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="shell.css">
 </head>
@@ -120,7 +120,7 @@ const bandOf = (a) => BANDS.findIndex(([hi]) => a < hi);
 const fillFor = (a) => RAMP[BANDS[bandOf(a)][1]];
 
 (async () => {
-  const P = (FB.state.result && FB.state.result.params) || {};
+  const P = (MN.state.result && MN.state.result.params) || {};
   const q = `leverage=${P.leverage ?? 5}&gamma=${P.gamma ?? 0.2}&band=${P.band ?? 1.05}`;
   let b;
   try { b = await api(`/api/boundary?${q}`); }

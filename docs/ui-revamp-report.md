@@ -1,4 +1,4 @@
-# Firebreak — UI revamp report
+# Minima — UI revamp report
 
 Commissioned as "investigate hackathon winners, draft a revamp of our entire UI".
 I did the investigation. The recommendation it produced is not the one that was
@@ -40,7 +40,7 @@ Five dimensions, equally weighted:
 
 Design is **one fifth** of the score. It is not nothing, and it is not the
 thing you are behind on. Tracks this year are Healthcare, Finance, Games and
-Gamification, Work and Productivity. Firebreak is Finance.
+Gamification, Work and Productivity. Minima is Finance.
 
 ### What actually won HackRice 15
 
@@ -166,7 +166,7 @@ page. On `index.html`, above the existing header, add a hook block:
 ```
 Your portfolio is fine until someone else is forced to sell.
 
-Firebreak finds the smallest shock that breaks your limit, shows you how
+Minima finds the smallest shock that breaks your limit, shows you how
 crowded institutional selling amplifies it on the way to you, and tests
 whether the fix actually helped.
 
@@ -239,7 +239,7 @@ already produces the data.
 
 ## 6. The honest summary
 
-Firebreak's problem is not its interface. It is that a genuinely rigorous
+Minima's problem is not its interface. It is that a genuinely rigorous
 project is one unpushed repo and one unrecorded video away from being invisible
 to the people scoring it. The interface costs you a fraction of one rubric
 dimension. The missing video costs you all five.

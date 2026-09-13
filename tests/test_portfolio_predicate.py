@@ -9,7 +9,7 @@ that claim is either true or not.
 import numpy as np
 import pytest
 
-from firebreak.portfolio import (
+from minima.portfolio import (
     CASH, Portfolio, UnknownSymbol, normalise, portfolio_loss,
     portfolio_loss_above, weight_vector,
 )
@@ -138,7 +138,7 @@ def test_a_portfolio_worth_nothing_is_refused_not_scored_as_a_total_loss():
     weights(), so the mutation had never touched this guard at all. The anchor
     is fixed; the API test catches it now.
     """
-    from firebreak.portfolio import Holding, Portfolio, weight_vector
+    from minima.portfolio import Holding, Portfolio, weight_vector
 
     tickers = ["NVDA", "AAPL"]
     empty = Portfolio(holdings=[Holding(symbol="NVDA", market_value=0.0)])

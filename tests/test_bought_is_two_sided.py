@@ -21,8 +21,8 @@ changed holdings universe cannot erase coverage of the opposite branch.
 
 import pytest
 
-from firebreak import api
-from firebreak.search import DEFAULT_TOLERANCE
+from minima import api
+from minima.search import DEFAULT_TOLERANCE
 
 
 def test_the_stated_resolution_is_two_searches_worth_of_tolerance():
@@ -71,7 +71,7 @@ def test_a_move_larger_than_the_resolution_is_reported_as_measurable(monkeypatch
     """
     import dataclasses
 
-    from firebreak import search as search_module
+    from minima import search as search_module
 
     real = search_module.find_weakest_shock
     calls = {"n": 0}

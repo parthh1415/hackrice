@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Everything a fresh clone needs before `python3 -m firebreak.server` works.
+# Everything a fresh clone needs before `python3 -m minima.server` works.
 # Safe to re-run. Needs network only for the two installs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -22,6 +22,6 @@ cat <<'EOF'
 
 ready.
 
-  PYTHONPATH=src python3 -m firebreak.server                   -> localhost:8765
-  FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server  -> same, off disk
+  PYTHONPATH=src python3 -m minima.server                   -> localhost:8765
+  MINIMA_DEMO=1 PYTHONPATH=src python3 -m minima.server  -> same, off disk
 EOF

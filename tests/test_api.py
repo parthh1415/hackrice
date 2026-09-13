@@ -1,4 +1,4 @@
-from firebreak import api
+from minima import api
 
 
 def test_health_is_boring_and_works():

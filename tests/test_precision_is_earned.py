@@ -25,7 +25,7 @@ import re
 import numpy as np
 import pytest
 
-from firebreak.search import DEFAULT_TOLERANCE, at_least_n_breaches, find_weakest_shock
+from minima.search import DEFAULT_TOLERANCE, at_least_n_breaches, find_weakest_shock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SHARED = ROOT / "web" / "shared.js"

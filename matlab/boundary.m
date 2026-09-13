@@ -5,7 +5,7 @@ function out = boundary(specFile, outFile, plotFile)
 %   amplifies a fixed single-name shock in each cell. Every cell is a full
 %   deleveraging cascade run by cascade.m — 256 of them, nothing interpolated.
 %
-%   This recomputes what src/firebreak/api.py's _boundary already computes,
+%   This recomputes what src/minima/api.py's _boundary already computes,
 %   on purpose. A figure that disagreed with the app's own boundary page would
 %   be worse than no figure, so the spec carries Python's grid and this checks
 %   against it before drawing. The agreement is the point: two independent

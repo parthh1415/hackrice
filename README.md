@@ -1,15 +1,15 @@
-# Firebreak
+# Minima
 
 **Reverse stress testing for your portfolio.** Not "what if NVDA drops 20%", but "what is
 the smallest drop that pushes *my* portfolio past the loss I refuse to tolerate — and what
 is the smallest change that buys me distance from it".
 
 Most stress tests make you guess the scenario first, and the scenario is the part nobody
-checks. Firebreak solves backwards: you name the failure, it finds the shock.
+checks. Minima solves backwards: you name the failure, it finds the shock.
 
 The loss is not just the shock. Crowded institutions hold the same names you do; when one
 is forced to deleverage, its selling moves the price of everything else it holds, and that
-reaches you. Firebreak models that feedback on the actual Q2 2026 13F filings of Citadel,
+reaches you. Minima models that feedback on the actual Q2 2026 13F filings of Citadel,
 Millennium, Point72, Two Sigma and Renaissance, then shows you the cascade round by round.
 
 Then it recommends the smallest position change that helps — and **tests whether the
@@ -17,7 +17,7 @@ recommendation actually helped**, by replaying the identical shock, recomputing 
 break point, and scoring both portfolios across hundreds of simulated stress scenarios.
 
 ```
-Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
+Portfolio  →  Risk limit  →  Break  →  Cascade  →  Fix  →  Validate
 ```
 
 Two questions, one engine. The difference is only what counts as failure:
@@ -38,10 +38,10 @@ Full write-up in [`docs/devpost.md`](docs/devpost.md).
 ## Run it
 
 ```sh
-git clone <this repo> && cd firebreak
+git clone <this repo> && cd minima
 python3 -m pip install numpy pytest      # the only dependencies
 python3 -m pytest tests/ -q              # 428 collected (425 passing, 3 skipped)
-PYTHONPATH=src python3 -m firebreak.server
+PYTHONPATH=src python3 -m minima.server
 ```
 
 Then open <http://localhost:8765>.
@@ -112,7 +112,7 @@ are 53 recorded answers in `data/cache/golden/` (420KB). The web fonts are vendo
 internet unless you explicitly ask it to.
 
 ```sh
-FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server
+MINIMA_DEMO=1 PYTHONPATH=src python3 -m minima.server
 ```
 
 An **institutional** response — `/api/break`, `/api/stabilise`, `/api/boundary` — comes off
@@ -162,7 +162,7 @@ does, and compares every number on screen against the payload that produced it:
 
 ```sh
 npm --prefix tests/ui install                     # once
-FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server &
+MINIMA_DEMO=1 PYTHONPATH=src python3 -m minima.server &
 node tests/ui/pages.js
 ```
 
@@ -175,12 +175,12 @@ a red run.
 
 | | |
 |---|---|
-| `src/firebreak/engine.py` | the cascade — leverage breach, forced selling, price impact, repeat |
-| `src/firebreak/search.py` | bisection for the smallest shock meeting a breach condition |
-| `src/firebreak/stabilise.py` | the cheapest single position change that pushes the break point out |
-| `src/firebreak/thirteenf.py` | EDGAR 13F-HR fetch, amendment handling, multi-CIK managers |
-| `src/firebreak/api.py` | JSON endpoints and the golden-recording fallback |
-| `src/firebreak/server.py` | stdlib dev server on 8765 |
+| `src/minima/engine.py` | the cascade — leverage breach, forced selling, price impact, repeat |
+| `src/minima/search.py` | bisection for the smallest shock meeting a breach condition |
+| `src/minima/stabilise.py` | the cheapest single position change that pushes the break point out |
+| `src/minima/thirteenf.py` | EDGAR 13F-HR fetch, amendment handling, multi-CIK managers |
+| `src/minima/api.py` | JSON endpoints and the golden-recording fallback |
+| `src/minima/server.py` | stdlib dev server on 8765 |
 | `web/` | the frontend, no build step |
 | `matlab/` | optional `patternsearch` solver — see [`matlab/README.md`](matlab/README.md) |
 

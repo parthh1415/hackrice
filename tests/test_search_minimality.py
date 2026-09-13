@@ -19,8 +19,8 @@ import pathlib
 
 import numpy as np
 
-from firebreak.engine import run_cascade
-from firebreak.search import at_least_n_breaches, find_weakest_shock
+from minima.engine import run_cascade
+from minima.search import at_least_n_breaches, find_weakest_shock
 
 REAL = pathlib.Path(__file__).resolve().parents[1] / "data" / "cache" / "dataset.json"
 

@@ -236,7 +236,7 @@ def portfolio_loss_above(vector, cash, limit):
 
 # ── the product loop ────────────────────────────────────────────────────────
 
-def find_portfolio_firebreak(vector, cash, limit, holdings, tolerance=None, **cascade_kwargs):
+def find_portfolio_breakpoint(vector, cash, limit, holdings, tolerance=None, **cascade_kwargs):
     """Smallest single-name shock that pushes this portfolio past `limit`.
 
     Composition, not new search code. `find_weakest_shock` already takes an

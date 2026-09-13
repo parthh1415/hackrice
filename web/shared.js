@@ -1,18 +1,18 @@
 /* Shared across pages. State lives in sessionStorage because these are real
    separate documents, not tabs pretending to be pages. */
 
-const FB = {
+const MN = {
   get state() {
-    try { return JSON.parse(sessionStorage.getItem("fb") || "{}"); }
+    try { return JSON.parse(sessionStorage.getItem("mn") || "{}"); }
     catch { return {}; }
   },
   set(patch) {
     const next = { ...this.state, ...patch };
-    /* Guarded, like the read above it and like the fb:ms write in api(), which
+    /* Guarded, like the read above it and like the mn:ms write in api(), which
        has named private mode in a comment since the day the hazard was first
        noticed — in one place and not in this one. A refused setItem
        (Safari's private browsing, or site data blocked for the origin) threw
-       out of `if (!FB.state.limit) FB.set({ limit: 0.10 })` at the top level of
+       out of `if (!MN.state.limit) MN.set({ limit: 0.10 })` at the top level of
        index.html, so every line after it — paintLimits, render, the final
        paintShell, the ?demo bootstrap — never ran. The page served its static
        markup and nothing else.
@@ -20,11 +20,11 @@ const FB = {
        Returning `next` either way means the caller still has the patched state
        for THIS page; what is lost is carrying it to the next one, which is the
        thing that actually failed. */
-    try { sessionStorage.setItem("fb", JSON.stringify(next)); }
+    try { sessionStorage.setItem("mn", JSON.stringify(next)); }
     catch { /* no session storage: this page still works, the next one starts fresh */ }
     return next;
   },
-  clear() { sessionStorage.removeItem("fb"); },
+  clear() { sessionStorage.removeItem("mn"); },
 };
 
 /* The rail's footer strip prints the last response time. DESIGN.md wants
@@ -40,7 +40,7 @@ let _lastMs = null;
 const lastResponseMs = () => {
   if (_lastMs !== null) return _lastMs;
   try {
-    const v = JSON.parse(sessionStorage.getItem("fb:ms") || "null");
+    const v = JSON.parse(sessionStorage.getItem("mn:ms") || "null");
     return v && Number.isFinite(v.ms) ? v.ms : null;
   } catch { return null; }
 };
@@ -59,14 +59,14 @@ async function api(path, payload) {
           body: JSON.stringify(payload) }
       : { cache: "no-store" });
   } catch (err) {
-    console.error("firebreak:", path, err);
+    console.error("minima:", path, err);
     throw new Error("the engine is not answering. Check the server on port 8765.");
   }
   /* "/api/portfolio/full?limit=0.1 → 500" is a stack trace wearing a sentence.
      The user cannot act on a route; they can act on "the engine is not
      answering". The route is still in the console for whoever is debugging. */
   if (!res.ok) {
-    console.error("firebreak:", path, res.status);
+    console.error("minima:", path, res.status);
     throw new Error(`the engine returned HTTP ${res.status}. Check the server on port 8765.`);
   }
   /* A 200 carrying something that is not JSON — a proxy's error page, or a
@@ -76,7 +76,7 @@ async function api(path, payload) {
   let body;
   try { body = await res.json(); }
   catch (err) {
-    console.error("firebreak:", path, err);
+    console.error("minima:", path, err);
     throw new Error("the engine answered with something this page could not read. " +
                     "Check the server on port 8765.");
   }
@@ -84,8 +84,8 @@ async function api(path, payload) {
      claims "the engine answered", and it has not answered until the answer is
      in hand. The event lets the strip repaint without polling for it. */
   _lastMs = performance.now() - t0;
-  try { sessionStorage.setItem("fb:ms", JSON.stringify({ ms: _lastMs, path })); } catch { /* private mode */ }
-  document.dispatchEvent(new CustomEvent("fb:latency", { detail: { ms: _lastMs, path } }));
+  try { sessionStorage.setItem("mn:ms", JSON.stringify({ ms: _lastMs, path })); } catch { /* private mode */ }
+  document.dispatchEvent(new CustomEvent("mn:latency", { detail: { ms: _lastMs, path } }));
   return body;
 }
 
@@ -141,7 +141,7 @@ const num = (x, dp = 2, dash = "—") =>
    does not exist leads to a page explaining it does not exist, which is a
    worse answer than a link that is visibly not ready. */
 function paintNav(current) {
-  const s = FB.state;
+  const s = MN.state;
   paintExclusionBanner(current);
   /* A page missing from this map reads as `undefined`, and `!undefined` locks
      it. `assumptions` was missing, so the Model link was dead on every page
@@ -230,7 +230,7 @@ function paintNav(current) {
 async function seedDemoIfAsked() {
   const q = new URLSearchParams(location.search);
   if (!q.has("demo")) return false;
-  const s = FB.state;
+  const s = MN.state;
   /* ?limit= travels with ?demo, so a link carries the whole scenario. Passed
      through unvalidated on purpose: the engine decides what is in range and
      reports back when it had to pull a number in, and a second opinion here
@@ -246,10 +246,10 @@ async function seedDemoIfAsked() {
   if (s.result && s.result.found && (!q.has("limit") || limit === s.limit)) return false;
   try {
     const demo = await api("/api/portfolio/demo");
-    FB.set({ portfolio: demo.portfolio, rows: null, limit });
+    MN.set({ portfolio: demo.portfolio, rows: null, limit });
     const full = await api(`/api/portfolio/full?limit=${limit}`, {});
     /* Adopt the limit the engine actually used, exactly as analysis.html does
-       and for the same reason: the rail reads FB state and the page reads
+       and for the same reason: the rail reads MN state and the page reads
        params.limit. Without it ?limit=99 put "9900%" in the rail and in the
        body of a page describing a search the engine ran at 90% — and the
        clamp note only renders on analysis.html, so the seeded pages never
@@ -261,7 +261,7 @@ async function seedDemoIfAsked() {
        disclosure has to travel with the state. */
     const clamp = ((full.params && full.params.clamped) || [])
       .find((c) => c.name === "limit") || null;
-    FB.set({ result: full, limitClamp: clamp,
+    MN.set({ result: full, limitClamp: clamp,
              limit: (full.params && full.params.limit) || limit });
     return true;
   } catch { return false; }
@@ -280,12 +280,12 @@ function scenarioKey(portfolio, limit) {
 /* Drop a result that no longer answers the current question. Returns true if
    it dropped one, so a caller can repaint. */
 function invalidateStaleResult() {
-  const s = FB.state;
+  const s = MN.state;
   if (!s.result) return false;
   const answered = scenarioKey(s.result.portfolio, s.result.params && s.result.params.limit);
   const asking = scenarioKey(s.portfolio, s.limit);
   if (answered === asking) return false;
-  FB.set({ result: null });
+  MN.set({ result: null });
   return true;
 }
 
@@ -301,7 +301,7 @@ function invalidateStaleResult() {
 const BOOK_PAGES = new Set(["portfolio", "analysis", "cascade", "defend", "verify"]);
 
 function paintExclusionBanner(current) {
-  const note = FB.state.result && FB.state.result.excluded_note;
+  const note = MN.state.result && MN.state.result.excluded_note;
   const existing = document.getElementById("exclBanner");
   if (!note || !BOOK_PAGES.has(current)) { if (existing) existing.remove(); return; }
   const names = (note.excluded || []).map((e) => e.symbol).join(", ");
@@ -324,7 +324,7 @@ function paintExclusionBanner(current) {
 }
 
 function requireResult(current) {
-  const s = FB.state;
+  const s = MN.state;
   if (!s.result || !s.result.found) {
     /* "Run a reverse stress test first" is wrong when they already did and it
        came back empty. That is not an error and not a missing step — it is the
@@ -397,7 +397,7 @@ function requireResult(current) {
    The numbering follows the stepper, so Limit is 2 and everything after it
    shifts. Until the rail is on every page, `2` finds no link on the pages that
    still carry the old nav and does nothing there, the same as a locked page. */
-const FB_PAGES = [
+const MN_PAGES = [
   ["1", "index.html", "portfolio", "Portfolio"],
   ["2", "index.html#limit", "limit", "Limit"],
   ["3", "analysis.html", "analysis", "Break"],
@@ -431,7 +431,7 @@ function bindKeys(current, extraHandlers) {
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
 
-    const page = FB_PAGES.find(([k]) => k === ev.key);
+    const page = MN_PAGES.find(([k]) => k === ev.key);
     if (page) {
       const link = document.querySelector(`.nav-links a[data-page="${page[2]}"]`);
       if (link && !link.hasAttribute("data-locked")) location.href = page[1];
@@ -456,7 +456,7 @@ function toggleKeyHelp() {
     d.className = "keyhelp";
     d.innerHTML = `<div class="card"><div class="card-header">Keyboard</div>
       <div class="card-body tight"><table><tbody>
-        ${FB_PAGES.map(([k, , , label]) =>
+        ${MN_PAGES.map(([k, , , label]) =>
           `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${label}</td></tr>`).join("")}
         <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td class="t">Step the cascade (Cascade page)</td></tr>
         <tr><td><kbd>space</kbd></td><td class="t">Play or pause the cascade</td></tr>

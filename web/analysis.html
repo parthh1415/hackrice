@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Break point · Firebreak</title>
+<title>Break point · Minima</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2314171A'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23E5484D'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="shell.css">
@@ -65,7 +65,7 @@ bindKeys("analysis");
      portfolio screen. seedDemoIfAsked seeds the book and runs the analysis,
      so re-read state rather than the copy taken before it. */
   await seedDemoIfAsked();
-  const s = FB.state;
+  const s = MN.state;
   if (!s.portfolio) { location.replace("index.html"); return; }
   const payload = s.rows ? { holdings: s.rows, source: "csv" } : {};
   let body;
@@ -77,7 +77,7 @@ bindKeys("analysis");
     document.getElementById("sub").textContent = e.message;
     return;
   }
-  /* Adopt the limit the engine actually used. The nav reads FB state and this
+  /* Adopt the limit the engine actually used. The nav reads MN state and this
      page reads params.limit; if the engine pulled the limit into range those
      are two different numbers side by side on the same screen. */
   /* A refusal is not an answer. This stored the payload first and tested
@@ -86,7 +86,7 @@ bindKeys("analysis");
      page that then announced "no single-name fall inside the tested range
      crossed it", which is a search result for a search that never ran. The
      backend was changed to prevent that pairing; it came back on the client. */
-  FB.set({ result: body.refused ? null : body,
+  MN.set({ result: body.refused ? null : body,
            limit: (body.params && body.params.limit) || s.limit });
   paintShell("analysis");
 
@@ -143,7 +143,7 @@ bindKeys("analysis");
               book only. ${frac} of it would not be represented at all.</span></div>
         </div>`;
       document.getElementById("excludeBtn").addEventListener("click", () => {
-        FB.set({ excludeUnmodelled: true });
+        MN.set({ excludeUnmodelled: true });
         location.reload();
       });
     }

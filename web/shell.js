@@ -12,7 +12,7 @@
    AND you are past it. Availability is a different question, and paintNav
    already answers that one; ticking every unlocked step would put a tick on
    steps you have not taken yet. */
-const FB_STEPS = [
+const MN_STEPS = [
   { page: "portfolio",   href: "index.html",       label: "Portfolio", done: (s) => !!s.portfolio },
   { page: "limit",       href: "index.html#limit", label: "Limit",     done: (s) => !!s.limit },
   { page: "analysis",    href: "analysis.html",    label: "Break",     done: (s) => !!s.result },
@@ -23,7 +23,7 @@ const FB_STEPS = [
 
 /* Reference screens. Unnumbered, below a rule — neither is a step and neither
    needs an analysis to be true. */
-const FB_REFS = [
+const MN_REFS = [
   { page: "boundary",    href: "boundary.html",    label: "Boundary" },
   { page: "assumptions", href: "assumptions.html", label: "Model" },
 ];
@@ -31,7 +31,7 @@ const FB_REFS = [
 /* A tick, drawn rather than typed. ✓ is in no subset of any font this app
    ships, so as a character it would fall through to the system UI font at a
    weight nothing else on the page uses. 1px stroke, cut to match --rule. */
-const FB_TICK =
+const MN_TICK =
   '<svg viewBox="0 0 12 12" fill="none" aria-hidden="true">' +
   '<path d="M2 6.5 L4.75 9.25 L10 3" stroke="currentColor" stroke-width="1"/></svg>';
 
@@ -51,10 +51,10 @@ function buildShell() {
        index.html from before there was an entrance, which left "/" as a page
        you could only reach by editing the address bar. Step 1 in the stepper
        below is the portfolio page; this is the way back out. */
-    `<a class="rail-mark" href="home.html">Firebreak</a>` +
+    `<a class="rail-mark" href="home.html">Minima</a>` +
     `<div class="nav-links">` +
-      `<ol class="stepper">${FB_STEPS.map((s, i) => row(s, true, i)).join("")}</ol>` +
-      `<ul class="rail-refs">${FB_REFS.map((s) => row(s, false)).join("")}</ul>` +
+      `<ol class="stepper">${MN_STEPS.map((s, i) => row(s, true, i)).join("")}</ol>` +
+      `<ul class="rail-refs">${MN_REFS.map((s) => row(s, false)).join("")}</ul>` +
     `</div>` +
     `<div class="rail-foot">` +
       `<span><span id="railSource">—</span> · <span id="railMs">—</span></span>` +
@@ -65,7 +65,7 @@ function buildShell() {
 
   /* The strip reports the last round trip, so it has to hear about round trips.
      api() fires this; nothing polls. */
-  document.addEventListener("fb:latency", paintStrip);
+  document.addEventListener("mn:latency", paintStrip);
   return rail;
 }
 
@@ -125,7 +125,7 @@ function dressMasthead() {
 /* `demo · 14ms`. Both halves measured: the source is what the book says it is,
    and the milliseconds are what the stopwatch in api() recorded. */
 function paintStrip() {
-  const s = FB.state;
+  const s = MN.state;
   const src = document.getElementById("railSource");
   if (src) {
     src.textContent = !s.portfolio ? "no book"
@@ -140,10 +140,10 @@ function paintStrip() {
 
 function paintShell(current) {
   const rail = document.querySelector(".rail") || buildShell();
-  const s = FB.state;
-  const at = FB_STEPS.findIndex((x) => x.page === current);
+  const s = MN.state;
+  const at = MN_STEPS.findIndex((x) => x.page === current);
 
-  FB_STEPS.forEach((step, i) => {
+  MN_STEPS.forEach((step, i) => {
     const cell = rail.querySelector(`.step-state[data-for="${step.page}"]`);
     if (!cell) return;
     /* The Limit step shows the limit rather than a tick. The number is the
@@ -165,7 +165,7 @@ function paintShell(current) {
        is behind you. */
     } else if ((at === -1 || at > i) && step.done(s)) {
       cell.className = "step-state step-mark";
-      cell.innerHTML = FB_TICK;
+      cell.innerHTML = MN_TICK;
     } else {
       cell.className = "step-state";
       cell.innerHTML = "";

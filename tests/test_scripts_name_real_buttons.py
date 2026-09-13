@@ -2,7 +2,7 @@
 
 `docs/video-script-3min.md` opens with "This is what you read aloud", and eight
 of its ten shots named a button that had been renamed or deleted — Try demo
-portfolio, Continue, Find my Firebreak, Watch why, Find a fix, Validate
+portfolio, Continue, Find my Minima, Watch why, Find a fix, Validate
 recommendation, a Historical tab, a Risk Desk mode. The narration was fine. The
 directions were for a different app.
 
@@ -98,7 +98,7 @@ def test_every_button_the_script_names_exists_in_the_app(label):
 
 def test_the_script_does_not_speak_a_portfolio_total_the_app_does_not_show():
     """It said "fifteen thousand dollars" for a $12,300 book, out loud."""
-    from firebreak import api
+    from minima import api
 
     total = api.handle("/api/portfolio/demo", {})["portfolio"]["total_value"]
     text = SCRIPT.read_text().lower()

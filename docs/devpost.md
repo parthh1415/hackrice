@@ -1,11 +1,11 @@
-# Firebreak
+# Minima
 
 **Reverse stress testing for your portfolio.** Not "what if NVDA drops 20%", but "what is the smallest
 drop that pushes *my* portfolio past the loss I refuse to tolerate — and what is the smallest change
 that buys me distance from it".
 
 You upload a portfolio — a CSV, parsed in your browser — and name the loss you will not accept.
-(A brokerage connection is not in this build; the button is there and disabled, and says so.) Firebreak searches for the
+(A brokerage connection is not in this build; the button is there and disabled, and says so.) Minima searches for the
 smallest single-name shock that crosses it, models how crowded institutional selling amplifies the
 damage on the way to you, shows the cascade round by round, recommends the smallest position change
 that helps — and then **tests whether that recommendation actually helped**, by replaying the
@@ -13,7 +13,7 @@ identical shock, recomputing the new break point, and scoring both portfolios ac
 stress scenarios.
 
 ```
-Portfolio  →  Risk limit  →  Firebreak  →  Cascade  →  Fix  →  Validate
+Portfolio  →  Risk limit  →  Break  →  Cascade  →  Fix  →  Validate
 ```
 
 On the demo portfolio at a 10% limit: **NVDA −25.05%** breaks it, a **7.33%** direct loss becomes
@@ -51,7 +51,7 @@ were not crowded enough to cascade. We did not need it.
 
 ## What it does
 
-Firebreak loads the real books, then runs two searches around a forced-deleveraging simulator.
+Minima loads the real books, then runs two searches around a forced-deleveraging simulator.
 
 **The attack.** Given a failure condition you choose (default: three or more funds breach their
 leverage limit), it searches every asset for the smallest single-name price drop that trips it. On the
@@ -172,7 +172,7 @@ animation is supposed to *be* the mechanism rather than illustrate it.
 
 ## The pivot, and what it did not cost
 
-Firebreak began as an institutional tool: five leveraged funds, a failure condition of "N of them
+Minima began as an institutional tool: five leveraged funds, a failure condition of "N of them
 breach", a control rail of four sliders. Technically strong, and it started in the middle of a story —
 it assumed you already cared about a preloaded network of hedge funds.
 
@@ -387,7 +387,7 @@ And a metric that looks impressive deserves more suspicion than one that looks b
 that looks round. "Cut 5%" came back from ten different scenarios and we read it as a finding for
 hours before noticing it was the resolution of the grid we were searching.
 
-## What's next for Firebreak
+## What's next for Minima
 
 Sparse multi-asset shocks, minimising `‖s‖₁` so the search can find the cheapest *pair* of names rather
 than the cheapest single one. Real reverse stress testing is multi-dimensional.
@@ -424,7 +424,7 @@ on screen: eight rows, each tagged `measured`, `declared` or `not modelled`, fil
 payload so the leverage, band, γ and ADV it shows are the ones the numbers beside it were computed
 with. We say them out loud as well.
 
-We do not predict market moves. Firebreak computes a stability property of a declared configuration.
+We do not predict market moves. Minima computes a stability property of a declared configuration.
 
 Leverage is not disclosed in 13F. `λ` is our parameter. The Model page prints the value every
 number on screen was computed with — `Gross leverage · 5.0×` — and the API takes it as a knob. It

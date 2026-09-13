@@ -104,7 +104,7 @@ def build_holdings(books, universe):
 
 # SEC blocks anything without a real contact in the UA. Ten requests a second
 # is their published ceiling; we're nowhere near it.
-USER_AGENT = "Firebreak HackRice16 research contact@example.edu"
+USER_AGENT = "Minima HackRice16 research contact@example.edu"
 
 
 def _fetch(url):

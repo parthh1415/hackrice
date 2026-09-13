@@ -29,7 +29,7 @@ tight enough that the two cannot be confused.
 
 import numpy as np
 
-from firebreak.engine import run_cascade
+from minima.engine import run_cascade
 
 # One fund, deep ADV, a shock just past its breach ceiling — so it sells once,
 # survives, and its post-sale leverage is readable. Deliberately not the demo

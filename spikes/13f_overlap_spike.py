@@ -1,5 +1,5 @@
 import json,re,time,urllib.request,collections,itertools,math
-UA="HackRice16 Firebreak research parth@rice.edu"
+UA="HackRice16 Minima research parth@rice.edu"
 def get(u,b=False):
     r=urllib.request.Request(u,headers={"User-Agent":UA,"Accept-Encoding":"gzip, deflate"})
     d=urllib.request.urlopen(r,timeout=60).read()

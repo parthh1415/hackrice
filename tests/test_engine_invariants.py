@@ -16,7 +16,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from firebreak.engine import Book, run_cascade
+from minima.engine import Book, run_cascade
 
 DATA = json.loads((pathlib.Path(__file__).resolve().parents[1]
                    / "data" / "cache" / "dataset.json").read_text())
@@ -156,7 +156,7 @@ def test_damage_from_a_zero_shock_is_not_reported_as_no_amplification():
     and this is the one case where the number is not merely imprecise but
     inverted.
     """
-    from firebreak.engine import run_cascade
+    from minima.engine import run_cascade
 
     over_from_the_start = run_cascade(
         holdings=HOLDINGS, leverage=np.full(N_FUNDS, 6.0),
@@ -197,7 +197,7 @@ def test_an_adv_of_zero_is_refused_rather_than_priced():
     import numpy as np
     import pytest
 
-    from firebreak.engine import run_cascade
+    from minima.engine import run_cascade
 
     holdings = np.array([[1000.0, 500.0], [800.0, 700.0]])
     adv = np.array([1e9, 0.0])
@@ -222,7 +222,7 @@ def test_a_fund_that_holds_nothing_is_not_called_insolvent():
     """
     import numpy as np
 
-    from firebreak.engine import run_cascade
+    from minima.engine import run_cascade
 
     holdings = np.array([[1000.0, 500.0], [0.0, 0.0]])
     out = run_cascade(

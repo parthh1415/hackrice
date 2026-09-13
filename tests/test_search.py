@@ -1,7 +1,7 @@
 import numpy as np
 
-from firebreak.engine import run_cascade
-from firebreak.search import (
+from minima.engine import run_cascade
+from minima.search import (
     amplification_above,
     at_least_n_breaches,
     find_weakest_shock,

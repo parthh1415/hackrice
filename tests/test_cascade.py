@@ -1,6 +1,6 @@
 import numpy as np
 
-from firebreak.engine import run_cascade
+from minima.engine import run_cascade
 
 # three assets. fund 0 owns the shocked name and shares asset 1 with fund 1.
 # fund 1 has never heard of asset 0 — it only gets hurt through asset 1.
@@ -90,7 +90,7 @@ def test_a_cascade_that_settles_on_the_last_round_is_not_called_divergent():
     it, even when that round was the one that settled the system. The UI prints
     "did not converge" off this, so it was libelling runs that finished.
     """
-    from firebreak.engine import run_cascade
+    from minima.engine import run_cascade
 
     holdings = np.array([[60.0, 40.0], [30.0, 70.0]])
     kwargs = dict(

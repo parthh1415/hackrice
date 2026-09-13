@@ -12,7 +12,7 @@ knobs alone would serve one person's result to another. That is the
 import json
 import pytest
 
-from firebreak import api
+from minima import api
 
 
 def test_the_demo_portfolio_loads_with_no_body_and_no_network():
@@ -56,17 +56,17 @@ def test_a_stricter_limit_gives_a_nearer_break_point():
 
 def test_the_limit_is_guarded_like_every_other_input():
     """Out-of-range input is clamped, not obeyed and not crashed on."""
-    out = api.handle("/api/portfolio/firebreak?limit=99", {})
+    out = api.handle("/api/portfolio/breakpoint?limit=99", {})
     assert out["params"]["limit"] <= 0.90
 
-    out = api.handle("/api/portfolio/firebreak?limit=nonsense", {})
+    out = api.handle("/api/portfolio/breakpoint?limit=nonsense", {})
     assert out["params"]["limit"] == pytest.approx(0.10)
 
 
 def test_an_all_cash_portfolio_reports_none_found_not_safe():
     """"We looked in a range and did not find one" and "you are safe" are
     different statements, and only one of them is ours to make."""
-    out = api.handle("/api/portfolio/firebreak?limit=0.10",
+    out = api.handle("/api/portfolio/breakpoint?limit=0.10",
                      {"holdings": [{"symbol": "CASH", "market_value": 10000.0}]})
 
     assert out["found"] is False
@@ -75,7 +75,7 @@ def test_an_all_cash_portfolio_reports_none_found_not_safe():
 
 
 def test_a_supplied_portfolio_is_used_rather_than_the_demo_one():
-    out = api.handle("/api/portfolio/firebreak?limit=0.10", {
+    out = api.handle("/api/portfolio/breakpoint?limit=0.10", {
         "holdings": [
             {"symbol": "NVDA", "market_value": 9000.0},
             {"symbol": "CASH", "market_value": 1000.0},
@@ -334,7 +334,7 @@ def test_the_no_break_point_answer_carries_the_range_it_searched():
     rather than to a literal typed into a page — otherwise widening _MAX_DROP
     leaves the screen quoting the old figure.
     """
-    from firebreak.search import _MAX_DROP
+    from minima.search import _MAX_DROP
 
     out = api.handle("/api/portfolio/full?limit=0.90", {"holdings": [
         {"symbol": "CASH", "market_value": 9000},
@@ -616,7 +616,7 @@ def test_a_short_is_refused_however_it_is_spelled(holding):
     rule belongs here rather than only in the parser: a POST straight to the
     API bypasses the parser entirely.
     """
-    from firebreak import portfolio
+    from minima import portfolio
 
     with pytest.raises(ValueError, match="(?i)long-only|negative"):
         portfolio.normalise([holding, {"symbol": "CASH", "market_value": 5000}])

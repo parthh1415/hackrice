@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from firebreak.engine import run_cascade
+from minima.engine import run_cascade
 
 OVERLAPPING = np.array([[50.0, 50.0, 0.0], [0.0, 50.0, 50.0]])
 

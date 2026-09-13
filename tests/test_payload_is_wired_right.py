@@ -26,7 +26,7 @@ So this file tests the PAYLOAD: the thing the frontend actually parses.
 import numpy as np
 import pytest
 
-from firebreak import api
+from minima import api
 
 
 @pytest.fixture(scope="module")
@@ -100,8 +100,8 @@ def test_the_reported_shock_range_is_the_one_the_scenarios_were_drawn_from(full)
     that means nothing without it. Re-running at the reported range has to
     reproduce the reported number.
     """
-    from firebreak import validate as V
-    from firebreak.portfolio import (Holding, Portfolio, cheapest_portfolio_fix,
+    from minima import validate as V
+    from minima.portfolio import (Holding, Portfolio, cheapest_portfolio_fix,
                                      weight_vector)
 
     syn = full["validation"]["synthetic"]
@@ -152,7 +152,7 @@ def test_the_published_prices_are_the_end_of_the_cascade(full):
     1.38x. The table and the number above it would contradict each other, and
     the table is the more believable of the two.
     """
-    from firebreak.portfolio import Holding, Portfolio, portfolio_loss, weight_vector
+    from minima.portfolio import Holding, Portfolio, portfolio_loss, weight_vector
 
     data = api.load_dataset()
     book = Portfolio(holdings=[Holding(symbol=h["symbol"], market_value=h["market_value"])

@@ -113,7 +113,7 @@ def _truthy(raw):
 
 
 def _demo_requested(query):
-    """?demo=1 on any request, or FIREBREAK_DEMO=1 for the whole process.
+    """?demo=1 on any request, or MINIMA_DEMO=1 for the whole process.
 
     Parsed separately from the sliders so a bare `?demo` counts too — that's
     what anyone types when the wifi has just gone down and they're in a hurry.
@@ -121,7 +121,7 @@ def _demo_requested(query):
     values = urllib.parse.parse_qs(query, keep_blank_values=True).get("demo", [])
     if values and values[-1].strip().lower() in ("", "1", "true", "yes", "on"):
         return True
-    return os.environ.get("FIREBREAK_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("MINIMA_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _reason(exc):
@@ -366,7 +366,7 @@ def record_golden(specs=None, out=None):
     """Freeze the demo path to disk. Returns the paths written.
 
     Calls the endpoint functions directly rather than going through handle(),
-    so re-recording with FIREBREAK_DEMO=1 still left set records live answers
+    so re-recording with MINIMA_DEMO=1 still left set records live answers
     instead of copying yesterday's recordings back over themselves.
     """
     specs = golden_specs() if specs is None else specs
@@ -951,7 +951,7 @@ def _solve_portfolio(params, body):
     is how the before and after halves of a comparison drift apart.
     """
     from .portfolio import (
-        UnknownSymbol, cheapest_portfolio_fix, find_portfolio_firebreak,
+        UnknownSymbol, cheapest_portfolio_fix, find_portfolio_breakpoint,
         normalise, portfolio_loss, weight_vector,
     )
 
@@ -1031,7 +1031,7 @@ def _solve_portfolio(params, body):
             "params": dict(knobs, limit=limit), "tickers": data["tickers"],
         }, None, None, scenario, data
 
-    found = find_portfolio_firebreak(vector, cash, limit, **scenario)
+    found = find_portfolio_breakpoint(vector, cash, limit, **scenario)
     out = {
         "portfolio": portfolio.as_dict(),
         "params": dict(knobs, limit=limit),
@@ -1091,7 +1091,7 @@ def _solve_portfolio(params, body):
     return out, found, (vector, cash), scenario, data
 
 
-def _portfolio_firebreak(params, body=None):
+def _portfolio_breakpoint(params, body=None):
     out, found, _vc, _scenario, _data = _solve_portfolio(params, body)
     return out
 
@@ -1139,7 +1139,7 @@ def _portfolio_full(params, body=None):
     return out
 
 
-BODY_ROUTES.update({"/api/portfolio/firebreak", "/api/portfolio/full"})
+BODY_ROUTES.update({"/api/portfolio/breakpoint", "/api/portfolio/full"})
 
 def _cascade_at(params, body=None):
     """Run a SPECIFIED shock and return what the stage animates.
@@ -1208,7 +1208,7 @@ ROUTES["/api/cascade"] = _cascade_at
 
 ROUTES["/api/portfolio/demo"] = lambda params: {
     "portfolio": _demo_portfolio_payload(), "source": "demo"}
-ROUTES["/api/portfolio/firebreak"] = _portfolio_firebreak
+ROUTES["/api/portfolio/breakpoint"] = _portfolio_breakpoint
 ROUTES["/api/portfolio/full"] = _portfolio_full
 
 

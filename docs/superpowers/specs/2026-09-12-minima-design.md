@@ -1,4 +1,4 @@
-# Firebreak — Design Spec
+# Minima — Design Spec
 
 **Date:** 2026-09-12
 **Event:** HackRice 16 — Finance track (1 track) + Capital One, MathWorks, and any other challenges we qualify for
@@ -8,7 +8,7 @@
 
 ## 1. Thesis
 
-Every stress test asks *"what if this happens?"* Firebreak asks the inverse:
+Every stress test asks *"what if this happens?"* Minima asks the inverse:
 
 > **What is the smallest shock that breaks this system, and what is the cheapest change that prevents it?**
 
@@ -396,7 +396,7 @@ And `rounds`/`breached` live at the top level, not inside `metrics`.
 |---|---|---|
 | **1 — Break** | "What's the smallest thing that kills us?" | `NVDA −X%`, then the cascade animates round by round |
 | **2 — Boundary** | "Bad luck, or is our structure the problem?" | leverage × overlap phase diagram with "you are here". As built: a 16×16 grid shaded into five amplification bands (<1.05, <1.30, <1.80, <3.00, above), a **marching-squares iso-contour at amplification 1.5** drawn over it, and a ring-and-dot marker. The grid paints in one pass rather than animating. |
-| **3 — Firebreak** | "What's the cheapest way out?" | a priced instruction; same shock re-run; before/after |
+| **3 — Break** | "What's the cheapest way out?" | a priced instruction; same shock re-run; before/after |
 | **4 — Exposure** *(planned, not built)* | "What does this mean for me?" | user's CSV portfolio as an unlevered node that cannot breach but still loses |
 
 **Scene 4 was cut and is not in the shipped app** — there is no CSV import and no bystander node;

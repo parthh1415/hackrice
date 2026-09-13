@@ -1,8 +1,8 @@
 import numpy as np
 
-from firebreak.engine import run_cascade
-from firebreak.search import at_least_n_breaches
-from firebreak.stabilise import find_cheapest_fix
+from minima.engine import run_cascade
+from minima.search import at_least_n_breaches
+from minima.stabilise import find_cheapest_fix
 
 CROWDED = np.array([[20.0, 80.0, 0.0], [0.0, 80.0, 20.0]])
 ADV = np.array([2000.0, 2000.0, 2000.0])

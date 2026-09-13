@@ -7,7 +7,7 @@ Picking the wrong rule gives you either a 5%-sized portfolio or a double count.
 
 import pytest
 
-from firebreak.thirteenf import choose_filings
+from minima.thirteenf import choose_filings
 
 
 def rec(acc, period, kind=None, date="2026-08-14", is_amendment=None):

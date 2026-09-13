@@ -14,8 +14,8 @@ import pathlib
 
 import numpy as np
 
-from firebreak.engine import run_cascade
-from firebreak.search import at_least_n_breaches
+from minima.engine import run_cascade
+from minima.search import at_least_n_breaches
 
 # the toy case that shows the degenerate end most starkly
 TOY = dict(

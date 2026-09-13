@@ -18,10 +18,10 @@ import pathlib
 import numpy as np
 import pytest
 
-from firebreak import api
-from firebreak.engine import run_cascade
-from firebreak.search import at_least_n_breaches
-from firebreak.stabilise import Fix, find_cheapest_fix
+from minima import api
+from minima.engine import run_cascade
+from minima.search import at_least_n_breaches
+from minima.stabilise import Fix, find_cheapest_fix
 
 REAL = pathlib.Path(__file__).resolve().parents[1] / "data" / "cache" / "dataset.json"
 
@@ -89,7 +89,7 @@ def test_the_reported_cut_is_close_to_the_true_minimum():
     """
     _, kw = scenario()
     condition = at_least_n_breaches(3)
-    from firebreak.search import find_weakest_shock
+    from minima.search import find_weakest_shock
 
     found = find_weakest_shock(condition=condition, **kw)
     fix = find_cheapest_fix(condition=condition, shock=found.shock, **kw)
@@ -117,7 +117,7 @@ def test_the_cost_is_priced_from_the_cut_it_reports():
     """
     data, kw = scenario()
     condition = at_least_n_breaches(3)
-    from firebreak.search import find_weakest_shock
+    from minima.search import find_weakest_shock
 
     found = find_weakest_shock(condition=condition, **kw)
     fix = find_cheapest_fix(condition=condition, shock=found.shock, **kw)

@@ -44,7 +44,7 @@ import urllib.parse
 
 import pytest
 
-from firebreak import dataset, thirteenf
+from minima import dataset, thirteenf
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MIRROR = pathlib.Path(__file__).resolve().parent / "fixtures_edgar"

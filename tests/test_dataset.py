@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pytest
 
-from firebreak.dataset import UNIVERSE, assemble, manager_ciks
+from minima.dataset import UNIVERSE, assemble, manager_ciks
 
 
 def test_assemble_builds_a_matrix_in_universe_order():

@@ -1,7 +1,7 @@
 function out = cascade(H, lambda, maxLev, tgtLev, gamma, adv, shock)
 %CASCADE  Forward deleveraging cascade on a network of overlapping portfolios.
 %
-%   Mirrors src/firebreak/engine.py. Parity is checked by porting this file
+%   Mirrors src/minima/engine.py. Parity is checked by porting this file
 %   and diffing against run_cascade on the real dataset; finalLoss, breaches
 %   and rounds agree to 0.0 across a 720-scenario sweep.
 %

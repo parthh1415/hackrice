@@ -13,7 +13,7 @@ see, while the two less influential knobs sat on sliders. That is the worst
 configuration to be caught in — it reads as hiding the one that matters.
 """
 
-from firebreak import api
+from minima import api
 
 
 def test_the_band_is_a_declared_parameter():

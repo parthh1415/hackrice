@@ -1,4 +1,4 @@
-# Firebreak — 3:30 shooting script
+# Minima — 3:30 shooting script
 
 **This is what you read aloud.** `video-script.md` is the long reference, and it is now largely
 STALE — it was written against a single-page app and 12 of its 21 shots point at UI that no
@@ -24,7 +24,7 @@ seconds makes the thing read as a tool rather than a web page.
 **Shot 2** · Click **Use demo portfolio**. Holdings table fills — and the last column shows
 how much of each name the five modelled books hold, in days of its own volume.
 
-> "Firebreak asks the inverse. Here's a portfolio. Twelve thousand three hundred dollars,
+> "Minima asks the inverse. Here's a portfolio. Twelve thousand three hundred dollars,
 > five names."
 
 ---

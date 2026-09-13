@@ -1,4 +1,4 @@
-# Firebreak — demo video script
+# Minima — demo video script
 
 > **STALE — read `docs/video-shooting-guide.md` first.** This script was written
 > against the single-page institutional app: three sliders, a solver strip, a
@@ -95,18 +95,18 @@
 ## ACT 1 — INTRODUCTION (0:00 – 0:30)
 
 ### Shot 1.1 · 0:00 – 0:08
-**On screen:** Firebreak title card. Below it: team member names, "HackRice 16 · Finance track ·
+**On screen:** Minima title card. Below it: team member names, "HackRice 16 · Finance track ·
 Capital One challenge · MathWorks challenge".
 
-> "This is Firebreak. I'm [NAME], with [NAME] and [NAME]. We built it for the Finance track at
+> "This is Minima. I'm [NAME], with [NAME] and [NAME]. We built it for the Finance track at
 > HackRice 16, and we're also entering the Capital One and MathWorks challenges."
 
 ### Shot 1.2 · 0:08 – 0:21
 **On screen:** Cut to a plain slide, two lines of text appearing one at a time:
-`Stress test: what if NVDA drops 20%?` then `Firebreak: what is the smallest drop that breaks us?`
+`Stress test: what if NVDA drops 20%?` then `Minima: what is the smallest drop that breaks us?`
 
 > "Every stress test asks the same shape of question. What if this happens? The scenario is the
-> assumption, and the assumption is the part nobody checks. Firebreak asks the inverse. What is the
+> assumption, and the assumption is the part nobody checks. Minima asks the inverse. What is the
 > smallest shock that breaks this system, and what is the cheapest change that prevents it."
 
 ### Shot 1.3 · 0:21 – 0:30
@@ -471,7 +471,7 @@ shocks · multi-asset shocks · systemic-importance ranking · bystander exposur
 **On screen:** Back to the hero number, NVDA −5.27%, then the title card.
 
 > "Five point two seven percent on one name, and four of five funds breach. The point isn't that
-> number. The point is that you can go looking for it. Firebreak."
+> number. The point is that you can go looking for it. Minima."
 
 
 ---

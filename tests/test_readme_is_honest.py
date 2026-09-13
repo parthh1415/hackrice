@@ -60,13 +60,13 @@ def test_the_readme_is_right_about_which_routes_are_cached():
     import os
     from unittest import mock
 
-    from firebreak import api
+    from minima import api
 
     cached_routes = ["/api/break?leverage=5"]
     live_routes = ["/api/portfolio/demo", "/api/portfolio/full?limit=0.10",
                    "/api/cascade?asset=NVDA&magnitude=0.2"]
 
-    with mock.patch.dict(os.environ, {"FIREBREAK_DEMO": "1"}):
+    with mock.patch.dict(os.environ, {"MINIMA_DEMO": "1"}):
         for route in cached_routes:
             assert api.handle(route, {}).get("cached") is True, route
         for route in live_routes:
@@ -108,7 +108,7 @@ def test_the_docs_quote_the_resolution_the_api_actually_reports():
     """
     import pathlib
 
-    from firebreak import api
+    from minima import api
 
     out = api.handle("/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3", {})
     reported = out["bought"]["resolution_pct"]
@@ -137,7 +137,7 @@ def test_the_pitch_quotes_the_fix_size_the_engine_returns():
     """
     import pathlib
 
-    from firebreak import api
+    from minima import api
 
     out = api.handle("/api/stabilise?leverage=5&gamma=0.2&band=1.05&breaches=3", {})
     sell = out["fix"]["sell_usd"]
@@ -167,7 +167,7 @@ def test_every_mutation_anchor_still_exists_in_the_code_it_targets():
     import os
     import pathlib
 
-    if os.environ.get("FIREBREAK_MUTANT"):
+    if os.environ.get("MINIMA_MUTANT"):
         pytest.skip(
             "running inside a mutant: the mutation has by definition changed "
             "the line its own anchor points at, so this test would fail for "

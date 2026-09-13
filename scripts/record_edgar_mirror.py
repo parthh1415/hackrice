@@ -26,8 +26,8 @@ import urllib.parse
 
 sys.path.insert(0, "src")
 
-from firebreak import thirteenf
-from firebreak.dataset import UNIVERSE, manager_ciks
+from minima import thirteenf
+from minima.dataset import UNIVERSE, manager_ciks
 
 MIRROR = pathlib.Path(__file__).resolve().parents[1] / "tests" / "fixtures_edgar"
 

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from firebreak import api
-from firebreak.search import at_least_n_breaches, find_weakest_shock
+from minima import api
+from minima.search import at_least_n_breaches, find_weakest_shock
 
 
 def test_the_after_panel_can_draw_the_cut_it_is_claiming():
@@ -52,7 +52,7 @@ def test_the_hero_number_resolves_the_precision_it_prints():
         target_leverage=np.full(m, 4.75), gamma=0.2, adv=np.array(data["adv"]),
     )
 
-    from firebreak.search import DEFAULT_TOLERANCE
+    from minima.search import DEFAULT_TOLERANCE
 
     coarse = find_weakest_shock(condition=at_least_n_breaches(3), tolerance=0.0005, **kw)
     default = find_weakest_shock(condition=at_least_n_breaches(3), **kw)
@@ -117,8 +117,8 @@ def test_the_cheapest_fix_is_within_the_two_percent_it_promises(leverage, gamma,
     import json
     import pathlib
 
-    from firebreak.engine import run_cascade
-    from firebreak.stabilise import _DEPTH_RTOL, Fix, find_cheapest_fix
+    from minima.engine import run_cascade
+    from minima.stabilise import _DEPTH_RTOL, Fix, find_cheapest_fix
 
     data = json.loads((pathlib.Path(__file__).resolve().parents[1]
                        / "data" / "cache" / "dataset.json").read_text())

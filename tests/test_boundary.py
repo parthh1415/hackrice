@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from firebreak.api import blend_toward_mean, handle
+from minima.api import blend_toward_mean, handle
 
 
 def test_blend_zero_leaves_the_books_exactly_as_filed():
@@ -46,7 +46,7 @@ def test_the_grid_gets_worse_as_leverage_rises():
 
 
 def test_negative_blend_makes_funds_more_distinct_not_less():
-    from firebreak.api import mean_overlap
+    from minima.api import mean_overlap
 
     holdings = np.array([[60.0, 30.0, 10.0], [50.0, 35.0, 15.0]])
     as_filed = mean_overlap(holdings)

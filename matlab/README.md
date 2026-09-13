@@ -113,7 +113,7 @@ if a judge asks "why MATLAB?":
 > `patternsearch` exists for. The forward cascade is linear algebra and stays
 > in Python where it has a test suite.
 
-`cascade.m` mirrors `src/firebreak/engine.py` so the optimiser has an
+`cascade.m` mirrors `src/minima/engine.py` so the optimiser has an
 objective to evaluate. `stabilise.m` is the solve.
 
 `patternsearch` treats the reduction as continuous, which for most of this
@@ -210,7 +210,7 @@ In MATLAB Online:
 
 Reload the app and press `8` for the Model page. The card now reads **MATLAB · patternsearch** with
 the real evaluation count, exit flag and wall time. (`engine_label` and
-`solve_stabilisation` in `src/firebreak/matlab_bridge.py` pick between three
+`solve_stabilisation` in `src/minima/matlab_bridge.py` pick between three
 paths — `matlab`, `matlab-offline`, `python` — and the UI is told which one
 actually ran.)
 

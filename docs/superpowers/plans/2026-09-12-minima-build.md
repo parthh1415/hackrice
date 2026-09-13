@@ -1,14 +1,14 @@
-# Firebreak Implementation Plan
+# Minima Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Finish Firebreak — a reverse stress-testing tool that finds the smallest shock breaking a network of overlapping leveraged funds, then the cheapest intervention that prevents it — with a four-scene web UI running locally.
+**Goal:** Finish Minima — a reverse stress-testing tool that finds the smallest shock breaking a network of overlapping leveraged funds, then the cheapest intervention that prevents it — with a four-scene web UI running locally.
 
 **Architecture:** Pure-Python engine (already built and tested) wrapped by a stdlib HTTP server exposing JSON endpoints. Vanilla-JS frontend, no build step, no framework — four scenes on one page, advanced by one button each. Fund holdings come from real SEC 13F filings; leverage and price impact are declared scenario parameters.
 
 **Tech Stack:** Python 3.13 + numpy + pytest. Stdlib `http.server`. Vanilla JS + inline SVG. No npm, no bundler, no CDN dependency. *(The no-CDN rule was briefly broken — the page linked Geist off Google Fonts — and is now honoured by self-hosting it in `web/fonts/`.)*
 
-**Spec:** `docs/superpowers/specs/2026-09-12-firebreak-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-12-minima-design.md`
 
 > **Status 2026-09-12.** This is the plan as written, kept for the record. Tasks 1–6 shipped, Task 8
 > shipped in full (golden-path cache and assumptions panel both);
@@ -40,11 +40,11 @@
 ### Task 1: Stabilisation search
 
 **Files:**
-- Create: `src/firebreak/stabilise.py`
+- Create: `src/minima/stabilise.py`
 - Test: `tests/test_stabilise.py`
 
 **Interfaces:**
-- Consumes: `run_cascade` and `CascadeResult` from `firebreak.engine`; condition builders from `firebreak.search`.
+- Consumes: `run_cascade` and `CascadeResult` from `minima.engine`; condition builders from `minima.search`.
 - Produces: `find_cheapest_fix(condition, holdings, leverage, max_leverage, target_leverage, gamma, adv, shock, **kw) -> Fix | None` where `Fix` is a dataclass with fields `fund: int`, `asset: int`, `reduction: float` (fraction of that position sold, 0–1), `cost: float` (fraction of total gross assets given up).
 
 - [ ] **Step 1: Write the failing test**
@@ -52,9 +52,9 @@
 ```python
 # tests/test_stabilise.py
 import numpy as np
-from firebreak.search import at_least_n_breaches
-from firebreak.stabilise import find_cheapest_fix
-from firebreak.engine import run_cascade
+from minima.search import at_least_n_breaches
+from minima.stabilise import find_cheapest_fix
+from minima.engine import run_cascade
 
 CROWDED = np.array([[20.0, 80.0, 0.0], [0.0, 80.0, 20.0]])
 ADV = np.array([2000.0, 2000.0, 2000.0])
@@ -79,13 +79,13 @@ def test_the_fix_actually_prevents_the_failure():
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `cd ~/Desktop/firebreak && python3 -m pytest tests/test_stabilise.py -q`
-Expected: `ModuleNotFoundError: No module named 'firebreak.stabilise'`. Create the module with `def find_cheapest_fix(*a, **k): raise NotImplementedError` and re-run until it fails with `NotImplementedError` rather than an import error.
+Run: `cd ~/Desktop/minima && python3 -m pytest tests/test_stabilise.py -q`
+Expected: `ModuleNotFoundError: No module named 'minima.stabilise'`. Create the module with `def find_cheapest_fix(*a, **k): raise NotImplementedError` and re-run until it fails with `NotImplementedError` rather than an import error.
 
 - [ ] **Step 3: Implement**
 
 ```python
-# src/firebreak/stabilise.py
+# src/minima/stabilise.py
 """The other half: given a shock that breaks us, what's the cheapest change
 that makes us survive it?
 
@@ -163,12 +163,12 @@ git add -A && git commit -m "stabilisation search — cheapest position cut that
 ### Task 2: Real 13F dataset builder
 
 **Files:**
-- Create: `src/firebreak/dataset.py`
+- Create: `src/minima/dataset.py`
 - Create: `data/universe.json`
 - Test: `tests/test_dataset.py`
 
 **Interfaces:**
-- Consumes: `latest_filing`, `fetch_positions`, `build_holdings` from `firebreak.thirteenf`.
+- Consumes: `latest_filing`, `fetch_positions`, `build_holdings` from `minima.thirteenf`.
 - Produces: `load_dataset(refresh=False) -> dict` with keys `funds: list[str]`, `tickers: list[str]`, `holdings: list[list[float]]`, `adv: list[float]`, `quarter: str`, `source: str`. Cached to `data/cache/dataset.json`.
 
 - [ ] **Step 1: Write `data/universe.json`**
@@ -207,7 +207,7 @@ ADV figures are order-of-magnitude dollar volumes; they are a declared parameter
 ```python
 # tests/test_dataset.py
 import json, numpy as np
-from firebreak.dataset import assemble
+from minima.dataset import assemble
 
 def test_assemble_builds_a_matrix_in_universe_order():
     universe = {"67066G10": "NVDA", "03783310": "AAPL"}
@@ -226,7 +226,7 @@ def test_assemble_builds_a_matrix_in_universe_order():
 - [ ] **Step 3: Run it, watch it fail, implement**
 
 ```python
-# src/firebreak/dataset.py
+# src/minima/dataset.py
 """Turn real 13F filings into the matrix the engine eats.
 
 Cached to disk because SEC is slow and we do not want to be fetching 8MB
@@ -275,7 +275,7 @@ def load_dataset(refresh=False):
 
 ```bash
 python3 -m pytest tests/ -q
-PYTHONPATH=src python3 -c "from firebreak.dataset import load_dataset; d=load_dataset(refresh=True); print(d['funds'], d['tickers'])"
+PYTHONPATH=src python3 -c "from minima.dataset import load_dataset; d=load_dataset(refresh=True); print(d['funds'], d['tickers'])"
 ```
 
 Expected: five funds, ten tickers, `data/cache/dataset.json` written.
@@ -291,7 +291,7 @@ git add -A && git commit -m "pull the real books off edgar and cache them"
 ### Task 3: API endpoints
 
 **Files:**
-- Modify: `src/firebreak/api.py`
+- Modify: `src/minima/api.py`
 - Test: `tests/test_api.py`
 
 **Interfaces:**
@@ -301,7 +301,7 @@ git add -A && git commit -m "pull the real books off edgar and cache them"
 
 ```python
 # tests/test_api.py
-from firebreak import api
+from minima import api
 
 def test_dataset_endpoint_returns_the_books():
     result = api.handle("/api/dataset", {})
@@ -319,7 +319,7 @@ def test_break_endpoint_finds_a_shock():
 - [ ] **Step 2: Run, watch fail, implement**
 
 ```python
-# add to src/firebreak/api.py
+# add to src/minima/api.py
 import numpy as np
 from .dataset import load_dataset
 from .engine import run_cascade
@@ -410,7 +410,7 @@ git add -A && git commit -m "scene 1 — find the shock, watch it spread"
 
 **Files:**
 - Modify: `web/app.js`
-- Modify: `src/firebreak/api.py` (add `/api/boundary`)
+- Modify: `src/minima/api.py` (add `/api/boundary`)
 
 - [ ] **Step 1: Add the boundary sweep endpoint**
 
@@ -476,10 +476,10 @@ git add -A && git commit -m "scene 2 — the stability boundary, computed not dr
 
 ---
 
-### Task 6: Scene 3 — Firebreak (before/after)
+### Task 6: Scene 3 — Break (before/after)
 
 **Files:**
-- Modify: `web/app.js`, `src/firebreak/api.py`
+- Modify: `web/app.js`, `src/minima/api.py`
 
 - [ ] **Step 1: Wire `/api/stabilise`** to return the `Fix` plus a re-run of the same shock on patched holdings.
 
@@ -498,7 +498,7 @@ git add -A && git commit -m "scene 3 — cheapest fix, same shock, different out
 ### Task 7: Scene 4 — Exposure (CSV import)
 
 **Files:**
-- Modify: `web/app.js`, `src/firebreak/api.py`
+- Modify: `web/app.js`, `src/minima/api.py`
 
 - [ ] **Step 1: Parse a pasted or dropped CSV** of `ticker,value` client-side. Every major broker exports this shape.
 
@@ -534,12 +534,12 @@ git add -A && git commit -m "scene 4 — you never sold, you still lost"
 > **Drifted (for the better).** Recordings live in `data/cache/golden/` as one file per scenario,
 > named by a canonical knob slug (`break__breaches=3__gamma=0.2__leverage=5.json`), written by
 > `scripts/record_golden.py` and matched by `api.slug()`. `?demo=1` on any request asks for them,
-> `FIREBREAK_DEMO=1` switches the whole process over, and an exploding engine falls back to them.
+> `MINIMA_DEMO=1` switches the whole process over, and an exploding engine falls back to them.
 > There is no single `golden.json`. The command below is the plan's original one-file version:
 
 ```bash
 PYTHONPATH=src python3 -c "
-from firebreak import api, dataset; import json, pathlib
+from minima import api, dataset; import json, pathlib
 out = api.handle('/api/break?leverage=6&gamma=0.5&breaches=2', {})
 pathlib.Path('data/cache/golden.json').write_text(json.dumps(out))
 print('golden path cached')"
@@ -561,4 +561,4 @@ panel is built and §9 is on screen.)* §3 model → already built (Tasks comple
 
 **Placeholders.** None — every code step contains runnable code. Task 4's steps describe rendering rather than pasting 200 lines of SVG, which is a judgement call: the interface (`renderNetwork`, `playCascade`, the trajectory shape) is specified exactly, and the drawing is genuinely free-form.
 
-**Type consistency.** `Fix.apply(holdings) -> ndarray` used identically in Tasks 1, 3, 6. `find_weakest_shock` returns `WeakestShock` with `.shock`, `.asset`, `.magnitude`, `.pct` — matches `src/firebreak/search.py`. `run_cascade(...).as_dict()` shape matches what Task 4 consumes. `load_dataset()` keys match `_params` and `_break`.
+**Type consistency.** `Fix.apply(holdings) -> ndarray` used identically in Tasks 1, 3, 6. `find_weakest_shock` returns `WeakestShock` with `.shock`, `.asset`, `.magnitude`, `.pct` — matches `src/minima/search.py`. `run_cascade(...).as_dict()` shape matches what Task 4 consumes. `load_dataset()` keys match `_params` and `_break`.

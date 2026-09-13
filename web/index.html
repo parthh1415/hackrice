@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Portfolio · Firebreak</title>
+<title>Portfolio · Minima</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2314171A'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23E5484D'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="shell.css">
@@ -32,7 +32,7 @@
         <button class="btn btn-outline" id="connectBtn" disabled>Connect brokerage</button>
         <span class="small muted" id="loadNote">
           Brokerage credentials are not included in this build, so that button is disabled
-          rather than pretending. Read-only either way — Firebreak never places trades.</span>
+          rather than pretending. Read-only either way — Minima never places trades.</span>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
     <div class="card" id="limitCard" hidden>
       <a id="limit" class="anchor" aria-hidden="true"></a>
       <div class="card-header">
-        <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Firebreak searches for the smallest single-name shock that crosses this.</span>
+        <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Minima searches for the smallest single-name shock that crosses this.</span>
       </div>
       <div class="card-body">
         <!-- Four buttons made this look like a survey with four acceptable
@@ -115,13 +115,13 @@ const CROWDING = { days: null };
       if (d.adv[i] > 0) days[t] = held / d.adv[i];
     });
     CROWDING.days = days;
-    if (FB.state.portfolio) render(FB.state.portfolio);
+    if (MN.state.portfolio) render(MN.state.portfolio);
   } catch { /* the table renders without the column */ }
 })();
 bindKeys("portfolio");
 
 function render(p) {
-  FB.set({ portfolio: p });
+  MN.set({ portfolio: p });
   /* An offer is about ONE file. It used to survive the next upload and the
      demo button, so an abandoned file's card sat under a freshly loaded book —
      two portfolios on one screen — and its button was still live: clicking it
@@ -167,7 +167,7 @@ function render(p) {
 document.getElementById("useDemo").addEventListener("click", async () => {
   try {
     const body = await api("/api/portfolio/demo");
-    FB.set({ rows: null });
+    MN.set({ rows: null });
     render(body.portfolio);
   } catch (e) {
     document.getElementById("loadNote").textContent = `Could not load the demo portfolio: ${e.message}`;
@@ -416,7 +416,7 @@ function offerExclusion(body, rows, filename) {
     <div class="card-footer" style="flex-wrap:wrap">
       <button class="btn btn-primary" id="offerYes">Model the ${usdExact(body.modellable_value)} we can</button>
       <button class="btn btn-outline" id="offerNo">Cancel</button>
-      <span class="small muted">Firebreak models ten large-cap US names and cash, because that is
+      <span class="small muted">Minima models ten large-cap US names and cash, because that is
         what the five 13F books it reasons about actually hold. An index fund is not one of them.
         Every number after this would describe ${pct(1 - body.excluded_fraction, 1)} of your book,
         and every page would say so.</span></div>`;
@@ -428,10 +428,10 @@ function offerExclusion(body, rows, filename) {
   });
   document.getElementById("offerYes").addEventListener("click", async () => {
     try {
-      const kept = await api("/api/portfolio/firebreak?limit=0.10&exclude_unmodelled=1",
+      const kept = await api("/api/portfolio/breakpoint?limit=0.10&exclude_unmodelled=1",
                              { holdings: rows, source: "csv" });
       if (kept.refused) throw new Error(kept.reason);
-      FB.set({ rows, excludeUnmodelled: true });
+      MN.set({ rows, excludeUnmodelled: true });
       card.hidden = true;
       render(kept.portfolio);
       bringIntoView(document.getElementById("pfCard"));
@@ -460,7 +460,7 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
     const stale = document.getElementById("importOffer");
     if (stale) { stale.hidden = true; stale.innerHTML = ""; }
     const { rows, skipped, footer, cashRolled } = parseCsv(await file.text());
-    const body = await api("/api/portfolio/firebreak?limit=0.10", { holdings: rows, source: "csv" });
+    const body = await api("/api/portfolio/breakpoint?limit=0.10", { holdings: rows, source: "csv" });
     if (body.refused) {
       /* A real brokerage export is mostly funds outside the ten-name universe.
          Throwing the engine's sentence into the note ended the road right
@@ -470,7 +470,7 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
       if (body.can_exclude) { offerExclusion(body, rows, file.name); return; }
       throw new Error(body.reason);
     }
-    FB.set({ rows });
+    MN.set({ rows });
     render(body.portfolio);
     bringIntoView(document.getElementById("pfCard"));
     /* count what landed in the book, not what was in the file. Duplicate
@@ -498,7 +498,7 @@ const limitOut = document.getElementById("limitOut");
    from state, so they cannot come apart — which is what the four buttons used
    to do when the page loaded with a stored limit none of them carried. */
 function paintLimits() {
-  const chosen = FB.state.limit || 0.10;
+  const chosen = MN.state.limit || 0.10;
   const pct100 = Math.round(chosen * 1000) / 10;
   /* A stored limit can sit outside the slider's range (an old link, a clamp)
      without being wrong — the input pins itself to its own min/max, so read
@@ -526,7 +526,7 @@ limitRange.addEventListener("input", () => {
 });
 
 limitRange.addEventListener("change", () => {
-  FB.set({ limit: Number(limitRange.value) / 100 });
+  MN.set({ limit: Number(limitRange.value) / 100 });
   paintLimits();
   /* the old answer was computed against the old limit; the nav has to stop
      advertising a break point that no longer belongs to the question. */
@@ -534,17 +534,17 @@ limitRange.addEventListener("change", () => {
   paintShell("portfolio");
 });
 
-if (!FB.state.limit) FB.set({ limit: 0.10 });
+if (!MN.state.limit) MN.set({ limit: 0.10 });
 /* the slider's position is written into the HTML as a default. Without this,
    the control shows 10% on a page whose state says 25% — two controls on one
    screen disagreeing about the user's own risk limit. */
 paintLimits();
-if (FB.state.portfolio) render(FB.state.portfolio);
+if (MN.state.portfolio) render(MN.state.portfolio);
 paintShell("portfolio");
 
 /* ?demo — start with the book already loaded. Useful for a shareable link,
    and it is the only way to screenshot a loaded state from a cold browser. */
-if (new URLSearchParams(location.search).has("demo") && !FB.state.portfolio) {
+if (new URLSearchParams(location.search).has("demo") && !MN.state.portfolio) {
   document.getElementById("useDemo").click();
 }
 </script>

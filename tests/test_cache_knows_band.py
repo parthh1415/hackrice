@@ -12,7 +12,7 @@ the answer was an exact match for settings it had never been computed at.
 
 import pytest
 
-from firebreak import api
+from minima import api
 
 
 def test_the_cache_key_covers_every_knob_that_moves_the_answer():

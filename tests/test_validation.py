@@ -12,10 +12,10 @@ import pathlib
 import numpy as np
 import pytest
 
-from firebreak.portfolio import (
-    cheapest_portfolio_fix, find_portfolio_firebreak, normalise, weight_vector,
+from minima.portfolio import (
+    cheapest_portfolio_fix, find_portfolio_breakpoint, normalise, weight_vector,
 )
-from firebreak import validate
+from minima import validate
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / "data" / "cache" / "dataset.json").read_text())
@@ -46,7 +46,7 @@ def solved():
     ], source="demo")
     vector, cash = weight_vector(p, TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, LIMIT, **kw)
+    found = find_portfolio_breakpoint(vector, cash, LIMIT, **kw)
     fix = cheapest_portfolio_fix(vector, cash, LIMIT, found.shock, **kw)
     return {
         "before": {"vector": vector, "cash": cash},
@@ -77,8 +77,8 @@ def test_both_replay_losses_are_the_real_losses_not_merely_ordered(solved):
     out = validate.replay_identical(
         solved["before"], solved["after"], solved["found"].shock, LIMIT, **solved["kw"])
 
-    from firebreak.engine import run_cascade
-    from firebreak.portfolio import portfolio_loss
+    from minima.engine import run_cascade
+    from minima.portfolio import portfolio_loss
     prices = run_cascade(shock=solved["found"].shock, **solved["kw"]).prices
 
     assert out["before_loss"] == pytest.approx(
@@ -177,7 +177,7 @@ def test_the_fix_cannot_make_the_portfolio_worse_and_that_is_a_theorem(solved):
     assert out["after"]["median_loss"] <= out["before"]["median_loss"]
     assert out["after"]["worst_loss"] <= out["before"]["worst_loss"]
 
-    from firebreak.engine import run_cascade
+    from minima.engine import run_cascade
     prices = run_cascade(shock=solved["found"].shock, **solved["kw"]).prices
     assert (prices <= 1.0 + 1e-12).all(), (
         "a price above par would break the argument above: a cut to cash could "
@@ -200,7 +200,7 @@ def test_the_new_break_point_is_a_real_search_not_a_multiple_of_the_old_one(solv
     out = validate.new_breaking_point(
         solved["before"], solved["after"], LIMIT, **solved["kw"])
 
-    direct = find_portfolio_firebreak(
+    direct = find_portfolio_breakpoint(
         solved["after"]["vector"], solved["after"]["cash"], LIMIT, **solved["kw"])
     assert direct is not None
     assert out["after_pct"] == pytest.approx(direct.pct), (

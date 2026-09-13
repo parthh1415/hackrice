@@ -1,6 +1,6 @@
-# Firebreak — frontend design brief
+# Minima — frontend design brief
 
-This file is the source of truth for how the Firebreak UI looks and behaves.
+This file is the source of truth for how the Minima UI looks and behaves.
 Read it in full before touching anything in `web/`. Every prompt that touches the
 frontend should be treated as "…following DESIGN.md".
 
@@ -20,7 +20,7 @@ Before generating any code, read these and work from what's actually there:
   compares on-screen numbers to the payload. **Every selector, id and data hook it
   depends on must survive this redesign unchanged.** If a rename is genuinely
   unavoidable, update the harness in the same commit and say so.
-- `src/firebreak/api.py` — the real response shapes. Bind to real field names.
+- `src/minima/api.py` — the real response shapes. Bind to real field names.
   Never invent a field, never hardcode a number that should come from a payload.
 - `README.md` — the product argument and the voice. Both matter below.
 
@@ -31,7 +31,7 @@ Hard constraints that do not change:
 - **No network at runtime.** No CDN fonts, no CDN scripts, no remote images.
   Fonts are vendored in `web/fonts/`, and that stays true.
 - **No new runtime dependencies.** numpy stays the only one.
-- Everything must still work under `FIREBREAK_DEMO=1`.
+- Everything must still work under `MINIMA_DEMO=1`.
 - Empty and error states render as states, not as blank panels. A panel that
   silently renders nothing is the failure mode this project cares most about.
 
@@ -39,7 +39,7 @@ Hard constraints that do not change:
 
 ## 1. The concept
 
-Firebreak is a risk memo, not a dashboard.
+Minima is a risk memo, not a dashboard.
 
 The product's whole argument is a single line you refuse to cross, and the
 discovery that the shock alone doesn't get you there — the crowding does. So the
@@ -134,7 +134,7 @@ full-bleed.
 
 ```
 ┌──────────────┬──────────────────────────────────────────────┐
-│ FIREBREAK    │  Break point                                 │
+│ MINIMA    │  Break point                                 │
 │              │  ─────────────────────────────────────────── │
 │ 1 Portfolio ✓│  The smallest NVDA move that puts you past   │
 │ 2 Limit     ✓│  the loss you said you would not accept.     │
@@ -276,7 +276,7 @@ One item per session. After each, run the harness and confirm green before movin
 
 ```
 npm --prefix tests/ui install
-FIREBREAK_DEMO=1 PYTHONPATH=src python3 -m firebreak.server &
+MINIMA_DEMO=1 PYTHONPATH=src python3 -m minima.server &
 node tests/ui/pages.js
 ```
 

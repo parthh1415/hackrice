@@ -13,12 +13,12 @@ import pathlib
 import numpy as np
 import pytest
 
-from firebreak.engine import run_cascade
-from firebreak.portfolio import (
-    cheapest_portfolio_fix, find_portfolio_firebreak, normalise,
+from minima.engine import run_cascade
+from minima.portfolio import (
+    cheapest_portfolio_fix, find_portfolio_breakpoint, normalise,
     portfolio_loss, weight_vector,
 )
-from firebreak.search import DEFAULT_TOLERANCE
+from minima.search import DEFAULT_TOLERANCE
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / "data" / "cache" / "dataset.json").read_text())
@@ -56,7 +56,7 @@ def loss_at(vector, cash, found, kw):
 def test_the_shock_it_finds_actually_crosses_the_limit():
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
+    found = find_portfolio_breakpoint(vector, cash, 0.10, **kw)
 
     assert found is not None, "this portfolio is supposed to be breakable"
     assert loss_at(vector, cash, found, kw) >= 0.10
@@ -67,7 +67,7 @@ def test_and_a_hair_less_does_not():
     search's own tolerance rather than to a number that looks small."""
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
+    found = find_portfolio_breakpoint(vector, cash, 0.10, **kw)
 
     weaker = np.array(found.shock, dtype=float)
     weaker[found.asset] *= (1.0 - 4 * DEFAULT_TOLERANCE / abs(found.magnitude))
@@ -87,8 +87,8 @@ def test_a_stricter_limit_never_needs_a_bigger_shock(limits):
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
 
-    a = find_portfolio_firebreak(vector, cash, tight, **kw)
-    b = find_portfolio_firebreak(vector, cash, loose, **kw)
+    a = find_portfolio_breakpoint(vector, cash, tight, **kw)
+    b = find_portfolio_breakpoint(vector, cash, loose, **kw)
     assert a is not None and b is not None
     assert abs(a.magnitude) <= abs(b.magnitude) + DEFAULT_TOLERANCE
 
@@ -105,13 +105,13 @@ def test_an_all_cash_portfolio_has_no_break_point():
     vector, cash = weight_vector(
         normalise([{"symbol": "CASH", "market_value": 10000.0}]), TICKERS)
 
-    assert find_portfolio_firebreak(vector, cash, 0.05, **scenario()) is None
+    assert find_portfolio_breakpoint(vector, cash, 0.05, **scenario()) is None
 
 
 def test_the_fix_survives_the_shock_that_broke_it():
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
+    found = find_portfolio_breakpoint(vector, cash, 0.10, **kw)
     fix = cheapest_portfolio_fix(vector, cash, 0.10, found.shock, **kw)
 
     assert fix is not None
@@ -122,7 +122,7 @@ def test_the_fix_conserves_the_portfolio_s_value():
     """Cut to cash, not cut into thin air. §18: do not quietly change value."""
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
+    found = find_portfolio_breakpoint(vector, cash, 0.10, **kw)
     fix = cheapest_portfolio_fix(vector, cash, 0.10, found.shock, **kw)
 
     assert fix["vector"].sum() + fix["cash"] == pytest.approx(1.0, abs=1e-12)
@@ -140,10 +140,10 @@ def test_a_smaller_cut_than_the_one_reported_misses_the_target():
     """
     vector, cash = weight_vector(demo_portfolio(), TICKERS)
     kw = scenario()
-    found = find_portfolio_firebreak(vector, cash, 0.10, **kw)
+    found = find_portfolio_breakpoint(vector, cash, 0.10, **kw)
     fix = cheapest_portfolio_fix(vector, cash, 0.10, found.shock, **kw)
 
-    from firebreak.portfolio import cut_to_cash
+    from minima.portfolio import cut_to_cash
     smaller, smaller_cash = cut_to_cash(
         vector, cash, fix["asset"], fix["fraction_of_position"] * 0.9)
 

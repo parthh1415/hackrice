@@ -13,7 +13,7 @@ number, is stronger than being caught; and it names the real next feature,
 which is robust defence rather than single-scenario defence.
 """
 
-from firebreak import api
+from minima import api
 
 
 def test_stabilise_reports_what_the_fix_bought():

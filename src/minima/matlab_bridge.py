@@ -216,7 +216,7 @@ def _usable(result, spec):
     except Exception:
         return False
 
-    # a "firebreak" the fire walks straight through is worse than admitting
+    # a "minima" the fire walks straight through is worse than admitting
     # we haven't got one
     return not at_least_n_breaches(int(spec["breaches"]))(after)
 

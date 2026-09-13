@@ -1,6 +1,6 @@
 import numpy as np
 
-from firebreak.engine import Book
+from minima.engine import Book
 
 
 def test_requested_leverage_is_what_you_get():

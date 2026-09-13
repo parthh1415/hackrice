@@ -14,7 +14,7 @@ have one of those.
 import numpy as np
 
 from .engine import run_cascade
-from .portfolio import find_portfolio_firebreak, portfolio_loss
+from .portfolio import find_portfolio_breakpoint, portfolio_loss
 
 
 def replay_identical(before, after, shock, limit, holdings, **cascade_kwargs):
@@ -49,9 +49,9 @@ def new_breaking_point(before, after, limit, holdings, **cascade_kwargs):
     as a measurement, and the number is only worth anything because the same
     search that found the first one found this one too.
     """
-    was = find_portfolio_firebreak(before["vector"], before["cash"], limit,
+    was = find_portfolio_breakpoint(before["vector"], before["cash"], limit,
                                    holdings=holdings, **cascade_kwargs)
-    now = find_portfolio_firebreak(after["vector"], after["cash"], limit,
+    now = find_portfolio_breakpoint(after["vector"], after["cash"], limit,
                                    holdings=holdings, **cascade_kwargs)
     out = {
         "before_pct": was.pct if was else None,
