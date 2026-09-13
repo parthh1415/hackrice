@@ -131,10 +131,13 @@ function visibleText(d) {
         full.found === true, full.reason || "");
   if (!full.found) { process.exit(1); }
 
-  /* ---- 1. portfolio ---- */
+  /* ---- 1. landing, then portfolio ---- */
   {
-    const p = await load("index.html", {});
-    check("index.html runs clean", p.errors.length === 0, p.errors.join("; "));
+    const landing = await load("index.html", {});
+    check("index.html landing page runs clean", landing.errors.length === 0, landing.errors.join("; "));
+    eq("landing page has the Firebreak wordmark", txt(landing.d, "landingTitle"), "Firebreak");
+    const p = await load("portfolio.html", {});
+    check("portfolio.html runs clean", p.errors.length === 0, p.errors.join("; "));
     p.d.getElementById("useDemo").dispatchEvent(new p.window.Event("click"));
     const ok = await until(() => p.d.getElementById("pfCard") &&
                                  !p.d.getElementById("pfCard").hidden);
@@ -678,9 +681,9 @@ function visibleText(d) {
        LEFTMOST match — so a file with a cost-basis column left of its
        market-value column priced the whole book off the cost basis, and said
        "Loaded 4 holdings". */
-    const p = await load("index.html", {});
+    const p = await load("portfolio.html", {});
     const parse = p.window.parseCsv;
-    check("index.html exposes a parser that can be driven directly", typeof parse === "function");
+    check("portfolio.html exposes a parser that can be driven directly", typeof parse === "function");
 
     const ok = (name, text, expect) => {
       try {
@@ -1070,7 +1073,7 @@ function visibleText(d) {
     const etf = [{ symbol: "VOO", market_value: 13000 },
                  { symbol: "NVDA", market_value: 3600 },
                  { symbol: "CASH", market_value: 1000 }];
-    const p = await load("index.html", {});
+    const p = await load("portfolio.html", {});
     const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ holdings: etf, source: "csv" }) })).json();
@@ -1131,7 +1134,7 @@ function visibleText(d) {
        died in the note on the portfolio screen with the engine's sentence and
        no way forward. */
     {
-      const p2 = await load("index.html", {});
+      const p2 = await load("portfolio.html", {});
       const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
@@ -1199,7 +1202,7 @@ function visibleText(d) {
     const next = (doc, re) => [...doc.querySelectorAll("a.btn")]
       .find((b) => re.test(b.textContent));
 
-    let p = await load("index.html", {});
+    let p = await load("portfolio.html", {});
     p.d.getElementById("useDemo").dispatchEvent(new p.window.Event("click"));
     const loaded = await until(() => p.d.querySelectorAll("#pfRows tr").length > 0);
     check("cold start: the demo book loads from the button", loaded, p.errors.join("; "));
@@ -1249,7 +1252,7 @@ function visibleText(d) {
           cold.d.querySelectorAll("#net circle.cx-asset").length === 0,
           cold.d.querySelectorAll("#net circle.cx-asset").length + " nodes drawn");
 
-    const nav = await load("index.html", {});
+    const nav = await load("portfolio.html", {});
     const locked = [...nav.d.querySelectorAll('.nav-links a[data-locked]')].map((n) => n.dataset.page);
     check("with no result, the downstream pages are locked in the nav",
           ["analysis", "cascade", "defend", "verify"].every((p) => locked.includes(p)),
@@ -1265,12 +1268,12 @@ function visibleText(d) {
 
   /* ---- a result must not outlive the question it answered ---- */
   {
-    /* index.html wrote portfolio/limit and left `result` alone, so the nav kept
+    /* portfolio.html wrote portfolio/limit and left `result` alone, so the nav kept
        Cascade/Defend/Verify unlocked and they rendered the PREVIOUS book. The
        server refuses this mix-up by design; it used to happen on the client. */
     const other = { symbol: "JPM", market_value: 50000 };
     const stale = JSON.parse(store.fb);
-    const p = await load("index.html", {
+    const p = await load("portfolio.html", {
       fb: JSON.stringify({ ...stale,
         portfolio: { source: "csv", total_value: 100000,
           holdings: [other, { symbol: "CASH", market_value: 50000, weight: 0.5 }] }}),
@@ -1280,7 +1283,7 @@ function visibleText(d) {
     check("a new book drops the answer computed for the old one", !st.result,
           st.result ? "result kept: " + (st.result.asset || "?") : "");
 
-    const p2 = await load("index.html", { fb: store.fb });
+    const p2 = await load("portfolio.html", { fb: store.fb });
     await sleep(200);
     const kept = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
     check("but returning to the page with the same book keeps its answer", !!kept.result);

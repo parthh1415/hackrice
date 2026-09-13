@@ -223,7 +223,7 @@ def test_every_ui_mutation_is_a_mutation():
 def test_the_pitch_does_not_promise_a_control_the_app_disables():
     """devpost's first sentence said "You connect or upload a portfolio".
 
-    index.html's Connect brokerage button is `disabled` and carries the text
+    portfolio.html's Connect brokerage button is `disabled` and carries the text
     "Brokerage credentials are not included in this build, so that button is
     disabled rather than pretending" — so the pitch was claiming a capability
     the product explicitly disclaims on its own first screen. The app was more
@@ -232,7 +232,7 @@ def test_the_pitch_does_not_promise_a_control_the_app_disables():
     import pathlib
 
     root = pathlib.Path(__file__).resolve().parents[1]
-    index = (root / "web" / "index.html").read_text()
+    index = (root / "web" / "portfolio.html").read_text()
     devpost = (root / "docs" / "devpost.md").read_text()
 
     if "connectBtn" in index or "Connect brokerage" in index:

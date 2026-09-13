@@ -30,7 +30,7 @@
       <div class="wf-figures" id="stats"></div>
       <div class="card-footer">
         <a class="btn btn-primary" href="cascade.html">See why the loss grows</a>
-        <a class="btn btn-outline" href="index.html">Change the portfolio</a>
+        <a class="btn btn-outline" href="portfolio.html">Change the portfolio</a>
       </div>
     </div>
     <div class="card" id="attrCard" hidden>
@@ -65,7 +65,7 @@ bindKeys("analysis");
      so re-read state rather than the copy taken before it. */
   await seedDemoIfAsked();
   const s = FB.state;
-  if (!s.portfolio) { location.replace("index.html"); return; }
+  if (!s.portfolio) { location.replace("portfolio.html"); return; }
   const payload = s.rows ? { holdings: s.rows, source: "csv" } : {};
   let body;
   try {
@@ -158,7 +158,7 @@ bindKeys("analysis");
           <tr><td>Names searched</td><td class="r num">${names}</td></tr>
         </tbody></table></div>
         <div class="card-footer">
-          <a class="btn btn-primary" href="index.html">Lower the limit</a>
+          <a class="btn btn-primary" href="portfolio.html">Lower the limit</a>
           <a class="btn btn-outline" href="boundary.html">Map the whole system</a></div>
       </div>`;
     return;

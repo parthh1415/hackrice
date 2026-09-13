@@ -353,7 +353,7 @@ MUTATIONS = {
         '    ["direct", pct(body.direct_loss), ""],',
         '    ["direct", pct(body.cascade_loss), ""],'),
     "weight_as_fraction": (
-        "web/index.html",
+        "web/portfolio.html",
         "${pct(h.weight, 1)}",
         "${h.weight.toFixed(1)}%"),
     "negative_zero_returns": (
@@ -369,7 +369,7 @@ MUTATIONS = {
         "                assumptions: true };",
         "                assumptions: undefined };"),
     "stale_result_survives_a_new_book": (
-        "web/index.html",
+        "web/portfolio.html",
         "  invalidateStaleResult();\n  document.getElementById(\"pfCard\").hidden = false;",
         "  document.getElementById(\"pfCard\").hidden = false;"),
     "unbreakable_renders_nothing": (
@@ -406,11 +406,11 @@ MUTATIONS = {
         "      const share = usd / maxSold;",
         "      const share = usd / Math.max(1, ...(f.sold || []).flat());"),
     "crowding_is_dollars_not_days": (
-        "web/index.html",
+        "web/portfolio.html",
         "      if (d.adv[i] > 0) days[t] = held / d.adv[i];",
         "      if (d.adv[i] > 0) days[t] = held / 1e9;"),
     "csv_import_off_the_tab_order": (
-        "web/index.html",
+        "web/portfolio.html",
         'for="csvFile" id="csvLabel" tabindex="0" role="button"',
         'for="csvFile" id="csvLabel"'),
     "solver_card_hardcodes_its_scenario": (
@@ -434,7 +434,7 @@ MUTATIONS = {
         "const bandOf = (a) => BANDS.findIndex(([hi]) => a < hi);",
         "const bandOf = (a) => 2;"),
     "fidelity_footer_eats_data": (
-        "web/index.html",
+        "web/portfolio.html",
         "    return n < head.length && n <= Math.max(2, head.length / 3);",
         "    return n <= Math.max(2, head.length / 3);"),
     "exclusion_banner_only_on_analysis": (
@@ -442,7 +442,7 @@ MUTATIONS = {
         "  paintExclusionBanner(current);",
         '  if (current === "analysis") paintExclusionBanner(current);'),
     "import_refusal_is_a_dead_end": (
-        "web/index.html",
+        "web/portfolio.html",
         "      if (body.can_exclude) { offerExclusion(body, rows, file.name); return; }",
         "      if (false) { offerExclusion(body, rows, file.name); return; }"),
     "small_money_rounds_to_nothing": (
@@ -458,7 +458,7 @@ MUTATIONS = {
         '    d.id = "keyHelp";\n    d.hidden = true;',
         '    d.id = "keyHelp";'),
     "offer_outlives_its_file": (
-        "web/index.html",
+        "web/portfolio.html",
         '  const offer = document.getElementById("importOffer");\n  if (offer) { offer.hidden = true; offer.innerHTML = ""; }',
         "  /* removed */"),
     "next_skips_a_round": (
@@ -470,19 +470,19 @@ MUTATIONS = {
         '      ["Your loss so far", pct(cum), cum >= (r.params.limit) ? "bad" : ""],',
         '      ["Your loss so far", pct(r.cascade_loss), cum >= (r.params.limit) ? "bad" : ""],'),
     "value_column_matched_loosely": (
-        "web/index.html",
+        "web/portfolio.html",
         '  const at = (names) => head.findIndex(h => names.includes(h));',
         '  const at = (names) => head.findIndex(h => names.some(n => h.includes(n)));'),
     "ragged_row_accepted": (
-        "web/index.html",
+        "web/portfolio.html",
         "    if (c.length !== head.length) {",
         "    if (false) {"),
     "value_and_qty_price_not_reconciled": (
-        "web/index.html",
+        "web/portfolio.html",
         "      if (Math.abs(implied - v) > Math.max(1, 0.01 * Math.abs(v))) {",
         "      if (false) {"),
     "negative_holding_accepted": (
-        "web/index.html",
+        "web/portfolio.html",
         "    if (v !== null && v < 0) {",
         "    if (false) {"),
     "pct_forgets_the_hundred": (

@@ -48,7 +48,7 @@ without filming yourself clicking to it.
 Covered by an automated check that fails if any step breaks, so it is safe to
 rehearse against.
 
-1. `localhost:8765/index.html` — press **Use demo portfolio**
+1. `localhost:8765/portfolio.html` — press **Use demo portfolio**
 2. press **Run reverse stress test** → Break
 3. press **See why the loss grows** → Cascade
 4. press **Find the cheapest single-position fix** → Fix

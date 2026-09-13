@@ -13,8 +13,8 @@
    already answers that one; ticking every unlocked step would put a tick on
    steps you have not taken yet. */
 const FB_STEPS = [
-  { page: "portfolio",   href: "index.html",       label: "Portfolio", done: (s) => !!s.portfolio },
-  { page: "limit",       href: "index.html#limit", label: "Limit",     done: (s) => !!s.limit },
+  { page: "portfolio",   href: "portfolio.html",       label: "Portfolio", done: (s) => !!s.portfolio },
+  { page: "limit",       href: "portfolio.html#limit", label: "Limit",     done: (s) => !!s.limit },
   { page: "analysis",    href: "analysis.html",    label: "Break",     done: (s) => !!s.result },
   { page: "cascade",     href: "cascade.html",     label: "Cascade",   done: (s) => !!s.result },
   { page: "defend",      href: "defend.html",      label: "Fix",       done: (s) => !!(s.result && s.result.fix) },

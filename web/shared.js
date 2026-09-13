@@ -292,7 +292,7 @@ function requireResult(current) {
            inside the tested range crossed it — so there is nothing here to
            ${verb}. That is the edge of what was tested, not a clean bill of health.</p>
            <div class="card-actions">
-             <a class="btn btn-primary" href="index.html">Lower the limit</a>
+             <a class="btn btn-primary" href="portfolio.html">Lower the limit</a>
              <a class="btn btn-outline" href="analysis.html">Back to the analysis</a></div>
          </div></div></div>`
       : `<div class="stack">${head}<div class="card"><div class="empty">
@@ -328,8 +328,8 @@ function requireResult(current) {
    shifts. Until the rail is on every page, `2` finds no link on the pages that
    still carry the old nav and does nothing there, the same as a locked page. */
 const FB_PAGES = [
-  ["1", "index.html", "portfolio", "Portfolio"],
-  ["2", "index.html#limit", "limit", "Limit"],
+  ["1", "portfolio.html", "portfolio", "Portfolio"],
+  ["2", "portfolio.html#limit", "limit", "Limit"],
   ["3", "analysis.html", "analysis", "Break"],
   ["4", "cascade.html", "cascade", "Cascade"],
   ["5", "defend.html", "defend", "Fix"],
