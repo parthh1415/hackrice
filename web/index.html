@@ -315,6 +315,30 @@ function parseCsv(text) {
 
 /* The refusal, priced, at the point of import. Nothing is dropped until this
    is answered, and what it would cost is on screen before you answer it. */
+/* Anything that appears below the fold and needs a decision has to come to the
+   reader, because the reader has no reason to look for it.
+
+   The exclusion offer is the case that matters: on a laptop its heading lands
+   just at the bottom edge and its two buttons sit about four hundred pixels
+   further down, so a real brokerage CSV — which is mostly funds we cannot
+   model, and therefore almost always takes this path — produced a page that
+   appeared not to react at all. The upload had worked, the question had been
+   asked, and the question was off screen. */
+function bringIntoView(el) {
+  if (!el) return;
+  /* jsdom does not implement scrollIntoView at all, and a headless environment
+     is not a reason to lose the upload. Scrolling is a courtesy; failing to
+     scroll must never take the page down with it. */
+  if (typeof el.scrollIntoView !== "function") return;
+  const reduce = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  try {
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  } catch {
+    try { el.scrollIntoView(); } catch { /* nothing to do, and nothing broken */ }
+  }
+}
+
 function offerExclusion(body, rows, filename) {
   const frac = pct(body.excluded_fraction, 1);
   const card = document.getElementById("importOffer");
@@ -352,6 +376,7 @@ function offerExclusion(body, rows, filename) {
       FB.set({ rows, excludeUnmodelled: true });
       card.hidden = true;
       render(kept.portfolio);
+      bringIntoView(document.getElementById("pfCard"));
       document.getElementById("loadNote").innerHTML =
         `Loaded ${kept.portfolio.holdings.length} of ${rows.length} holdings from ${filename}. ` +
         `<b class="warn">${frac} of the book is not modelled and will not appear in any number.</b>`;
@@ -359,6 +384,7 @@ function offerExclusion(body, rows, filename) {
       document.getElementById("loadNote").textContent = `${filename}: ${e.message}`;
     }
   });
+  bringIntoView(card);
 }
 
 document.getElementById("csvLabel").addEventListener("keydown", (ev) => {
@@ -388,6 +414,7 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
     }
     FB.set({ rows });
     render(body.portfolio);
+    bringIntoView(document.getElementById("pfCard"));
     /* count what landed in the book, not what was in the file. Duplicate
        symbols are summed server-side and blank rows are dropped, so
        rows.length was reporting holdings the user does not have. */
