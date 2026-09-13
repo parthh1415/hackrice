@@ -84,7 +84,14 @@ class Book:
             for j in range(len(equity))
             if not self.defaulted[j]
             and self.units[j].sum() > _TINY
-            and (equity[j] <= _TINY or lev[j] > max_leverage[j] + _TINY)
+            # Relative, not absolute. With target == ceiling a fund lands
+            # exactly on its limit every round and the margin decays to the
+            # last bit of a double, where whether it reads 0.0 or 2e-12 is
+            # decided by summation order in `units @ prices` — which no amount
+            # of agreeing semantics can pin down. An absolute epsilon can only
+            # be right at one order of magnitude, and leverage runs from 1.0 to
+            # infinity. Same reasoning as _DEPTH_RTOL in stabilise.py.
+            and (equity[j] <= _TINY or lev[j] > max_leverage[j] * (1.0 + 1e-12))
         ]
 
     def plan_sales(self, hit, target_leverage):
@@ -108,8 +115,16 @@ class Book:
             if assets[j] <= _TINY:
                 continue
             raise_ = float(np.clip(assets[j] - target_leverage[j] * equity[j], 0.0, assets[j]))
-            if raise_ <= _TINY:
-                continue
+            # There used to be a `raise_ <= _TINY: continue` here, and cascade.m
+            # has never had one. An ABSOLUTE threshold of 1e-12 dollars on a
+            # fund that over_limit has already declared to be breaching is a
+            # fund told to deleverage and then told to do nothing — and since
+            # nothing changed, it breaches again next round, and the loop sits
+            # in that fixed point until max_rounds. The two engines then
+            # disagreed 24/False against 3/True while every loss figure matched
+            # to ten significant figures, and the UI said "did not settle" over
+            # a book a millionth of a percent from its ceiling. The
+            # `assets[j] <= _TINY` guard above already covers the division.
             units_out[j] = self.units[j] * (raise_ / assets[j])
 
         return units_out, wiped
@@ -243,6 +258,29 @@ def run_cascade(
         volume = (units_sold * book.prices).sum(axis=0)
 
         before = book.prices
+        # A NOTE ON GRANULARITY, because this line has a property the module
+        # docstring does not mention and a reader would reasonably assume away.
+        #
+        # Rounds are solver iterations, not time steps — that is the model's
+        # claim, and it is nearly but not exactly true of this arithmetic. The
+        # impact is multiplicative in THIS round's volume while the execution
+        # price below is the exact VWAP of a LINEAR path, and those two agree
+        # only in the limit of fine slicing. So the answer depends on how the
+        # round's already-decided block is chopped up, which is the one thing
+        # the model says carries no meaning.
+        #
+        # Measured by holding everything else fixed and executing each round's
+        # own block in 256 equal slices instead of one: at the demo defaults
+        # final_loss moves 0.4pp, and at the slider limits (λ 8, band 1.00,
+        # γ 1.0, −60%) it moves 44pp — 17% relative. Prices barely move; almost
+        # all of it is in what sellers realise.
+        #
+        # A single block is the most damaging point of that family, which is the
+        # conservative end for a stress test, and it is what every number in
+        # this repo was computed with. The slicing-invariant alternative —
+        # impact against cumulative volume from a fixed reference — is a
+        # different model, not a bug fix, and it would move every recorded
+        # answer. Documented rather than changed.
         after = before * np.maximum(1.0 - gamma * volume / adv, _FLOOR)
         execution = (before + after) / 2.0  # round VWAP
         # dollars actually raised, per fund per asset, at the price they got.

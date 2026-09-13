@@ -225,7 +225,15 @@ bindKeys("assumptions");
   const erows = [
     /* the scenario, stated, because the same solver gives a different fund and
        a 4x different figure at a different breach count. */
-    ["Applies to", `the five institutional books, at ${K.breaches}+ breaching`,
+    /* All four knobs, not just the breach count. The solve depends on every one
+       of them and band moves the answer more than any other — a card naming one
+       knob reads as though the other three were not choices. It is also what
+       makes "this card describes the run THIS session did" checkable: a
+       mutation that hardcoded band sat green in the mutation set because
+       nothing on the page ever said what band it answered. */
+    ["Applies to",
+     `the five institutional books, at ${K.breaches}+ breaching · ` +
+     `λ ${num(K.leverage, 1)}× · γ ${K.gamma} · band ${num(K.band, 2)}×`,
       "not your portfolio — your own fix is on Defend, solved by an exhaustive Python scan"],
     ["Patch found", `${st.fix.fund} sells ${usdExact(st.fix.sell_usd)} of ${st.fix.asset}`,
       `${(st.fix.reduction * 100).toFixed(4)}% of that position, ` +

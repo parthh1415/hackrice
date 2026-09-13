@@ -48,7 +48,19 @@ function out = boundary(specFile, outFile, plotFile)
     if isfield(spec, 'python_grid')
         P = spec.python_grid;
         % Python rounded to 4dp on the way out, so compare at that resolution.
-        worst = max(max(abs(round(grid, 4) - P)));
+        % MATLAB's max OMITS NaN, so a cell that is not comparable at all
+        % would score as perfect agreement and stamp max_abs_diff 0 on the
+        % figure. cascade.m can now return NaN deliberately — an amplification
+        % whose denominator is zero — so this has to look before it maxes.
+        diffs = abs(round(grid, 4) - P);
+        if any(~isfinite(diffs(:)))
+            bad = sum(~isfinite(diffs(:)));
+            error('boundary:incomparable', ...
+                  ['%d of %d cells are not comparable (NaN or Inf in the ' ...
+                   'difference) — refusing to claim agreement on a grid with ' ...
+                   'holes in it'], bad, numel(diffs));
+        end
+        worst = max(max(diffs));
         fprintf('max |MATLAB - Python| over %d cells: %.2e\n', numel(grid), worst);
         if worst > 1e-4
             error('boundary:disagrees', ...

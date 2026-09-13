@@ -413,10 +413,18 @@ MUTATIONS = {
         "web/index.html",
         'for="csvFile" id="csvLabel" tabindex="0" role="button"',
         'for="csvFile" id="csvLabel"'),
-    "solver_card_hardcodes_its_scenario": (
-        "web/assumptions.html",
-        "    breaches: P.breaches != null ? P.breaches : 3,",
-        "    breaches: 3,"),
+    # `solver_card_hardcodes_its_scenario` lived here and is gone. It targeted
+    # the Model page's `breaches: P.breaches != null ? P.breaches : 3` and its
+    # intent was right — the solver card must describe the run THIS session did
+    # — but `breaches` is 3 in every reachable state, so the mutation could
+    # never go red. Re-anchoring it onto `band` was tried and came back GREEN
+    # too, for the same reason: Portfolio Mode never varies the institutional
+    # knobs, so `P.band` is 1.05 always. There is no knob on that card this
+    # mutation can express a claim about today, and by the policy above a
+    # permanently-green member is noise that weakens every future run. The
+    # property itself is still checked — pages.js asserts the card's four knobs
+    # against the payload's — it simply cannot be mutation-tested until
+    # something in web/ writes a non-default knob into state.
     "cta_points_at_the_wrong_page": (
         "web/cascade.html",
         '<a class="btn btn-primary" href="defend.html">Find the cheapest single-position fix</a>',
@@ -512,7 +520,6 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "attribution_uses_direct_not_cascade",
                 "contagion_column_is_the_whole_fall", "flow_is_static_positions",
                 "flow_scaled_per_frame", "crowding_is_dollars_not_days", "csv_import_off_the_tab_order",
-                "solver_card_hardcodes_its_scenario",
                 "cta_points_at_the_wrong_page", "boundary_contour_interpolated",
                 "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value",
                 "fidelity_footer_eats_data", "exclusion_banner_only_on_analysis",

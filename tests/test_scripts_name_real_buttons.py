@@ -35,7 +35,15 @@ def _controls():
     """Every clickable label the six pages render, including ones built in JS."""
     labels = set()
     for page in sorted(WEB.glob("*.html")):
-        text = page.read_text()
+        # Comments first. `<{tag}\b[^>]*>(.*?)</{tag}>` over raw page text
+        # opens on any tag-shaped string, and index.html's comment about the
+        # import label contains the literal `<label for>` in its prose — so the
+        # match opened inside the comment, closed on the real label, and
+        # swallowed a 200-character pseudo-control that happens to quote the
+        # neighbouring button's name. Renaming that button then left the script
+        # directing a presenter at a control that does not exist, with this
+        # file green, because the COMMENT satisfied it.
+        text = re.sub(r"<!--[\s\S]*?-->", " ", page.read_text())
         # markup: <button ...>Label</button>, <a class="btn" ...>Label</a>, <label class="btn">
         for tag in ("button", "a", "label"):
             for m in re.finditer(rf"<{tag}\b[^>]*>(.*?)</{tag}>", text, re.S):
@@ -77,7 +85,11 @@ def test_every_button_the_script_names_exists_in_the_app(label):
     if label.lower() in _NOT_A_BUTTON:
         pytest.skip(f"{label!r} is a key or a section, not a control")
     controls = _controls()
-    assert any(label.lower() == c or label.lower() in c for c in controls), (
+    # Exact, not containment. The substring branch is what let a comment stand
+    # in for a control, and it buys nothing: every label the script directs a
+    # click at matches some control exactly today. Containment against a set
+    # that can hold multi-sentence strings is a standing liability.
+    assert any(label.lower() == c for c in controls), (
         f"the script says to click {label!r} and no control in web/ has that "
         f"text. Closest things it does have: "
         f"{sorted(c for c in controls if c and c[0] == label.lower()[0])[:6]}"

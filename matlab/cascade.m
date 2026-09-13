@@ -130,10 +130,23 @@ function out = cascade(H, lambda, maxLev, tgtLev, gamma, adv, shock)
 
     % a gain is a negative shockLoss, and clamping the denominator up to TINY
     % turns that into an amplification of -1e11 rather than the 1.0 it is
+    % Three branches, like engine.py's. This file had two, and its else
+    % returned exactly the 1.0 that engine.py's comment above the same
+    % arithmetic documents as a fixed regression: with a zero denominator the
+    % ratio does not exist, and 1.0 is not a neutral stand-in for undefined —
+    % it is the claim that forced selling added nothing. Books filed over their
+    % own ceiling deleverage with no shock at all, so a zero shock can destroy
+    % real equity and still divide by nothing.
+    %
+    % NaN rather than a sentinel: jsonencode writes it as null, which is what
+    % json.dumps writes for Python's None, so a grid built either side
+    % round-trips to the same value.
     if abs(shockLoss) > TINY
         amplification = finalLoss / shockLoss;
+    elseif abs(finalLoss) <= TINY
+        amplification = 1.0;        % nothing happened, so nothing was amplified
     else
-        amplification = 1.0;
+        amplification = NaN;        % the ratio does not exist
     end
 
     out = struct( ...
@@ -159,5 +172,5 @@ function hit = overLimit(units, prices, debt, defaulted, maxLev, TINY)
     lev(solvent) = assets(solvent) ./ equity(solvent);
 
     hit = ~defaulted & (sum(units, 2) > TINY) & ...
-          (~solvent | lev > maxLev + TINY);
+          (~solvent | lev > maxLev .* (1 + 1e-12));   % relative: see engine.py
 end

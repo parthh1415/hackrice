@@ -248,9 +248,12 @@ h1 {
    to fall on. On #000 the dot field's dark half has nowhere left to go and the
    lobes read as stains rather than as light. */
 .entry {
-  --paper: #14171A;
-  --paper-raised: #1C2025;
-  --paper-sunk: #0F1214;
+  /* neutral-950, the ground the component was drawn on. The instruments are on
+     pure black; this sits one step off it so the paths have something to be
+     lighter than. */
+  --paper: #0A0A0B;
+  --paper-raised: #141416;
+  --paper-sunk: #050506;
   margin: 0;
   min-height: 100vh;
   background: var(--paper);
@@ -288,6 +291,57 @@ h1 {
   z-index: 0;
   pointer-events: none;
   color: var(--ink);
+}
+
+/* The original is a centred stage on a near-black ground, so this one is too. */
+.entry-centred {
+  align-items: center;
+  text-align: center;
+  max-width: 1100px;
+}
+.entry-centred .entry-quote { margin-left: auto; margin-right: auto; }
+
+/* The CTA, as the component has it: a gradient hairline wrapping a pill, and
+   an arrow that steps right under the cursor. */
+.entry-cta {
+  display: inline-block;
+  padding: 1px;
+  border-radius: 18px;
+  background: linear-gradient(to bottom, rgba(231, 233, 228, 0.22), rgba(0, 0, 0, 0.22));
+}
+.entry-cta a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 14px 28px;
+  border-radius: 17px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--t-lead);
+  font-weight: 500;
+  text-decoration: none;
+  transition: transform 200ms ease, background 200ms ease;
+}
+.entry-cta a:hover { transform: translateY(-1px); }
+.entry-cta i {
+  font-style: normal;
+  opacity: 0.7;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+.entry-cta a:hover i { transform: translateX(5px); opacity: 1; }
+
+.entry-cta-quiet {
+  background: linear-gradient(to bottom, rgba(231, 233, 228, 0.14), rgba(0, 0, 0, 0.14));
+}
+.entry-cta-quiet a {
+  background: rgba(231, 233, 228, 0.06);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-cta a, .entry-cta i { transition: none; }
 }
 
 .entry-paths path {
@@ -335,11 +389,13 @@ h1 {
   inset: -8% -14%;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(ellipse 56% 62% at 40% 50%,
-    rgba(20, 23, 26, 0.96) 0%,
-    rgba(20, 23, 26, 0.93) 42%,
-    rgba(20, 23, 26, 0.60) 64%,
-    rgba(20, 23, 26, 0) 84%);
+  /* Centred now, like the stage it sits under, and mixed from the entrance's
+     own ground rather than the instruments' black. */
+  background: radial-gradient(ellipse 62% 66% at 50% 50%,
+    rgba(10, 10, 11, 0.94) 0%,
+    rgba(10, 10, 11, 0.88) 44%,
+    rgba(10, 10, 11, 0.52) 68%,
+    rgba(10, 10, 11, 0) 86%);
 }
 
 /* The name is the largest thing on the only screen that is not an instrument.

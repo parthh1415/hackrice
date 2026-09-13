@@ -684,6 +684,15 @@ function visibleText(d) {
           st.engine.solve_ms != null ? /\b\d+(\.\d+)? ms\b/.test(eb)
                                      : eb.includes("not recorded"), eb.slice(0, 200));
     has("the card names the breach count it is answering", eb, `${kp.breaches}+ breaching`);
+    /* And the other three knobs. A mutation that hardcoded `band` on this page
+       came back green in the mutation set: the check compared the page against
+       the payload, which is the right shape, but the page never said what band
+       it had answered, so there was nothing to compare. band moves this answer
+       more than any other knob. */
+    has("and the leverage", eb, `λ ${Number(kp.leverage).toFixed(1)}×`);
+    has("and the price impact", eb, `γ ${kp.gamma}`);
+    has("and the breach band, which moves the answer most", eb,
+        `band ${Number(kp.band).toFixed(2)}×`);
     has("and the patch it found, which is what the pitch quotes", eb, st.fix.fund);
     has("with the dollar figure from that same scenario", eb,
         "$" + Math.round(st.fix.sell_usd).toLocaleString("en-US"));
