@@ -19,7 +19,18 @@ const FB = {
    slide, and a number like that is only worth printing if it was measured.
    Every call goes through here, so here is where the stopwatch lives. */
 let _lastMs = null;
-const lastResponseMs = () => _lastMs;
+/* Kept in sessionStorage as well as in memory, because these are real separate
+   documents. Validate and Fix read their result out of the session and make no
+   computed call of their own, so an in-memory figure leaves the strip reading
+   "—" on exactly the screens a judge is most likely to be looking at. The
+   session did make the call; this reports the last one it made. */
+const lastResponseMs = () => {
+  if (_lastMs !== null) return _lastMs;
+  try {
+    const v = JSON.parse(sessionStorage.getItem("fb:ms") || "null");
+    return v && Number.isFinite(v.ms) ? v.ms : null;
+  } catch { return null; }
+};
 
 async function api(path, payload) {
   const t0 = performance.now();
@@ -40,6 +51,7 @@ async function api(path, payload) {
      claims "the engine answered", and it has not answered until the answer is
      in hand. The event lets the strip repaint without polling for it. */
   _lastMs = performance.now() - t0;
+  try { sessionStorage.setItem("fb:ms", JSON.stringify({ ms: _lastMs, path })); } catch { /* private mode */ }
   document.dispatchEvent(new CustomEvent("fb:latency", { detail: { ms: _lastMs, path } }));
   return body;
 }

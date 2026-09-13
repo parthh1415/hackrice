@@ -3,34 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Defend · Firebreak</title>
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<title>Fix · Firebreak</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status">LIMIT <b id="navLimit">—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8">
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 4 — Defend</span>
+<body class="shell">
+<main class="col">
+    <header>
       <!-- "the smallest change" claims global optimality over every possible
            edit. The engine searches one position at a time and says so in its
            own fix_reason when it fails, so the headline should not claim more
@@ -38,50 +17,57 @@
            it ("Locked shock, unchanged from the analysis"), which is where
            that belongs. -->
       <h1>The cheapest single-position change that clears the limit</h1>
-      <p class="lede">One holding, trimmed to cash. A multi-position cut could be cheaper;
-        this build does not search for one.</p>
-    </div>
+      <!-- §6 wants this above the fold, and it was the last card on the page:
+           the claim that explains why trimming a position helps at all. -->
+      <p class="lede">Your position does not move the market — it decides how much of the
+        market's move lands on you. One holding, trimmed to cash. A multi-position cut could
+        be cheaper; this build does not search for one.</p>
+    </header>
     <div id="root"></div>
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
+<script src="waterfall.js"></script>
 <script>
-paintNav("defend");
-paintStatusBar("defend");
+paintShell("defend");
 bindKeys("defend");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("defend");
 if (r) {
   const root = document.getElementById("root");
   if (!r.fix) {
-    root.innerHTML = `<div class="card"><div class="empty">
+    root.innerHTML = `<div class="card"><div class="card-body empty">
       <h2>No single-position change clears the limit</h2>
-      <p class="lede" style="margin:0 auto">${r.fix_reason || ""}</p></div></div>`;
+      <p class="lede">${r.fix_reason || ""}</p></div></div>`;
   } else {
     const f = r.fix, s = r.validation.identical_shock;
     const hold = r.portfolio.holdings.find(h => h.symbol === f.symbol) || {};
     root.innerHTML = `
-    <div class="stack gap-6">
+    <div class="stack">
       <div class="card">
         <div class="card-header">
           <span class="card-title">Recommended change</span><span class="sub">Locked shock — ${r.asset} −${r.pct.toFixed(2)}%. Unchanged from the analysis.</span>
         </div>
-        <div class="card-body">
+        <div class="card-body plot">
           <div class="figure">
-            <span class="big">Sell ${usdExact(f.dollars)} of ${f.symbol}</span>
-            <span class="small muted">${pct(f.fraction_of_position, 1)} of a
+            <span class="big num">${usdExact(f.dollars)}</span>
+            <span class="small muted">of ${f.symbol} — ${pct(f.fraction_of_position, 1)} of a
               ${usdExact(hold.market_value || 0)} position, moved to cash. Your portfolio is worth
-              the same afterwards — it is just differently exposed.</span>
+              the same afterwards; it is just differently exposed.</span>
           </div>
+          <svg class="wf" id="wf"></svg>
+          <p class="small muted" id="wfNote" hidden></p>
+          <p class="small muted" id="wfKey" hidden>Outline: the book as it stands.
+            Filled: the same book after the cut, under the same shock.</p>
         </div>
         <div class="stats">
           <!-- the colour and the caption both used to be written in: green
                and "within the limit" whatever the replay actually said. -->
           <div class="stat"><div class="k">Loss before</div>
-            <div class="v ${s.before_breaks ? "bad" : "ok"}">${pct(s.before_loss)}</div>
+            <div class="v ${s.before_breaks ? "bad" : ""}">${pct(s.before_loss)}</div>
             <div class="s">${s.before_breaks ? "breaches the limit" : "within the limit"}</div></div>
           <div class="stat"><div class="k">Loss after</div>
-            <div class="v ${s.after_breaks ? "bad" : "ok"}">${pct(s.after_loss)}</div>
+            <div class="v ${s.after_breaks ? "bad" : ""}">${pct(s.after_loss)}</div>
             <!-- 9.00% against a 10% limit is not a coincidence: the solver
                  targets limit x (1 - FIX_MARGIN). Saying so stops it reading
                  as a suspiciously round result. -->
@@ -119,7 +105,7 @@ if (r) {
                 return `<tr><td><b>${h.symbol}</b></td>
                   <td class="r num muted">${usdExact(h.market_value)}</td>
                   <td class="r num">${usdExact(after)}</td>
-                  <td class="r num" style="color:${d < 0 ? "var(--destructive)" : d > 0 ? "var(--positive)" : "var(--muted-foreground)"}">
+                  <td class="r num ${d === 0 ? "muted" : ""}">
                     ${d === 0 ? "—" : (d > 0 ? "+" : "−") + usdExact(Math.abs(d))}</td></tr>`;
               }).join("");
               /* the totals are the claim. Printing them is what makes "worth
@@ -127,7 +113,7 @@ if (r) {
                  something you have to take on faith. */
               /* ruled, because a total that shares a hairline with the row
                  above reads as one more holding. */
-              return body + `<tr style="border-top:1px solid var(--border)"><td><b>Total</b></td>
+              return body + `<tr class="total-row"><td><b>Total</b></td>
                 <td class="r num muted"><b>${usdExact(sumBefore)}</b></td>
                 <td class="r num"><b>${usdExact(sumAfter)}</b></td>
                 <td class="r num muted">unchanged</td></tr>`;
@@ -139,14 +125,41 @@ if (r) {
       <div class="card">
         <div class="card-header"><span class="card-title">Why this works</span></div>
         <div class="card-body">
-          <!-- said "does not move the market" twice in three sentences: once
-               in the engine's own note and once again here. -->
-          <p class="lede">Your position does not move the market. The five books deleverage
-            identically whether or not you trim ${f.symbol}; the cut only changes how much of
-            that price path lands on you.</p>
+          <p>The five books deleverage identically whether or not you trim ${f.symbol}. That
+            is why one price path can carry both pictures above: the cut does not change the
+            cascade, only your share of it.</p>
         </div>
       </div>
     </div>`;
+
+    /* §4: the same component twice over each other — the book as it stands as
+       an outline, the defended book filled on top. One shock, two books, which
+       is exactly the claim the lede makes. Both series are read off the same
+       trajectory, because the portfolio is an observer and the cut does not
+       move the network.
+
+       A failure renders as a state. An empty frame under a heading promising a
+       picture is the failure mode this project cares most about. */
+    (async () => {
+      try {
+        const casc = await api(`/api/cascade?asset=${encodeURIComponent(r.asset)}` +
+          `&magnitude=${Math.abs(r.magnitude)}&leverage=${r.params.leverage}` +
+          `&gamma=${r.params.gamma}&band=${r.params.band}`);
+        drawWaterfall(document.getElementById("wf"), {
+          bands: bandsFrom(defendedWeights(r), casc),
+          ghost: cascadeBands(r, casc),
+          limit: r.params.limit,
+        });
+        document.getElementById("wfKey").hidden = false;
+      } catch (e) {
+        document.getElementById("wf").remove();
+        const note = document.getElementById("wfNote");
+        note.hidden = false;
+        note.textContent = `The round-by-round replay did not load, so the two books are ` +
+          `not drawn here. The figures below are from the search itself and are ` +
+          `unaffected. ${e.message}`;
+      }
+    })();
   }
 }
 </script>

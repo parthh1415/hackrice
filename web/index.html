@@ -4,45 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Portfolio · Firebreak</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230D0D0D'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23FF3B3F'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23E6E7E2'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23A61B14'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status">LIMIT <b id="navLimit">—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8">
-
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 1 — Portfolio</span>
+<body class="shell">
+<main class="col">
+    <header>
       <h1>What are we stress testing?</h1>
       <p class="lede">Firebreak models how a shock to one name spreads through crowded
         institutional books and reaches yours. Start with the holdings you want to protect.</p>
-    </div>
+    </header>
 
     <div class="card" id="loadCard">
       <div class="card-header">
         <span class="card-title">Load a portfolio</span><span class="sub">Parsed in your browser, sent only to the local engine, stored nowhere.</span>
       </div>
-      <div class="card-body row gap-3" style="flex-wrap:wrap">
+      <div class="card-body card-actions">
         <button class="btn btn-primary" id="useDemo">Use demo portfolio</button>
         <!-- A <label for> is never in the tab order, and the input it wraps is
              display:none and so unfocusable. Measured tab order skipped
@@ -52,7 +30,7 @@
         <label class="btn btn-outline" for="csvFile" id="csvLabel" tabindex="0" role="button">Import CSV
           <input type="file" id="csvFile" accept=".csv,text/csv" hidden></label>
         <button class="btn btn-outline" id="connectBtn" disabled>Connect brokerage</button>
-        <span class="small muted" style="flex-basis:100%;margin-top:2px" id="loadNote">
+        <span class="small muted" id="loadNote">
           Brokerage credentials are not included in this build, so that button is disabled
           rather than pretending. Read-only either way — Firebreak never places trades.</span>
       </div>
@@ -60,11 +38,12 @@
 
     <div class="card" id="pfCard" hidden>
       <div class="card-header">
-        <div class="stack gap-2">
-          <span class="card-title" id="pfName">Demo portfolio</span>
-          <span class="card-desc" id="pfMeta">—</span>
-        </div>
-        <span class="num" style="font-size:var(--fs-3);font-weight:500;color:var(--text)" id="pfTotal">—</span>
+        <span class="card-title" id="pfName">Demo portfolio</span>
+        <!-- before the description, not after it: the description takes a line
+             of its own, so a total placed after it lands on a third line
+             instead of on the title's right. -->
+        <span class="num pf-total" id="pfTotal">—</span>
+        <span class="card-desc" id="pfMeta">—</span>
       </div>
       <div class="card-body tight">
         <table>
@@ -83,6 +62,7 @@
     <div class="card" id="importOffer" hidden></div>
 
     <div class="card" id="limitCard" hidden>
+      <a id="limit" class="anchor" aria-hidden="true"></a>
       <div class="card-header">
         <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Firebreak searches for the smallest single-name shock that crosses this.</span>
       </div>
@@ -100,12 +80,11 @@
       </div>
     </div>
 
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
 <script>
-paintNav("portfolio");
-paintStatusBar("portfolio");
+paintShell("portfolio");
 
 /* How much of each name the five modelled books hold, in days of that name's
    own average volume. Loaded once; the table reads it when it renders. */
@@ -160,7 +139,7 @@ function render(p) {
       <td class="r num ${d >= 0.7 ? "warn" : "muted"}">${d == null ? "—" : d.toFixed(1) + " days of volume"}</td>
       <td>${d == null ? "" : `<div class="bar"><span style="width:${(d / worst * 100).toFixed(0)}%"></span></div>`}</td>
     </tr>`; }).join("");
-  paintNav("portfolio");
+  paintShell("portfolio");
 }
 
 document.getElementById("useDemo").addEventListener("click", async () => {
@@ -441,7 +420,7 @@ document.getElementById("limits").addEventListener("click", (ev) => {
   /* the old answer was computed against the old limit; the nav has to stop
      advertising a break point that no longer belongs to the question. */
   invalidateStaleResult();
-  paintNav("portfolio");
+  paintShell("portfolio");
 });
 
 if (!FB.state.limit) FB.set({ limit: 0.10 });
@@ -450,7 +429,7 @@ if (!FB.state.limit) FB.set({ limit: 0.10 });
    screen disagreeing about the user's own risk limit. */
 paintLimits();
 if (FB.state.portfolio) render(FB.state.portfolio);
-paintNav("portfolio");
+paintShell("portfolio");
 
 /* ?demo — start with the book already loaded. Useful for a shareable link,
    and it is the only way to screenshot a loaded state from a cold browser. */

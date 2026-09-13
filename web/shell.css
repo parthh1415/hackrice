@@ -193,9 +193,15 @@ h1 {
   padding: var(--s4) var(--s5);
   border-bottom: 1px solid var(--rule);
   display: flex;
-  flex-direction: column;
-  gap: var(--s1);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s4);
 }
+/* The title grows to fill its line so a figure beside it (a portfolio total)
+   is pushed to the right edge by its own auto margin; the description always
+   takes a line of its own underneath. */
+.card-title { flex: 1 1 auto; }
+.card-desc, .card-header .sub { flex-basis: 100%; }
 
 .card-title { font-size: var(--t-label); font-weight: 500; }
 .card-desc, .card-header .sub { font-size: var(--t-label); }
@@ -209,6 +215,21 @@ h1 {
    a phone, and without this the TABLE does not scroll — the page does, taking
    the rail and every other panel sideways with it. */
 .card-body.tight { padding: 0; overflow-x: auto; }
+
+/* A row of controls plus the sentence that qualifies them. The sentence takes
+   the full width so the buttons sit together rather than being pushed apart by
+   a paragraph wedged between them. */
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+.card-actions .small { flex-basis: 100%; }
+
+/* A scroll target for the rail's Limit step. It marks a place; it is not a
+   control and it is not in the tab order. */
+.anchor { display: block; height: 0; }
 
 .card-footer {
   padding: var(--s4) var(--s5);
@@ -303,6 +324,10 @@ table.pairs td:first-child { color: var(--ink-mid); }
 /* The area between the line the user drew and where they actually ended up. */
 .wf-wash { fill: var(--loss-wash); }
 
+/* The undefended book on the Fix page: outline only, no fill. */
+.wf-ghost { fill: none; stroke: var(--ink-faint); stroke-width: 1; }
+.wf-ghost-connect { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 2 3; }
+
 .wf-axis { stroke: var(--rule); stroke-width: 1; }
 .wf-connect { stroke: var(--ink-faint); stroke-width: 1; }
 /* A round that moved nothing is still a round. */
@@ -380,13 +405,64 @@ table.pairs td:first-child { color: var(--ink-mid); }
   display: inline-block;
 }
 
+/* The filled ink button is the default, so this is an alias — declared rather
+   than left implicit because the markup names it and a class that styles
+   nothing reads, to the next person, as styling that got lost. */
+.btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn-lg { padding: var(--s3) var(--s5); }
+
 .btn-outline, .btn.btn-outline {
   background: transparent;
   color: var(--ink);
   border-color: var(--rule);
 }
 
+/* Pushes a control to the far end of a footer row. */
+.push { margin-left: auto; }
+
 .btn[disabled] { color: var(--ink-faint); border-color: var(--rule); background: transparent; cursor: default; }
+
+/* ---------- the segmented control ---------- */
+
+/* A pressed segment is a setting, not a link. Ink fill, paper text, hairlines
+   between — the same vocabulary as everything else on the page. */
+.seg { display: inline-flex; border: 1px solid var(--rule); }
+.seg button {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-mid);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-label);
+  padding: var(--s3) var(--s4);
+  cursor: pointer;
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* ---------- the crowding measure ---------- */
+
+/* How much of a name the five books hold, in days of its own volume. The
+   figure is printed beside it; this is the comparison at a glance. */
+.bar { height: var(--s1); background: var(--paper-sunk); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--ink-faint); }
+
+/* ---------- emphasis, where colour used to do the work ---------- */
+
+/* .warn was amber. Nothing it marks is a breach — the most crowded name in a
+   book and the slice of a book we cannot model are both facts about the input,
+   not limits being crossed — so under §1 they cannot be red either. In a
+   monochrome page emphasis is weight, not hue: full ink against the muted ink
+   the rest of the column is set in. */
+.warn { color: var(--ink); }
+
+.pf-total {
+  font-size: var(--t-lead);
+  line-height: var(--lh-tight);
+  margin-left: auto;
+}
 
 /* ---------- badges ---------- */
 
@@ -417,6 +493,24 @@ table.pairs td:first-child { color: var(--ink-mid); }
   padding: var(--s4) var(--s5);
   font-size: var(--t-label);
   max-width: var(--measure);
+}
+
+/* A stack of panels inside a page region, at the column's own rhythm. */
+.stack { display: flex; flex-direction: column; gap: var(--s7); }
+
+/* A total that shares a hairline with the row above reads as one more
+   holding, so it gets its own rule. */
+.total-row td { border-top: 1px solid var(--rule); }
+
+/* An outcome with no numbers in it. It is still a result and still gets a
+   panel — §0: empty states render as states, not as blank panels. */
+.empty { display: flex; flex-direction: column; gap: var(--s3); }
+.empty h2 {
+  font-family: var(--font-prose);
+  font-weight: 600;
+  font-size: var(--t-lead);
+  line-height: var(--lh-tight);
+  margin: 0;
 }
 
 /* ---------- pending ---------- */

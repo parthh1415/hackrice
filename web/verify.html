@@ -3,45 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Verify · Firebreak</title>
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<title>Validate · Firebreak</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status">LIMIT <b id="navLimit">—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8">
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 5 — Verify</span>
+<body class="shell">
+<main class="col">
+    <header>
       <h1>Did it actually help?</h1>
       <p class="lede">A recommendation is not evidence. Here is the same shock replayed, the
         break point recomputed, and both portfolios scored across 400 simulated stresses.</p>
-    </div>
+    </header>
     <div id="root"></div>
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
 <script>
-paintNav("verify");
-paintStatusBar("verify");
+paintShell("verify");
 bindKeys("verify");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("verify");
@@ -59,9 +37,12 @@ if (r && r.validation) {
      "No break point in the tested range" is not "unbreakable", and the copy
      below keeps that distinction: we searched a range and found nothing in
      it. */
+  /* §1: there is deliberately no green. A pass is set in ink like every other
+     figure on the page, and only the breach carries the one colour — which is
+     the whole point of having exactly one. */
   const verdict = (breaks) => breaks
     ? `<span class="badge badge-bad"><i></i>Breach</span>`
-    : `<span class="badge badge-ok"><i></i>Within limit</span>`;
+    : `<span class="badge">Within limit</span>`;
   const safe = !!n.after_unbreakable || n.after_pct === null || n.after_pct === undefined;
   const afterBreak = safe ? "none in range" : `−${n.after_pct.toFixed(2)}%`;
   const movedBy = safe
@@ -79,18 +60,24 @@ if (r && r.validation) {
   const extraShock = safe || n.moved_ratio == null
     ? "—" : `×${n.moved_ratio.toFixed(2)}`;
   document.getElementById("root").innerHTML = `
-  <div class="stack gap-6">
+  <div class="stack">
     <div class="card">
-      <div class="stats" style="border-top:0">
-        <div class="stat"><div class="k">Break point</div>
-          <div class="v">−${n.before_pct.toFixed(2)}% → <span style="color:var(--positive)">${afterBreak}</span></div>
-          <div class="s">${movedBy}</div></div>
+      <!-- These read "before → after" with the after in green. Two problems:
+           there is no green in this product, and → is in no subset of any font
+           it ships, so the arrow itself fell through to the system face. The
+           defended figure is what the page is for, so it is the figure; the
+           undefended one is what it is measured against, so it is the caption
+           underneath. Same two numbers, no arrow, no second colour. -->
+      <div class="stats" id="verdictTiles">
+        <div class="stat"><div class="k">Break point, defended</div>
+          <div class="v">${afterBreak}</div>
+          <div class="s">was −${n.before_pct.toFixed(2)}% — ${movedBy}</div></div>
         <div class="stat"><div class="k">Loss at the same shock</div>
-          <div class="v">${pct(s.before_loss)} → <span style="color:var(--positive)">${pct(s.after_loss)}</span></div>
-          <div class="s">${s.before_breaks ? "breached" : "within"} → ${s.after_breaks ? "breached" : "within limit"}</div></div>
+          <div class="v">${pct(s.after_loss)}</div>
+          <div class="s">was ${pct(s.before_loss)}, which ${s.before_breaks ? "breached" : "was within"} the limit</div></div>
         <div class="stat"><div class="k">Worst of ${syn.scenarios}</div>
-          <div class="v">${pct(syn.before.worst_loss)} → <span style="color:var(--positive)">${pct(syn.after.worst_loss)}</span></div>
-          <div class="s">simulated stresses</div></div>
+          <div class="v">${pct(syn.after.worst_loss)}</div>
+          <div class="s">was ${pct(syn.before.worst_loss)} across the same draws</div></div>
       </div>
     </div>
 
@@ -139,7 +126,7 @@ if (r && r.validation) {
                to 80% and 81% and hide 80.25 against 80.75 — a difference of
                two scenarios, invisible. The denominator is already in the
                card title, so print the count. -->
-          <tr><td>Stayed under the limit</td>
+          <tr><td>Stayed under your limit</td>
             <td class="r num">${Math.round(syn.before.survival * syn.scenarios)} / ${syn.scenarios}</td>
             <td class="r num">${Math.round(syn.after.survival * syn.scenarios)} / ${syn.scenarios}</td></tr>
           <tr><td>Median loss</td><td class="r num">${pct(syn.before.median_loss)}</td><td class="r num">${pct(syn.after.median_loss)}</td></tr>
@@ -150,7 +137,7 @@ if (r && r.validation) {
         probability about the world.</span>
         <!-- the chain continues: your book is defended and checked, so the
              question widens to the system it sits in. -->
-        <a class="btn btn-primary" href="boundary.html" style="margin-left:auto">Map the whole system</a></div>
+        <a class="btn btn-primary push" href="boundary.html">Map the whole system</a></div>
     </div>
 
     <div class="card">

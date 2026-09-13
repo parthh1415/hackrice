@@ -22,11 +22,9 @@
 
    The observer model: loss = 1 − (weights · prices + cash). The book takes the
    price damage and does not join the network. */
-function cascadeBands(full, cascade) {
-  const w = {};
-  (full.portfolio.holdings || []).forEach((h) => { w[h.symbol] = h.weight; });
-  const cash = w.CASH || 0;
-  const vector = cascade.tickers.map((t) => w[t] || 0);
+function bandsFrom(weights, cascade) {
+  const cash = weights.CASH || 0;
+  const vector = cascade.tickers.map((t) => weights[t] || 0);
   const lossAt = (prices) =>
     1 - (vector.reduce((acc, v, i) => acc + v * prices[i], 0) + cash);
 
@@ -37,6 +35,33 @@ function cascadeBands(full, cascade) {
     prev = to;
     return band;
   });
+}
+
+function cascadeBands(full, cascade) {
+  const w = {};
+  (full.portfolio.holdings || []).forEach((h) => { w[h.symbol] = h.weight; });
+  return bandsFrom(w, cascade);
+}
+
+/* The same book after the solver's cut, as weights.
+
+   The two books take the SAME price path. The portfolio is an observer — it
+   does not join the network, so trimming a position changes nothing about what
+   the five modelled books are forced to do. That is the README's claim and it
+   is why one trajectory can carry both waterfalls: one shock, two books.
+
+   Checked against the engine rather than assumed: selling fix.dollars of
+   fix.symbol into cash and replaying the same final prices reproduces
+   validation.identical_shock.after_loss to nine decimal places, and the
+   weights still sum to one. */
+function defendedWeights(full) {
+  const w = {};
+  (full.portfolio.holdings || []).forEach((h) => { w[h.symbol] = h.weight; });
+  if (!full.fix) return w;
+  const moved = full.fix.dollars / full.portfolio.total_value;
+  w[full.fix.symbol] = (w[full.fix.symbol] || 0) - moved;
+  w.CASH = (w.CASH || 0) + moved;
+  return w;
 }
 
 /* Where the cumulative first reaches the limit: the index of the band it
@@ -64,7 +89,7 @@ const WF = {
   dur: 160, stagger: 60,
 };
 
-function drawWaterfall(svg, { bands, limit, animate = true }) {
+function drawWaterfall(svg, { bands, limit, ghost = null, animate = true }) {
   const ns = "http://www.w3.org/2000/svg";
   /* §4 wants the whole sequence behind prefers-reduced-motion, with the final
      state rendered instantly. The transitions are set as inline styles — CSS
@@ -84,8 +109,14 @@ function drawWaterfall(svg, { bands, limit, animate = true }) {
   const plotH = WF.H - WF.padT - WF.padB;
   const final = bands[bands.length - 1].to;
   /* §4: domain 0 to max(limit, final) x 1.15. The headroom is what keeps the
-     limit line off the frame edge when the book stops just short of it. */
-  const yMax = Math.max(limit, final) * 1.15 || 1;
+     limit line off the frame edge when the book stops just short of it.
+
+     The ghost is in the domain too. Scaling to the filled series alone would
+     draw the undefended book off the bottom of its own chart — and on the Fix
+     page the ghost is always the taller of the two, since it is the book that
+     did not get the cut. */
+  const ghostFinal = ghost && ghost.length ? ghost[ghost.length - 1].to : 0;
+  const yMax = Math.max(limit, final, ghostFinal) * 1.15 || 1;
   const y = (v) => WF.padT + (v / yMax) * plotH;
 
   const bandW = plotW / bands.length;
@@ -101,6 +132,23 @@ function drawWaterfall(svg, { bands, limit, animate = true }) {
   };
 
   const cross = crossingOf(bands, limit);
+
+  /* The before-state, drawn first so the after-state sits on top of it: a 1px
+     outline in --ink-faint with no fill. It is context, not a measurement the
+     eye should land on, so it does not animate and it carries no labels. */
+  const drawGhost = () => {
+    if (!ghost || !ghost.length) return;
+    ghost.forEach((g, i) => {
+      const gt = y(g.from), gb = y(g.to);
+      el("rect", { class: "wf-ghost", x: barX(i), y: gt,
+                   width: barW, height: Math.max(gb - gt, 0) });
+      if (i < ghost.length - 1) {
+        el("line", { class: "wf-ghost-connect", x1: barX(i) + barW, y1: gb,
+                     x2: barX(i + 1), y2: gb });
+      }
+    });
+  };
+  drawGhost();
 
   /* The wash goes down first, under everything: the area between the line the
      user drew and where they actually ended up. Only drawn when they ended up
