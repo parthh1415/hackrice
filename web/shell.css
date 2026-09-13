@@ -1,0 +1,425 @@
+/* Firebreak shell — DESIGN.md §3.
+
+   Grid: a fixed 260px rail with a 1px --rule right edge running the full
+   viewport height, and a content column that begins at 260px, caps at 1040px
+   and is left-aligned within whatever space is left. The column is never
+   centred and never full-bleed.
+
+   This file deliberately keeps the class names the old stylesheet used —
+   .card, .card-header, .stat, .btn, .badge. They are the vocabulary the pages
+   and shared.js already speak, toggleKeyHelp builds .card markup by hand, and
+   §7 forbids renaming hooks the harness reads. So the names stay and the
+   visual language underneath them changes: a .card is now a panel bounded by
+   rules and space, with no radius and no shadow anywhere.
+
+   Every value here comes from tokens.css. The only bare lengths are border
+   widths — 1px hairlines and the 2px focus ring — which are the two the brief
+   names itself. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--paper); }
+
+body.shell {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every figure, everywhere. Numbers must not reflow when a value updates. */
+.num, .big, .v, kbd, td.r, .rail-foot {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the rail ---------- */
+
+.rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 260px;
+  padding: var(--s6) var(--s5);
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+  overflow-y: auto;
+}
+
+.rail-mark {
+  font-family: var(--font-prose);
+  font-weight: 600;
+  font-size: var(--t-lead);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  text-decoration: none;
+  display: block;
+}
+
+/* ---------- the stepper ---------- */
+
+.nav-links { display: block; }
+
+.stepper { list-style: none; margin: 0; padding: 0; }
+
+.stepper li { margin: 0; }
+
+.stepper a,
+.rail-refs a {
+  display: grid;
+  grid-template-columns: var(--s4) 1fr auto;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  font-size: var(--t-label);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.step-n {
+  font-family: var(--font-num);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+}
+
+/* The state marks. A tick and a filled square, both drawn rather than typed:
+   ✓ and ■ are in no subset of any font this app ships, so as characters they
+   would fall through to whatever the machine has — which is how γ got lost in
+   the last typeface. The square is a box, the tick is a 1px-stroke SVG cut to
+   the same weight as --rule. */
+/* The third column of a step row. Empty for steps not yet taken — it holds the
+   row's width open so the labels do not shift when a tick appears. */
+.step-state { min-width: var(--s3); display: inline-block; }
+.step-label { font-family: var(--font-ui); }
+
+.step-mark { width: var(--s3); height: var(--s3); display: inline-block; }
+.step-mark svg { display: block; width: 100%; height: 100%; }
+
+.step-here {
+  width: var(--s2);
+  height: var(--s2);
+  background: var(--ink);
+  display: inline-block;
+  align-self: center;
+}
+
+.stepper a[aria-current="page"],
+.rail-refs a[aria-current="page"] { font-weight: 500; }
+
+/* Locked steps are steps you have not earned yet, not errors. Faint ink, and
+   genuinely out of the tab order — paintNav sets tabIndex, this only has to
+   agree with it and stop the pointer. */
+.stepper a[data-locked],
+.rail-refs a[data-locked] {
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.stepper a[data-locked] .step-n { color: var(--ink-faint); }
+
+.step-val {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-micro);
+  color: var(--ink-mid);
+}
+
+.rail-refs { list-style: none; margin: 0; padding: var(--s4) 0 0; border-top: 1px solid var(--rule); }
+.rail-refs a { grid-template-columns: var(--s4) 1fr auto; }
+
+/* ---------- the footer strip ---------- */
+
+.rail-foot {
+  margin-top: auto;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-micro);
+  line-height: var(--lh-tight);
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+/* ---------- the content column ---------- */
+
+.col {
+  margin-left: 260px;
+  max-width: 1040px;
+  padding: var(--s7) var(--s6) var(--s8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s7);
+}
+
+.col > header { display: flex; flex-direction: column; gap: var(--s3); }
+
+h1 {
+  font-family: var(--font-prose);
+  font-weight: 600;
+  font-size: var(--t-head);
+  line-height: var(--lh-tight);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.lede {
+  font-family: var(--font-prose);
+  font-size: var(--t-lead);
+  line-height: var(--lh-body);
+  color: var(--ink-mid);
+  max-width: var(--measure);
+  margin: 0;
+}
+
+.t, p { max-width: var(--measure); }
+
+.small { font-size: var(--t-label); }
+.muted, .sub, .card-desc { color: var(--ink-mid); }
+
+/* ---------- panels ---------- */
+
+.card {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.card-header {
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.card-title { font-size: var(--t-label); font-weight: 500; }
+.card-desc, .card-header .sub { font-size: var(--t-label); }
+
+.card-body { padding: var(--s5); }
+
+/* Wide content scrolls inside its own panel. A six-column ledger is wider than
+   a phone, and without this the TABLE does not scroll — the page does, taking
+   the rail and every other panel sideways with it. */
+.card-body.tight { padding: 0; overflow-x: auto; }
+
+.card-footer {
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+}
+
+/* ---------- the one big figure ---------- */
+
+.figure { display: flex; flex-direction: column; gap: var(--s2); }
+
+.big {
+  font-size: var(--t-fig);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+
+.figure .small { color: var(--ink-mid); max-width: var(--measure); }
+
+/* ---------- the figure row under a panel ---------- */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+}
+
+.stat {
+  flex: 1 1 0;
+  min-width: 160px;
+  padding: var(--s4) var(--s5);
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.stat:last-child { border-right: 0; }
+
+.stat .k { font-size: var(--t-label); color: var(--ink-mid); }
+.stat .v { font-size: var(--t-lead); line-height: var(--lh-tight); }
+.stat .s { font-size: var(--t-micro); color: var(--ink-faint); }
+
+/* ---------- ledger tables ---------- */
+
+table { width: 100%; border-collapse: collapse; font-size: var(--t-label); }
+
+thead th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink-mid);
+  padding: var(--s3) var(--s5);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+tbody td {
+  padding: var(--s3) var(--s5);
+  vertical-align: baseline;
+}
+
+/* One hairline at the foot, none between rows — a ledger, not a grid. */
+tbody tr:last-child td { border-bottom: 1px solid var(--rule); }
+
+/* Figures right, labels left. */
+td.r, th.r { text-align: right; }
+
+td.t { font-family: var(--font-ui); color: var(--ink-mid); }
+
+/* Zebra only past 8 rows, per §3. Applied by the page, not guessed at here. */
+table.zebra tbody tr:nth-child(even) td { background: var(--paper-sunk); }
+
+table.pairs td:first-child { color: var(--ink-mid); }
+
+/* ---------- the only colour in the product ---------- */
+
+/* A breach, and nothing else. Not "a number that went down" — this app is full
+   of numbers that went down and almost none of them are breaches. */
+.bad, .down, .loss { color: var(--loss); }
+
+/* ---------- buttons ---------- */
+
+.btn {
+  font-family: var(--font-ui);
+  font-size: var(--t-label);
+  line-height: var(--lh-tight);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.btn-outline, .btn.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+.btn[disabled] { color: var(--ink-faint); border-color: var(--rule); background: transparent; cursor: default; }
+
+/* ---------- badges ---------- */
+
+/* No pill, no radius, no fill. A hairline box with a word in it. The <i> the
+   old markup carries was a coloured dot; there is no colour to carry now, so
+   it collapses to nothing rather than leaving an unstyled element behind. */
+.badge {
+  font-size: var(--t-micro);
+  font-family: var(--font-ui);
+  color: var(--ink-mid);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0 var(--s1);
+  white-space: nowrap;
+}
+.badge i { display: none; }
+.badge-bad { color: var(--loss); border-color: var(--loss); }
+.badge-warn { color: var(--ink-mid); border-color: var(--rule); }
+
+/* ---------- the exclusion banner ---------- */
+
+/* Was amber. A part of the book we cannot model is not a breach, so it cannot
+   be --loss either — it is a disclosure, and it reads as one: a hairline frame
+   and ink. */
+.excl {
+  border: 1px solid var(--rule);
+  background: var(--paper-sunk);
+  padding: var(--s4) var(--s5);
+  font-size: var(--t-label);
+  max-width: var(--measure);
+}
+
+/* ---------- pending ---------- */
+
+/* §7: no skeleton shimmer. A hairline frame and the word. */
+.computing {
+  border: 1px solid var(--rule);
+  padding: var(--s5);
+  color: var(--ink-faint);
+  font-size: var(--t-label);
+}
+
+/* ---------- keyboard help ---------- */
+
+.keyhelp {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--loss-wash);
+  z-index: 10;
+}
+.keyhelp .card { width: min(520px, calc(100vw - var(--s7))); }
+.keyhelp .card-header { font-size: var(--t-label); font-weight: 500; }
+
+kbd {
+  font-size: var(--t-micro);
+  border: 1px solid var(--rule);
+  padding: 0 var(--s1);
+  color: var(--ink-mid);
+}
+
+/* ---------- focus ---------- */
+
+/* §8 wants this as its own pass. It is here now because the alternative for
+   the intervening commits is no visible focus at all, which is a defect and
+   not a deferral. */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---------- responsive ---------- */
+
+/* §3: below 900px the rail becomes a horizontal stepper pinned to the top and
+   the column goes full width. The full pass is item 8; this is enough that the
+   reference page is not broken on a phone in the meantime. */
+@media (max-width: 900px) {
+  .rail {
+    position: static;
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s4);
+    padding: var(--s4);
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  /* The rail's three-column step grid is for a 260px column. Laid out
+     horizontally the steps become inline runs instead, so they wrap as words
+     rather than as a grid with one item per line. */
+  .stepper, .rail-refs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s4);
+    border-top: 0;
+    padding-top: 0;
+    width: 100%;
+  }
+  .stepper a, .rail-refs a { display: inline-flex; gap: var(--s2); padding: 0; }
+  .rail-refs { border-top: 1px solid var(--rule); padding-top: var(--s3); }
+  .rail-foot { margin-top: 0; border-top: 0; padding-top: 0; flex-direction: row; gap: var(--s3); }
+  .col { margin-left: 0; padding: var(--s5) var(--s4) var(--s7); gap: var(--s6); }
+  .stat { min-width: 50%; }
+
+  /* --t-fig is 56px, which is wider than a phone once it has a ticker in front
+     of it. Stepped down to the next size on the scale rather than to a new
+     one: the hero is still the largest thing on the page, which is all the
+     brief asks of it. */
+  .big { font-size: var(--t-head); }
+}

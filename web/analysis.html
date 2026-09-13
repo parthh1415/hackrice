@@ -3,38 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Analysis · Firebreak</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230D0D0D'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23FF3B3F'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<title>Break point · Firebreak</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23E6E7E2'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23A61B14'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status" id="navLimit">LIMIT <b>—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8" id="root">
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 2 — Reverse stress test</span>
+<body class="shell">
+<main class="col" id="root">
+    <header>
       <h1 id="title">Searching…</h1>
       <p class="lede" id="sub">Scanning every modelled name for the smallest shock that crosses your limit.</p>
-    </div>
+    </header>
     <div class="card" id="resultCard" hidden>
       <div class="card-header">
         <span class="card-title">Nearest modelled break point</span>
@@ -42,7 +21,7 @@
       </div>
       <div class="card-body">
         <div class="figure">
-          <span class="big bad num" id="big">—</span>
+          <span class="big num" id="big">—</span>
           <span class="small muted" id="bigSub">—</span>
         </div>
       </div>
@@ -69,12 +48,11 @@
         <span class="card-desc" id="whyDesc">—</span></div>
       <div class="card-body tight"><table><tbody id="whyRows"></tbody></table></div>
     </div>
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
 <script>
-paintNav("analysis");
-paintStatusBar("analysis");
+paintShell("analysis");
 bindKeys("analysis");
 
 (async () => {
@@ -99,14 +77,13 @@ bindKeys("analysis");
      page reads params.limit; if the engine pulled the limit into range those
      are two different numbers side by side on the same screen. */
   FB.set({ result: body, limit: (body.params && body.params.limit) || s.limit });
-  paintNav("analysis");
+  paintShell("analysis");
 
   const clamp = ((body.params && body.params.clamped) || [])
     .find((c) => c.name === "limit");
   if (clamp) {
     const note = document.createElement("p");
-    note.className = "lede";
-    note.style.color = "var(--warn)";
+    note.className = "small muted";
     /* "searches between 1% and 90%" described the accepted LIMIT range using
        the verb for the SHOCK search, which is a different range (up to 60%). */
     note.textContent = `Limits are accepted from ${pct(0.01, 0)} to ${pct(0.90, 0)}. ` +
@@ -138,7 +115,7 @@ bindKeys("analysis");
             ${(body.excluded || []).map(e => `<tr><td><b>${e.symbol}</b>
               <span class="badge badge-warn"><i></i>not modelled</span></td>
               <td class="r num">${usdExact(e.market_value)}</td></tr>`).join("")}
-            <tr><td><b>Excluded</b></td><td class="r num warn"><b>${usdExact(body.excluded_value)} · ${frac}</b></td></tr>
+            <tr><td><b>Excluded</b></td><td class="r num"><b>${usdExact(body.excluded_value)} · ${frac}</b></td></tr>
             <tr><td><b>Modellable</b></td><td class="r num"><b>${usdExact(body.modellable_value)}</b></td></tr>
           </tbody></table></div>
           <div class="card-footer">
@@ -216,19 +193,19 @@ bindKeys("analysis");
     const cash = w.CASH || 0;
     document.getElementById("attrRows").innerHTML = rows.map((r) => `
       <tr>
-        <td><b>${r.t}</b>${r.shocked ? ' <span class="badge badge-bad"><i></i>shocked</span>' : ""}</td>
+        <td><b>${r.t}</b>${r.shocked ? ' <span class="badge"><i></i>shocked</span>' : ""}</td>
         <td class="r num muted">${pct(r.weight, 1)}</td>
-        <td class="r num ${r.shocked ? "down" : "muted"}">${r.shocked ? loss(r.direct) : "—"}</td>
-        <td class="r num ${loss(r.total) === "—" ? "muted" : "down"}">${loss(r.total)}</td>
+        <td class="r num ${r.shocked ? "" : "muted"}">${r.shocked ? loss(r.direct) : "—"}</td>
+        <td class="r num ${loss(r.total) === "—" ? "muted" : ""}">${loss(r.total)}</td>
         <td class="r num ${loss(r.contagion) === "—" ? "muted" : ""}">${loss(r.contagion)}</td>
-        <td class="r num ${loss(r.costs) === "—" ? "muted" : "down"}">${loss(r.costs)}</td>
+        <td class="r num ${loss(r.costs) === "—" ? "muted" : ""}">${loss(r.costs)}</td>
       </tr>`).join("") +
       (cash ? `<tr><td><b>CASH</b></td><td class="r num muted">${pct(cash, 1)}</td>
          <td class="r num muted">—</td><td class="r num muted">—</td>
          <td class="r num muted">—</td><td class="r num muted">—</td></tr>` : "") +
       `<tr><td><b>Total</b></td><td class="r num muted">${pct(Object.values(w).reduce((a, b) => a + b, 0), 1)}</td>
          <td class="r num muted"></td><td class="r num muted"></td>
-         <td class="r num muted"></td><td class="r num down"><b>−${pct(sum)}</b></td></tr>`;
+         <td class="r num muted"></td><td class="r num loss"><b>−${pct(sum)}</b></td></tr>`;
     document.getElementById("attrCard").hidden = false;
   }
   document.getElementById("resultDesc").textContent =
@@ -268,9 +245,12 @@ bindKeys("analysis");
      rather than in blog register. */
   const nFunds = (body.funds || []).length;
   const nBroke = body.breached.length;
+  /* §6 bans `A · B · C` middot strings. The run's parameters are still the
+     right thing to print in this header — the caveats below are meaningless
+     without them — so they are set as a sentence instead of a tic. */
   document.getElementById("whyDesc").textContent =
-    `${body.asset} −${body.pct.toFixed(2)}% · limit ${pct(body.params.limit, 0)} · ` +
-    `λ ${body.params.leverage.toFixed(1)}× · band ${body.params.band}× · γ ${body.params.gamma}`;
+    `${body.asset} −${body.pct.toFixed(2)}%, limit ${pct(body.params.limit, 0)}, ` +
+    `λ ${body.params.leverage.toFixed(1)}×, band ${body.params.band}×, γ ${body.params.gamma}`;
   document.getElementById("whyRows").innerHTML = [
     ["Not a probability",
      `Nothing here says a ${body.pct.toFixed(2)}% fall in ${body.asset} is likely. It says that is ` +

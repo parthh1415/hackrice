@@ -451,8 +451,8 @@ MUTATIONS = {
         "  return false && n !== 0"),
     "attribution_writes_its_own_minus": (
         "web/analysis.html",
-        '<td class="r num ${loss(r.total) === "—" ? "muted" : "down"}">${loss(r.total)}</td>',
-        '<td class="r num down">−${pct(r.total)}</td>'),
+        '<td class="r num ${loss(r.total) === "—" ? "muted" : ""}">${loss(r.total)}</td>',
+        '<td class="r num">−${pct(r.total)}</td>'),
     "key_help_hides_on_first_press": (
         "web/shared.js",
         '    d.id = "keyHelp";\n    d.hidden = true;',

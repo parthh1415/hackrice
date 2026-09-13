@@ -14,7 +14,15 @@ const FB = {
   clear() { sessionStorage.removeItem("fb"); },
 };
 
+/* The rail's footer strip prints the last response time. DESIGN.md wants
+   11-20ms and `cached: false` proved on screen rather than asserted in a
+   slide, and a number like that is only worth printing if it was measured.
+   Every call goes through here, so here is where the stopwatch lives. */
+let _lastMs = null;
+const lastResponseMs = () => _lastMs;
+
 async function api(path, payload) {
+  const t0 = performance.now();
   const res = await fetch(path, payload
     ? { method: "POST", cache: "no-store",
         headers: { "content-type": "application/json" },
@@ -27,7 +35,13 @@ async function api(path, payload) {
     console.error("firebreak:", path, res.status);
     throw new Error(`the engine returned HTTP ${res.status}. Check the server on port 8765.`);
   }
-  return res.json();
+  const body = await res.json();
+  /* Timed to the end of the body read, not to the first byte — the strip
+     claims "the engine answered", and it has not answered until the answer is
+     in hand. The event lets the strip repaint without polling for it. */
+  _lastMs = performance.now() - t0;
+  document.dispatchEvent(new CustomEvent("fb:latency", { detail: { ms: _lastMs, path } }));
+  return body;
 }
 
 const usd = (x) => {
@@ -80,7 +94,11 @@ function paintNav(current) {
      including its own — the page was reachable only by typing its URL. Nothing
      about the methodology depends on having run an analysis, so it is always
      open. */
-  const has = { portfolio: true, analysis: !!s.result, cascade: !!s.result,
+  /* `limit` is the stepper's step 2. It is a section of the portfolio page
+     rather than a page of its own, and it is open whenever that page is —
+     which is always. Absent from this map it would read as `undefined` and
+     the rail would lock its own second step. */
+  const has = { portfolio: true, limit: true, analysis: !!s.result, cascade: !!s.result,
                 defend: !!(s.result && s.result.fix),
                 verify: !!(s.result && s.result.validation),
                 /* Neither of these needs an analysis: the boundary sweeps the
@@ -114,7 +132,10 @@ function paintNav(current) {
      LIMIT 10% in the tiles, "a limit of 10%" in the prose. It is a round
      number the user picked from four buttons; two decimals were inventing
      precision the choice does not have. */
-  if (lim) lim.innerHTML = `LIMIT <b>${s.limit ? pct(s.limit, 0) : "—"}</b>`;
+  /* The value only. The word "LIMIT" used to be written here, which meant the
+     rail could not label it in its own voice without two places writing one
+     element. The label is markup now; this writes the number. */
+  if (lim) lim.textContent = s.limit ? pct(s.limit, 0) : "—";
   const sh = document.getElementById("navShock");
   /* Three states, not two. A search that ran and found nothing is not the same
      as a search that never ran, and calling it "NOT RUN" is simply false — the
@@ -142,13 +163,13 @@ function paintNav(current) {
       if (dot) { dot.textContent = "●"; dot.className = "up"; }
       /* "REPLAY" is also the cascade page's transport button, one click away,
          where it means something entirely different. */
-      if (txt) txt.textContent = h && h.cached ? "CACHED" : "ENGINE LIVE";
+      if (txt) txt.textContent = h && h.cached ? "cached" : "engine live";
     })
     .catch(() => {
       const dot = document.getElementById("navEngine");
       const txt = document.getElementById("navEngineText");
       if (dot) { dot.textContent = "●"; dot.className = "down"; }
-      if (txt) txt.textContent = "OFFLINE";
+      if (txt) txt.textContent = "offline";
     });
 }
 
@@ -223,7 +244,11 @@ function paintExclusionBanner(current) {
     `${usdExact(note.whole_book_value)} — ${(note.excluded || []).length > 1 ? "are" : "is"} ` +
     `outside the ten-name universe. Everything here describes the rest.`;
   if (!bar.isConnected) {
-    const main = document.querySelector("main .wrap");
+    /* The shell's content column is <main class="col">; the old chrome wraps
+       its content in .wrap. A banner that silently fails to mount is a
+       disclosure that disappears the moment a page is converted, so this
+       matches both rather than the one that happened to exist first. */
+    const main = document.querySelector("main .wrap, main.col");
     if (main) main.insertBefore(bar, main.firstChild);
   }
 }
@@ -286,14 +311,25 @@ function requireResult(current) {
    Pages are numbered in workflow order, and a number that is not earned yet
    does nothing rather than landing you on an empty screen — the same rule the
    nav already follows. */
+/* Key, href, data-page, and the name the rail gives it. The label used to be
+   derived from the data-page value with a capitalise and one special case for
+   `assumptions`, which worked only while the page names and the screen names
+   were the same word. They are not any more — the rail says Break, Fix and
+   Validate — and a keyboard panel that calls them Analysis, Defend and Verify
+   is the app disagreeing with itself about what its own screens are called.
+
+   The numbering follows the stepper, so Limit is 2 and everything after it
+   shifts. Until the rail is on every page, `2` finds no link on the pages that
+   still carry the old nav and does nothing there, the same as a locked page. */
 const FB_PAGES = [
-  ["1", "index.html", "portfolio"],
-  ["2", "analysis.html", "analysis"],
-  ["3", "cascade.html", "cascade"],
-  ["4", "defend.html", "defend"],
-  ["5", "verify.html", "verify"],
-  ["6", "boundary.html", "boundary"],
-  ["7", "assumptions.html", "assumptions"],
+  ["1", "index.html", "portfolio", "Portfolio"],
+  ["2", "index.html#limit", "limit", "Limit"],
+  ["3", "analysis.html", "analysis", "Break"],
+  ["4", "cascade.html", "cascade", "Cascade"],
+  ["5", "defend.html", "defend", "Fix"],
+  ["6", "verify.html", "verify", "Validate"],
+  ["7", "boundary.html", "boundary", "Boundary"],
+  ["8", "assumptions.html", "assumptions", "Model"],
 ];
 
 /* Remembered so a repaint after the data lands keeps this page's own keys. */
@@ -353,9 +389,8 @@ function toggleKeyHelp() {
     d.className = "keyhelp";
     d.innerHTML = `<div class="card"><div class="card-header">Keyboard</div>
       <div class="card-body tight"><table><tbody>
-        ${FB_PAGES.map(([k, , page]) =>
-          `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${
-            page === "assumptions" ? "Model" : page[0].toUpperCase() + page.slice(1)}</td></tr>`).join("")}
+        ${FB_PAGES.map(([k, , , label]) =>
+          `<tr><td style="width:70px"><kbd>${k}</kbd></td><td class="t">${label}</td></tr>`).join("")}
         <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td class="t">Step the cascade (Cascade page)</td></tr>
         <tr><td><kbd>space</kbd></td><td class="t">Play or pause the cascade</td></tr>
         <tr><td><kbd>?</kbd></td><td class="t">This list</td></tr>
