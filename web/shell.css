@@ -274,6 +274,44 @@ h1 {
   pointer-events: none;
 }
 
+/* ---------- the entrance's floating paths ---------- */
+
+/* Two mirrored fans of thirty-six Béziers, sweeping across the whole viewport.
+   preserveAspectRatio is "none" deliberately: the drawing is atmosphere, not a
+   figure, and letting it stretch to the window is what keeps the sweep
+   diagonal at every size. */
+.entry-paths {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  color: var(--ink);
+}
+
+.entry-paths path {
+  fill: none;
+  stroke: currentColor;
+  /* pathLength="1" on the element makes both of these fractions of the path,
+     so one keyframe block drives paths of wildly different lengths. */
+  stroke-dasharray: 0.3 0.7;
+  animation-name: path-flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes path-flow {
+  0%   { stroke-dasharray: 0.3 0.7; stroke-dashoffset: 0;    opacity: 0.35; }
+  50%  { stroke-dasharray: 1 0;     stroke-dashoffset: -0.5; opacity: 0.7; }
+  100% { stroke-dasharray: 0.3 0.7; stroke-dashoffset: -1;   opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still a drawing, just not a moving one. */
+  .entry-paths path { animation: none; stroke-dasharray: none; opacity: 0.5; }
+}
+
 .entry-stage {
   position: relative;
   z-index: 1;
@@ -338,6 +376,17 @@ h1 {
   to   { opacity: 1; transform: none; }
 }
 .entry-stage > * { animation: entry-rise 600ms cubic-bezier(0.16, 0.8, 0.3, 1) both; }
+/* The wordmark arrives a letter at a time, so the name itself is the page's
+   one piece of choreography. Its own rise is cancelled — two animations on one
+   element fighting over transform is how type ends up landing crooked. */
+.entry-stage > .entry-mark { animation: none; }
+.entry-letter {
+  display: inline-block;
+  animation: entry-rise 600ms cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .entry-letter { animation: none; }
+}
 .entry-stage > *:nth-child(1) { animation-delay: 40ms; }
 .entry-stage > *:nth-child(2) { animation-delay: 140ms; }
 .entry-stage > *:nth-child(3) { animation-delay: 300ms; }

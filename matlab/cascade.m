@@ -43,6 +43,35 @@ function out = cascade(H, lambda, maxLev, tgtLev, gamma, adv, shock)
                'has negative size and forced selling pushes prices up']);
     end
 
+    % The same four guards engine.py grew, mirrored here — this file's whole
+    % job is to be the other implementation, and an input Python refuses must
+    % not come back from MATLAB as a confident number. adv is the one that
+    % matters: for an asset nobody holds the numerator is zero too, so the
+    % impact multiplier is 0/0, NaN spreads through prices and equity, every
+    % comparison against NaN is false, and the run reports a clean converged
+    % cascade with NaN inside it. leverage=0 reaches the same place through
+    % debt = -Inf.
+    if any(~isfinite(adv)) || any(adv <= 0)
+        error('cascade:advNotPositive', ...
+              ['every adv must be a positive, finite number; a zero divides ' ...
+               'into the price impact and hands back NaN prices that report ' ...
+               'as a clean converged cascade']);
+    end
+    if ~isfinite(gamma) || gamma < 0
+        error('cascade:gammaNegative', ...
+              'gamma must be >= 0; a negative one makes forced selling repair the market');
+    end
+    if any(lambda <= 0)
+        error('cascade:leverageNotPositive', ...
+              'leverage must be > 0; at zero the implied debt is -Inf');
+    end
+    % Exactly -100% is a real answer and stays allowed; worse than that puts a
+    % price below zero, which the FLOOR constant's own promise forbids.
+    if any(shock < -1)
+        error('cascade:shockBelowTotal', ...
+              'a shock worse than -100%% would put a price below zero');
+    end
+
     [M, N] = size(H);
     units  = H;
     prices = ones(N, 1);

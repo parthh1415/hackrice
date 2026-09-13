@@ -9,7 +9,11 @@
 <link rel="stylesheet" href="shell.css">
 </head>
 <body class="entry">
-<canvas id="glow" class="entry-glow" aria-hidden="true"></canvas>
+<!-- Two mirrored fans of Béziers rather than the dot field. Same job — say
+     this screen is not an instrument — with motion that reads as drift instead
+     of as a signal. -->
+<svg id="paths" class="entry-paths" viewBox="0 0 696 316"
+     preserveAspectRatio="none" aria-hidden="true"></svg>
 
 <!-- One name, one sentence, one way in. The two big figures that used to sit
      here were the direct loss and the loss after the cascade, and the second
@@ -17,7 +21,9 @@
      every time, which looks like a finding and is an input. They belong on the
      screens that can show their working. -->
 <main class="entry-stage">
-  <h1 class="entry-mark">Firebreak</h1>
+  <!-- Letter by letter, a beat apart. The name is the only thing on this page
+       big enough to be worth arriving. -->
+  <h1 class="entry-mark" id="mark">Firebreak</h1>
 
   <p class="entry-quote">Your portfolio is fine until someone else<br>is forced to sell.</p>
 
@@ -30,14 +36,32 @@
 </main>
 
 <script src="shared.js"></script>
-<script src="glow.js"></script>
+<script src="paths.js"></script>
 <script>
-dottedGlow(document.getElementById("glow"));
+const paths = document.getElementById("paths");
+floatingPaths(paths, { position: 1, seed: 1 });
+floatingPaths(paths, { position: -1, seed: 7 });
 
 /* The one line of figures on this page comes off the engine, like every other
    number in the product. The entrance is the one screen where a hardcoded
    number would never be caught by anything, which is exactly why it must not
    be one. */
+/* Split after load so the markup keeps one readable word — a heading built
+   from nine spans in the source is a heading no screen reader and no view-source
+   reader thanks you for. textContent is unchanged either way. */
+(() => {
+  const mark = document.getElementById("mark");
+  const word = mark.textContent;
+  mark.textContent = "";
+  [...word].forEach((letter, i) => {
+    const span = document.createElement("span");
+    span.className = "entry-letter";
+    span.textContent = letter;
+    span.style.animationDelay = `${40 + i * 45}ms`;
+    mark.appendChild(span);
+  });
+})();
+
 (async () => {
   try {
     const f = await api("/api/portfolio/full?limit=0.10", {});
