@@ -79,7 +79,7 @@ $$p_{\text{exec}} = \frac{p + p'}{2}$$
 
 **A product that says what it does not know.** Every input is labelled by where it came from: one is measured, four are numbers we chose, three are outside the model entirely. Upload a book with names we cannot model and we refuse to score it, and price what excluding them would cost, rather than dropping them and renormalising around the hole. When nothing in range crosses your limit we say *"that is the edge of what was tested, not a clean bill of health."*
 
-**429 tests, and a harness that checks the tests** — 96 deliberate mutations, plus a test that fails if any mutation stops matching the code it targets.
+**429 tests, and a harness that checks the tests.** We break the code on purpose in 96 different ways and confirm the suite goes red for every one of them — plus a test that fails if any of those 96 stops matching the code it targets, because a mutation that no longer applies is a coverage claim measuring nothing.
 
 ## What we learned
 
