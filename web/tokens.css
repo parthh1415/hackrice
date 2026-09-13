@@ -152,19 +152,26 @@ html { color-scheme: dark; }
 }
 
 :root {
-  /* ground — a dark technical document, not a dashboard. The hue is the same
-     cool grey-green the paper palette had, taken down rather than inverted:
-     a straight inversion of #E6E7E2 is #191815, which is warm, and the whole
-     character of this design is cool. */
-  --paper:        #14171A;  /* page ground */
-  --paper-raised: #1C2025;  /* panels still sit LIGHTER than the ground */
-  --paper-sunk:   #0F1214;  /* input wells, table zebra — now DARKER again */
+  /* ground — a dark technical document, not a dashboard. Black, and actually
+     black: the instruments are hairlines and figures on nothing, and anything
+     above zero reads as a surface the drawing sits on top of.
+
+     The panels keep a trace of the cool grey-green the paper palette had —
+     #0B0D0E is two points of blue over neutral — because a panel on pure black
+     with no hue at all reads as a rendering artefact rather than a choice. The
+     entrance keeps the old softer ground; it is the one screen that is not an
+     instrument, and it is lit. See `body.entry` in shell.css. */
+  --paper:        #000000;  /* page ground */
+  --paper-raised: #0B0D0E;  /* panels still sit LIGHTER than the ground */
+  --paper-sunk:   #050607;  /* input wells, table zebra — now DARKER again */
 
   /* ink */
   --ink:          #E7E9E4;  /* all primary text and all figures */
   --ink-mid:      #99A0A6;  /* labels, axis ticks, secondary prose */
   --ink-faint:    #676E74;  /* disabled, placeholder, ghosted before-state */
-  --rule:         #2C3237;  /* hairlines — 1px, never a shadow */
+  /* On #14171A this was four steps above the ground. On black it is the only
+     thing separating one panel from the next, so it carries a little further. */
+  --rule:         #292E33;  /* hairlines — 1px, never a shadow */
 
   /* the only color in the product */
   /* #A61B14 was chosen against paper and is nearly invisible on this ground —
@@ -177,7 +184,7 @@ html { color-scheme: dark; }
   /* sequential ramp, boundary map only. Runs from the page's own ground up to
      heat: on paper the scale darkened as it got worse, here it brightens,
      which is the same reading in the opposite medium. */
-  --ramp-0: #14171A;
+  --ramp-0: #000000;
   --ramp-1: #2B2226;
   --ramp-2: #4E2C2C;
   --ramp-3: #8A3A31;

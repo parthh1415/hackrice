@@ -198,11 +198,13 @@ body.shell {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  /* Black, because the masthead's ground is black now. A scrim mixed from the
+     old paper reads as a grey wash laid over the page. */
   background: linear-gradient(to right,
-    rgba(20, 23, 26, 0.95) 0%,
-    rgba(20, 23, 26, 0.92) 62%,
-    rgba(20, 23, 26, 0.45) 84%,
-    rgba(20, 23, 26, 0) 99%);
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.92) 62%,
+    rgba(0, 0, 0, 0.45) 84%,
+    rgba(0, 0, 0, 0) 99%);
 }
 
 .masthead > header { max-width: var(--measure); }
@@ -240,7 +242,15 @@ h1 {
 /* A screen with one job: say what this is, then get out of the way. It is the
    only page in the product that is not an instrument, which is why it is the
    only one that gets an atmosphere. */
+/* The one screen that keeps the old ground. Everything else is on pure black,
+   where a hairline and a figure sit on nothing — right for an instrument. The
+   entrance is not an instrument: it is a lit room, and light needs something
+   to fall on. On #000 the dot field's dark half has nowhere left to go and the
+   lobes read as stains rather than as light. */
 .entry {
+  --paper: #14171A;
+  --paper-raised: #1C2025;
+  --paper-sunk: #0F1214;
   margin: 0;
   min-height: 100vh;
   background: var(--paper);
