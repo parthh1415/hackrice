@@ -816,6 +816,73 @@ function visibleText(d) {
     }
   }
 
+  /* ---- the cascade waterfall's arithmetic ---- */
+  {
+    /* The picture is the product's argument, and a waterfall drawn from a
+       wrong cumulative looks exactly like one drawn from a right one. So the
+       component splits into cascadeBands() — pure, two payloads in, numbers
+       out — and the drawing. This checks the numbers against the very payload
+       they were derived from.
+
+       Both endpoints have to agree: the first band is the shock alone and must
+       land on direct_loss, the last is the end of the cascade and must land on
+       cascade_loss. Those two figures are printed under the plot, so a band
+       series that does not meet them is a chart contradicting its own caption. */
+    const src = fs.readFileSync(path.join(WEB, "waterfall.js"), "utf8");
+    const sandbox = {};
+    new Function("exports", src + "\nexports.cascadeBands = cascadeBands;" +
+                 "\nexports.crossingOf = crossingOf;")(sandbox);
+
+    const full = await (await fetch(`${ORIGIN}/api/portfolio/full?limit=0.10`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).json();
+    const casc = await (await fetch(`${ORIGIN}/api/cascade?asset=${full.asset}` +
+      `&magnitude=${Math.abs(full.magnitude)}&leverage=${full.params.leverage}` +
+      `&gamma=${full.params.gamma}&band=${full.params.band}`)).json();
+
+    const bands = sandbox.cascadeBands(full, casc);
+
+    check("the waterfall draws one band per cascade round, plus the shock",
+          bands.length === full.rounds + 1,
+          `${bands.length} bands for ${full.rounds} rounds`);
+    check("the first band is the shock alone and lands on the direct loss",
+          Math.abs(bands[0].to - full.direct_loss) < 1e-12,
+          `${bands[0].to} vs ${full.direct_loss}`);
+    check("the last band lands on the loss the page headlines",
+          Math.abs(bands[bands.length - 1].to - full.cascade_loss) < 1e-12,
+          `${bands[bands.length - 1].to} vs ${full.cascade_loss}`);
+    /* Each band opens where the last one closed. A gap or an overlap here is a
+       waterfall that does not add up, which is the one thing a waterfall is
+       for. */
+    check("each band opens where the previous one closed",
+          bands.every((b, i) => i === 0 ? b.from === 0 : b.from === bands[i - 1].to));
+    check("the cumulative never goes backwards", bands.every((b) => b.to >= b.from));
+
+    /* The crossing is what the colour means. At the break point the book lands
+       ON its limit, so the crossing is in the final band — and if that ever
+       reported a band that does not contain the limit, the picture would put
+       red somewhere the book was still inside its limit. */
+    const cross = sandbox.crossingOf(bands, full.params.limit);
+    check("the crossing is found in the band that actually contains it",
+          cross !== null && bands[cross.index].from < full.params.limit &&
+          bands[cross.index].to >= full.params.limit,
+          JSON.stringify(cross));
+
+    /* A shock well past the break point: the split band, trailing loss bands
+       and the wash only exist on this path, and nothing on the Break page ever
+       takes it. */
+    const big = await (await fetch(`${ORIGIN}/api/cascade?asset=${full.asset}` +
+      `&magnitude=0.45&leverage=${full.params.leverage}` +
+      `&gamma=${full.params.gamma}&band=${full.params.band}`)).json();
+    const past = sandbox.cascadeBands(full, big);
+    const cross2 = sandbox.crossingOf(past, full.params.limit);
+    check("a book that blows through the limit crosses before its last band",
+          cross2 !== null && cross2.index < past.length - 1,
+          JSON.stringify(cross2) + ` of ${past.length}`);
+    check("and ends well past the limit, so the wash has something to fill",
+          past[past.length - 1].to > full.params.limit * 1.5,
+          String(past[past.length - 1].to));
+  }
+
   /* ---- a holding that did not move, on the attribution table ---- */
   {
     /* AVGO 90% / TSLA 10% at the default limit: TSLA's end-of-cascade price is

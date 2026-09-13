@@ -288,6 +288,79 @@ table.pairs td:first-child { color: var(--ink-mid); }
    of numbers that went down and almost none of them are breaches. */
 .bad, .down, .loss { color: var(--loss); }
 
+/* ---------- the cascade waterfall (§4) ---------- */
+
+.wf { width: 100%; height: auto; display: block; }
+
+/* Segments are ink while the cumulative is under the limit. The one colour in
+   the product enters where the line is crossed and not one shape earlier. */
+.wf-seg { fill: var(--ink); }
+.wf-seg-loss { fill: var(--loss); }
+
+/* The area between the line the user drew and where they actually ended up. */
+.wf-wash { fill: var(--loss-wash); }
+
+.wf-axis { stroke: var(--rule); stroke-width: 1; }
+.wf-connect { stroke: var(--ink-faint); stroke-width: 1; }
+/* A round that moved nothing is still a round. */
+.wf-flat { stroke: var(--ink-faint); stroke-width: 1; }
+
+.wf-limit { stroke: var(--loss); stroke-width: 1; stroke-dasharray: 6 4; }
+.wf-limit-label {
+  fill: var(--loss);
+  font-family: var(--font-ui);
+  font-size: var(--t-micro);
+}
+
+.wf-tick, .wf-band {
+  fill: var(--ink-mid);
+  font-family: var(--font-ui);
+  font-size: var(--t-micro);
+}
+.wf-tick { font-family: var(--font-num); }
+
+.wf-val {
+  fill: var(--ink-mid);
+  font-family: var(--font-num);
+  font-size: var(--t-micro);
+  /* On the Break page the book lands within a rounding of its own limit, so
+     the last two labels sit on the dashed limit line whatever you do with
+     their placement. Painting the stroke first knocks the line out behind the
+     glyphs instead of letting the dashes run through them. */
+  paint-order: stroke fill;
+  stroke: var(--paper-raised);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* The three figures under the plot, hairline-separated. --t-fig minus one
+   step, per §4. */
+.wf-figures {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--rule);
+}
+.wf-fig {
+  flex: 1 1 0;
+  min-width: 200px;
+  padding: var(--s4) var(--s5);
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.wf-fig:last-child { border-right: 0; }
+.wf-fig .k { font-size: var(--t-label); color: var(--ink-mid); }
+.wf-fig .v {
+  font-size: var(--t-head);
+  line-height: var(--lh-tight);
+}
+.wf-fig .v.loss { color: var(--loss); }
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-seg { transition: none !important; transform: none !important; }
+}
+
 /* ---------- buttons ---------- */
 
 .btn {
