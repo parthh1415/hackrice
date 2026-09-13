@@ -108,9 +108,6 @@ previewed, and the reason GOOGL is the name that bleeds.
   end.
 - **The footing table** (Fix). Current and Defended both total $12,300 — "worth
   the same afterwards" made checkable rather than asserted.
-- **"What this does not say"** (Break). Not a probability / Not a threshold /
-  One name at a time / Your book is an observer, with the run's parameters in
-  the header.
 - **The Model page** (`8`). Every input tagged measured, declared or not
   modelled — and the tag is the ink's weight, not a colour, so the column reads
   from "we counted this" down to "we cannot see this".
