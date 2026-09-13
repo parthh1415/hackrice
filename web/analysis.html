@@ -218,10 +218,10 @@ bindKeys("analysis");
       <tr>
         <td><b>${r.t}</b>${r.shocked ? ' <span class="badge badge-bad"><i></i>shocked</span>' : ""}</td>
         <td class="r num muted">${pct(r.weight, 1)}</td>
-        <td class="r num ${r.shocked ? "down" : "muted"}">${r.shocked ? "−" + pct(r.direct) : "—"}</td>
-        <td class="r num down">−${pct(r.total)}</td>
-        <td class="r num ${r.contagion > 1e-9 ? "" : "muted"}">${r.contagion > 1e-9 ? "−" + pct(r.contagion) : "—"}</td>
-        <td class="r num down">−${pct(r.costs)}</td>
+        <td class="r num ${r.shocked ? "down" : "muted"}">${r.shocked ? loss(r.direct) : "—"}</td>
+        <td class="r num ${loss(r.total) === "—" ? "muted" : "down"}">${loss(r.total)}</td>
+        <td class="r num ${loss(r.contagion) === "—" ? "muted" : ""}">${loss(r.contagion)}</td>
+        <td class="r num ${loss(r.costs) === "—" ? "muted" : "down"}">${loss(r.costs)}</td>
       </tr>`).join("") +
       (cash ? `<tr><td><b>CASH</b></td><td class="r num muted">${pct(cash, 1)}</td>
          <td class="r num muted">—</td><td class="r num muted">—</td>

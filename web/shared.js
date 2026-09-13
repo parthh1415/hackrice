@@ -55,6 +55,15 @@ const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
    innerHTML assignment is skipped — the page renders its heading over an empty
    div rather than showing anything wrong, which is how verify.html went blank
    exactly when the fix had worked best. Render the absence instead. */
+/* A loss, with the minus written by the formatter rather than by hand in front
+   of it. `"−" + pct(x)` prints "−0.00%" for anything that rounds to zero — a
+   loss of negative zero — which is how the cascade diagram once reported nine
+   untouched names. The same construction was still on the analysis page's
+   attribution table, where a fuzz of 39 portfolios hit it in 24. Below half a
+   basis point there is nothing to report, so it says so. */
+const loss = (x, dp = 2) =>
+  (Math.abs(x) * 100 < 0.5 * Math.pow(10, -dp) ? "—" : `−${pct(Math.abs(x), dp)}`);
+
 const num = (x, dp = 2, dash = "—") =>
   (x === null || x === undefined || !Number.isFinite(x)) ? dash : x.toFixed(dp);
 
@@ -333,9 +342,14 @@ function bindKeys(current, extraHandlers) {
 
 function toggleKeyHelp() {
   let d = document.getElementById("keyHelp");
+  /* Built hidden, so the toggle at the end has something to flip. It used to
+     be built visible and then immediately toggled off, so the FIRST press of
+     `?` created the panel and hid it — the key appeared to do nothing until
+     you pressed it twice, on every page. */
   if (!d) {
     d = document.createElement("div");
     d.id = "keyHelp";
+    d.hidden = true;
     d.className = "keyhelp";
     d.innerHTML = `<div class="card"><div class="card-header">Keyboard</div>
       <div class="card-body tight"><table><tbody>

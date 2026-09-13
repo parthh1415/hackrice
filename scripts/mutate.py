@@ -449,6 +449,18 @@ MUTATIONS = {
         "web/shared.js",
         "  return Math.abs(n) < 10 && n !== 0",
         "  return false && n !== 0"),
+    "attribution_writes_its_own_minus": (
+        "web/analysis.html",
+        '<td class="r num ${loss(r.total) === "—" ? "muted" : "down"}">${loss(r.total)}</td>',
+        '<td class="r num down">−${pct(r.total)}</td>'),
+    "key_help_hides_on_first_press": (
+        "web/shared.js",
+        '    d.id = "keyHelp";\n    d.hidden = true;',
+        '    d.id = "keyHelp";'),
+    "offer_outlives_its_file": (
+        "web/index.html",
+        '  const offer = document.getElementById("importOffer");\n  if (offer) { offer.hidden = true; offer.innerHTML = ""; }',
+        "  /* removed */"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -499,7 +511,8 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "cta_points_at_the_wrong_page", "boundary_contour_interpolated",
                 "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value",
                 "fidelity_footer_eats_data", "exclusion_banner_only_on_analysis",
-                "import_refusal_is_a_dead_end", "small_money_rounds_to_nothing"}
+                "import_refusal_is_a_dead_end", "small_money_rounds_to_nothing", "attribution_writes_its_own_minus",
+                "key_help_hides_on_first_press", "offer_outlives_its_file"}
 
 
 def build(name):

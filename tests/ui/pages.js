@@ -260,6 +260,17 @@ function visibleText(d) {
       }
     }
 
+    /* A loss of negative zero. `"−" + pct(x)` prints "−0.00%" for anything
+       that rounds to zero, which is the bug the cascade diagram had and this
+       table still did — a fuzz of 39 portfolios hit it in 24. A name that did
+       not move must not report a loss, of either sign. */
+    {
+      const cells = [...a.d.querySelectorAll("#attrRows tr")]
+        .flatMap((tr) => [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+      check("no cell reports a loss of negative zero",
+            !cells.some((t) => t === "−0.00%"), cells.filter((t) => /0\.00%/.test(t)).join(" "));
+    }
+
     store = a.dump();
   }
 
@@ -803,6 +814,74 @@ function visibleText(d) {
             my < rowY(iLo) && my > rowY(iLo + 1),
             `marker at ${my}, rows at ${rowY(iLo)} and ${rowY(iLo + 1)}`);
     }
+  }
+
+  /* ---- a holding that did not move, on the attribution table ---- */
+  {
+    /* AVGO 90% / TSLA 10% at the default limit: TSLA's end-of-cascade price is
+       exactly 1.000000, so the row used to read "fell −0.00%, cost you
+       −0.00%" beside a contagion cell correctly saying "—". The table
+       contradicting itself one column apart, in the panel captioned "the
+       contributions sum to the loss". */
+    const rows = [{ symbol: "AVGO", market_value: 9000 },
+                  { symbol: "TSLA", market_value: 1000 }];
+    const flat = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.10", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
+    check("the unmoved-holding case still produces an answer", flat.found === true,
+          flat.reason || "");
+    if (flat.found) {
+      const v = await load("analysis.html", { fb: JSON.stringify(
+        { portfolio: flat.portfolio, rows, limit: 0.10, result: flat }) });
+      await until(() => v.d.querySelectorAll("#attrRows tr").length > 0);
+      const cells = [...v.d.querySelectorAll("#attrRows tr")]
+        .flatMap((tr) => [...tr.querySelectorAll("td")].map((td) => td.textContent.trim()));
+      check("a name that did not move reports no loss of either sign",
+            !cells.some((t) => t === "−0.00%" || t === "0.00%"),
+            cells.join(" | "));
+      check("it says so with a dash, like every other absent figure",
+            cells.filter((t) => t === "—").length >= 3, cells.join(" | "));
+    }
+  }
+
+  /* ---- the keyboard overlay opens on the first press ---- */
+  {
+    /* It was built visible and then immediately toggled off, so the first `?`
+       created the panel and hid it. The key did nothing until pressed twice,
+       on every page. */
+    const k = await load("defend.html", store);
+    await sleep(300);
+    k.d.dispatchEvent(new k.window.KeyboardEvent("keydown", { key: "?", bubbles: true }));
+    const panel = k.d.getElementById("keyHelp");
+    check("? opens the keyboard help on the first press", !!panel && !panel.hidden,
+          panel ? "built but hidden" : "not built");
+    k.d.dispatchEvent(new k.window.KeyboardEvent("keydown", { key: "?", bubbles: true }));
+    check("and closes it on the second", k.d.getElementById("keyHelp").hidden);
+  }
+
+  /* ---- an offer must not outlive the file it is about ---- */
+  {
+    /* The card survived the next upload and the demo button, so an abandoned
+       file's offer sat under a freshly loaded book with its button still live
+       — clicking it replaced the book the user had just asked for. */
+    const etf = [{ symbol: "VOO", market_value: 13000 },
+                 { symbol: "NVDA", market_value: 3600 },
+                 { symbol: "CASH", market_value: 1000 }];
+    const p = await load("index.html", {});
+    const body = await (await fetch(ORIGIN + "/api/portfolio/firebreak?limit=0.10", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: etf, source: "csv" }) })).json();
+    p.window.offerExclusion(body, etf, "etf.csv");
+    await sleep(120);
+    check("the offer is on screen after a refusal",
+          !p.d.getElementById("importOffer").hidden);
+    p.d.getElementById("useDemo").dispatchEvent(new p.window.Event("click"));
+    await until(() => p.d.querySelectorAll("#pfRows tr").length > 0);
+    await sleep(150);
+    check("and is gone once another book is loaded",
+          p.d.getElementById("importOffer").hidden);
+    check("with its button no longer able to swap the book",
+          !p.d.getElementById("offerYes"));
   }
 
   /* ---- a book small enough that whole dollars lose the answer ---- */

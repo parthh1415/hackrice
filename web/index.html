@@ -126,6 +126,13 @@ bindKeys("portfolio");
 
 function render(p) {
   FB.set({ portfolio: p });
+  /* An offer is about ONE file. It used to survive the next upload and the
+     demo button, so an abandoned file's card sat under a freshly loaded book —
+     two portfolios on one screen — and its button was still live: clicking it
+     replaced the book the user had just asked for with holdings from a file
+     they had moved on from. */
+  const offer = document.getElementById("importOffer");
+  if (offer) { offer.hidden = true; offer.innerHTML = ""; }
   /* A new book makes the old answer somebody else's. Conditional, because
      this also runs when you simply navigate back here and the analysis you
      already ran is still the right one. */
@@ -387,6 +394,8 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
   if (!file) return;
   const note = document.getElementById("loadNote");
   try {
+    const stale = document.getElementById("importOffer");
+    if (stale) { stale.hidden = true; stale.innerHTML = ""; }
     const { rows, skipped, footer, cashRolled } = parseCsv(await file.text());
     const body = await api("/api/portfolio/firebreak?limit=0.10", { holdings: rows, source: "csv" });
     if (body.refused) {
