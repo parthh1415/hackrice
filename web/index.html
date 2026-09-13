@@ -73,11 +73,20 @@
         <span class="card-title">What loss would you refuse to tolerate?</span><span class="sub">Firebreak searches for the smallest single-name shock that crosses this.</span>
       </div>
       <div class="card-body">
-        <div class="seg" id="limits">
-          <button data-limit="0.05" aria-pressed="false">5%</button>
-          <button data-limit="0.10" aria-pressed="true">10%</button>
-          <button data-limit="0.15" aria-pressed="false">15%</button>
-          <button data-limit="0.25" aria-pressed="false">25%</button>
+        <!-- Four buttons made this look like a survey with four acceptable
+             answers. A loss limit is a number you hold, not a bracket you pick,
+             so it is a slider over the range the engine will actually accept —
+             1% to 30% in half-point steps. The engine clamps at 0.01–0.90 and
+             says so when it has to; nothing here can send it a number it would
+             have to refuse. -->
+        <div class="limit-set" id="limits">
+          <output class="limit-out num" id="limitOut" for="limitRange">10.0%</output>
+          <input class="limit-range" id="limitRange" type="range"
+                 min="1" max="30" step="0.5" value="10"
+                 aria-label="Loss limit, percent of the portfolio">
+          <div class="limit-ticks" aria-hidden="true">
+            <span>1%</span><span>10%</span><span>20%</span><span>30%</span>
+          </div>
         </div>
       </div>
       <div class="card-footer">
@@ -446,16 +455,42 @@ document.getElementById("csvFile").addEventListener("change", async (ev) => {
   }
 });
 
+const limitRange = document.getElementById("limitRange");
+const limitOut = document.getElementById("limitOut");
+
+/* The slider is the control; the readout is the number. One place writes both,
+   from state, so they cannot come apart — which is what the four buttons used
+   to do when the page loaded with a stored limit none of them carried. */
 function paintLimits() {
-  const chosen = FB.state.limit;
-  [...document.getElementById("limits").children].forEach((x) =>
-    x.setAttribute("aria-pressed", String(Number(x.dataset.limit) === chosen)));
+  const chosen = FB.state.limit || 0.10;
+  const pct100 = Math.round(chosen * 1000) / 10;
+  /* A stored limit can sit outside the slider's range (an old link, a clamp)
+     without being wrong — the input pins itself to its own min/max, so read
+     the state for the number and let the thumb sit at the end. */
+  limitRange.value = String(Math.min(Number(limitRange.max), Math.max(Number(limitRange.min), pct100)));
+  limitOut.textContent = `${pct100.toFixed(1)}%`;
+  limitRange.setAttribute("aria-valuetext", `${pct100.toFixed(1)} percent`);
+  paintTrack();
 }
 
-document.getElementById("limits").addEventListener("click", (ev) => {
-  const b = ev.target.closest("button[data-limit]");
-  if (!b) return;
-  FB.set({ limit: Number(b.dataset.limit) });
+/* Dragging fires `input` continuously and `change` once, on release. The
+   readout follows the thumb; the state waits for the release, so a drag from
+   10% to 25% is one write and one invalidation rather than thirty. */
+/* The track is painted from a custom property rather than a second element,
+   so there is one source for where the thumb is. */
+function paintTrack() {
+  const lo = Number(limitRange.min), hi = Number(limitRange.max);
+  const at = (Number(limitRange.value) - lo) / (hi - lo);
+  limitRange.style.setProperty("--fill", `${(at * 100).toFixed(2)}%`);
+}
+
+limitRange.addEventListener("input", () => {
+  limitOut.textContent = `${Number(limitRange.value).toFixed(1)}%`;
+  paintTrack();
+});
+
+limitRange.addEventListener("change", () => {
+  FB.set({ limit: Number(limitRange.value) / 100 });
   paintLimits();
   /* the old answer was computed against the old limit; the nav has to stop
      advertising a break point that no longer belongs to the question. */
@@ -464,8 +499,8 @@ document.getElementById("limits").addEventListener("click", (ev) => {
 });
 
 if (!FB.state.limit) FB.set({ limit: 0.10 });
-/* the pressed button is written into the HTML as a default. Without this, the
-   control shows 10% on a page whose state says 25% — two controls on one
+/* the slider's position is written into the HTML as a default. Without this,
+   the control shows 10% on a page whose state says 25% — two controls on one
    screen disagreeing about the user's own risk limit. */
 paintLimits();
 if (FB.state.portfolio) render(FB.state.portfolio);

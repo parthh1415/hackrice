@@ -47,7 +47,11 @@ function buildShell() {
     `</a></li>`;
 
   rail.innerHTML =
-    `<a class="rail-mark" href="index.html">Firebreak</a>` +
+    /* The wordmark goes to the entrance, where the wordmark is. It pointed at
+       index.html from before there was an entrance, which left "/" as a page
+       you could only reach by editing the address bar. Step 1 in the stepper
+       below is the portfolio page; this is the way back out. */
+    `<a class="rail-mark" href="home.html">Firebreak</a>` +
     `<div class="nav-links">` +
       `<ol class="stepper">${FB_STEPS.map((s, i) => row(s, true, i)).join("")}</ol>` +
       `<ul class="rail-refs">${FB_REFS.map((s) => row(s, false)).join("")}</ul>` +
@@ -88,21 +92,31 @@ function dressMasthead() {
   band.appendChild(canvas);
   band.appendChild(header);
 
-  /* Dimmer and slower than the entrance, and with the lobes kept low and wide
-     so the light sits under the words rather than crossing them. The entrance
-     is atmosphere; this is a letterhead. */
+  /* Dimmer and slower than the entrance, with the lobes kept low and wide so
+     the light sits under the words rather than crossing them. The entrance is
+     atmosphere; this is a letterhead.
+
+     And the light is white here, not blue. These pages are instruments, and
+     they have one rule older than this effect: colour means a limit was
+     crossed. A second hue drifting behind the title of a page whose figures
+     turn red for a reason is a second thing to read. White is the same field
+     and the same motion with nothing to interpret — the vibe travels, the
+     meaning stays where it belongs. */
   if (typeof dottedGlow === "function") {
     dottedGlow(canvas, {
       gap: 13,
-      dotAlpha: 0.16,
-      gain: 0.62,
-      bloom: 0.6,
+      dotAlpha: 0.18,
+      gain: 0.80,
+      bloom: 0.72,
       falloff: 0.45,
       speed: 0.55,
       lights: [
-        { rgb: [40, 170, 255], r: 0.34, cx: 0.22, cy: 0.55, ax: 0.22, ay: 0.12, fx: 0.019, fy: 0.012, p: 0.0 },
-        { rgb: [95, 120, 255], r: 0.30, cx: 0.58, cy: 0.48, ax: 0.24, ay: 0.14, fx: 0.014, fy: 0.021, p: 2.1 },
-        { rgb: [148, 92, 236], r: 0.26, cx: 0.86, cy: 0.60, ax: 0.16, ay: 0.12, fx: 0.010, fy: 0.017, p: 4.0 },
+        /* --ink, then two whites a shade cool and a shade warm of it, so the
+           lobes still separate where they overlap instead of summing into one
+           flat patch. */
+        { rgb: [231, 233, 228], r: 0.34, cx: 0.22, cy: 0.55, ax: 0.22, ay: 0.12, fx: 0.019, fy: 0.012, p: 0.0 },
+        { rgb: [214, 224, 232], r: 0.30, cx: 0.58, cy: 0.48, ax: 0.24, ay: 0.14, fx: 0.014, fy: 0.021, p: 2.1 },
+        { rgb: [232, 226, 219], r: 0.26, cx: 0.86, cy: 0.60, ax: 0.16, ay: 0.12, fx: 0.010, fy: 0.017, p: 4.0 },
       ],
     });
   }

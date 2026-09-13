@@ -803,6 +803,42 @@ function visibleText(d) {
           navLimit.includes("90"), navLimit);
   }
 
+  /* ---- the entrance ---- */
+  {
+    /* home.html is what "/" serves and the first screen anyone sees, and
+       nothing here loaded it. It is also the one page with no instrument on
+       it, which makes it the easiest place in the product for a number to be
+       typed in by hand and never questioned again — two figures lived here
+       for a day, one of which was the search's own input. */
+    const h = await load("home.html", {});
+    await until(() => (txt(h.d, "eNote") || "").includes("names"));
+
+    const ctas = [...h.d.querySelectorAll(".entry-actions a")].map((a) => a.getAttribute("href"));
+    eq("the entrance offers exactly two ways in", ctas.length, 2);
+    check("and both of them land on the portfolio page",
+          ctas.every((href) => href.startsWith("index.html")), ctas.join(" "));
+    check("one of which seeds the demo book", ctas.some((href) => href.includes("demo")),
+          ctas.join(" "));
+
+    const full = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.10", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    })).json();
+    const note = txt(h.d, "eNote") || "";
+    check("its footnote counts the books the engine actually modelled",
+          note.includes(`${full.funds.length} books`), note);
+    check("and the names the engine actually loaded",
+          note.includes(`${full.tickers.length} names`), note);
+
+    /* The decisive one. Everything above would still pass if the figures were
+       typed into the markup and the note happened to agree. */
+    const source = fs.readFileSync(path.join(WEB, "home.html"), "utf8")
+      .replace(/<link[^>]*>/g, "")           // the favicon data URI is all digits
+      .replace(/<!--[\s\S]*?-->/g, "");      // a comment explaining a figure is not one
+    const typed = source.match(/\d+(\.\d+)?%/g) || [];
+    eq("and no figure is typed into the entrance's markup", typed.join(","), "");
+  }
+
   /* ---- 6. boundary ---- */
   {
     /* /api/boundary computed this grid for the whole life of the project and
@@ -1293,15 +1329,31 @@ function visibleText(d) {
     const kept = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
     check("but returning to the page with the same book keeps its answer", !!kept.result);
 
-    p2.d.querySelector('#limits button[data-limit="0.25"]')
-      .dispatchEvent(new p2.window.Event("click", { bubbles: true }));
+    /* The control is a range input now. `change` is what a release fires and
+       what the page commits on — `input` only moves the readout, deliberately,
+       so a drag is one write rather than thirty. */
+    const slider = p2.d.getElementById("limitRange");
+    slider.value = "25";
+    slider.dispatchEvent(new p2.window.Event("change", { bubbles: true }));
     await sleep(200);
     const moved = JSON.parse(p2.window.sessionStorage.getItem("fb") || "{}");
     check("changing the limit drops an answer computed for the old limit", !moved.result,
           moved.result ? "kept" : "");
-    const pressed = [...p2.d.querySelectorAll("#limits button")]
-      .filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.limit);
-    eq("and the control shows the limit that is actually set", pressed.join(","), "0.25");
+    eq("and the limit that is stored is the one the slider was moved to",
+       String(moved.limit), "0.25");
+    eq("and the control shows the limit that is actually set",
+       txt(p2.d, "limitOut"), "25.0%");
+    /* The readout used to be four buttons, one of which was marked pressed in
+       the markup. A slider has no such default, so the check that the page
+       agrees with STORED state — not with its own HTML — is this one: reload
+       with a limit no page ever writes and see whether the control follows. */
+    const p3 = await load("index.html", {
+      fb: JSON.stringify({ ...JSON.parse(store.fb), limit: 0.175 }),
+    });
+    await sleep(200);
+    eq("and a stored limit the markup never carried is what the control shows",
+       txt(p3.d, "limitOut"), "17.5%");
+    eq("with the thumb on it", p3.d.getElementById("limitRange").value, "17.5");
   }
 
   /* ---- the best possible outcome must still render ---- */

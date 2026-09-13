@@ -287,50 +287,37 @@ h1 {
   inset: -8% -14%;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(ellipse 60% 56% at 44% 50%,
-    rgba(20, 23, 26, 0.95) 0%,
-    rgba(20, 23, 26, 0.88) 34%,
-    rgba(20, 23, 26, 0.55) 58%,
-    rgba(20, 23, 26, 0) 76%);
+  background: radial-gradient(ellipse 56% 62% at 40% 50%,
+    rgba(20, 23, 26, 0.96) 0%,
+    rgba(20, 23, 26, 0.93) 42%,
+    rgba(20, 23, 26, 0.60) 64%,
+    rgba(20, 23, 26, 0) 84%);
 }
 
+/* The name is the largest thing on the only screen that is not an instrument.
+   -0.03em because the display face's default fit is set for running prose and
+   opens up badly at this size. */
 .entry-mark {
   font-family: var(--font-prose);
   font-weight: 600;
-  font-size: var(--t-lead);
+  font-size: clamp(56px, 9vw, 132px);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
   color: var(--ink);
   margin: 0;
 }
 
-.entry-line {
+/* One sentence, and it is the whole pitch. Set below the name rather than
+   above it: the name says what this is, the sentence says why. */
+.entry-quote {
   font-family: var(--font-prose);
-  font-weight: 600;
-  font-size: clamp(38px, 5.6vw, 76px);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
-  margin: 0;
-  text-wrap: balance;
-}
-
-.entry-sub {
-  font-family: var(--font-prose);
-  font-size: var(--t-lead);
-  line-height: var(--lh-body);
+  font-size: clamp(20px, 2.4vw, 30px);
+  line-height: 1.3;
   color: var(--ink-mid);
   margin: 0;
-  max-width: var(--measure);
+  max-width: 22em;
+  text-wrap: balance;
 }
-
-.entry-figs { display: flex; align-items: stretch; gap: var(--s6); flex-wrap: wrap; }
-.entry-rule { width: 1px; background: var(--rule); align-self: stretch; }
-.entry-fig { display: flex; flex-direction: column; gap: var(--s2); }
-.entry-fig .k { font-size: var(--t-label); color: var(--ink-mid); }
-.entry-fig .v {
-  font-size: clamp(40px, 5vw, 64px);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
-}
-.entry-fig .v.loss { color: var(--loss); }
 
 .entry-actions { display: flex; flex-wrap: wrap; gap: var(--s3); }
 
@@ -796,6 +783,71 @@ table.pairs td:first-child { color: var(--ink-mid); }
 
 /* A pressed segment is a setting, not a link. Ink fill, paper text, hairlines
    between — the same vocabulary as everything else on the page. */
+/* ---------- the limit slider ---------- */
+
+/* The number first and large, because the number is the answer to the
+   question in the card's header. The track under it is how you change it. */
+.limit-set { display: flex; flex-direction: column; gap: var(--s3); max-width: 460px; }
+
+.limit-out {
+  font-size: var(--t-fig);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+
+/* appearance:none on the input and on the thumb: without both, Safari keeps
+   its own blue capsule and ignores every rule below. */
+.limit-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--s4);
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+/* --fill is written by index.html on every move: the travelled part of the
+   track is ink, the rest is a rule. Without it the thumb is a 3px mark on a
+   hairline and there is nothing to read at a glance. */
+.limit-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(to right,
+    var(--ink) 0 var(--fill, 31%), var(--rule) var(--fill, 31%) 100%);
+}
+.limit-range::-moz-range-track {
+  height: 2px;
+  background: linear-gradient(to right,
+    var(--ink) 0 var(--fill, 31%), var(--rule) var(--fill, 31%) 100%);
+}
+/* A square, the width of a rule-drawn tick. Round thumbs belong to a different
+   product. */
+.limit-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: var(--s4);
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+  margin-top: calc((var(--s4) - 2px) / -2);
+}
+.limit-range::-moz-range-thumb {
+  width: 3px;
+  height: var(--s4);
+  background: var(--ink);
+  border: 0;
+  border-radius: 0;
+}
+.limit-range:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+.limit-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-num);
+  font-size: var(--t-micro);
+  color: var(--ink-faint);
+}
+
 .seg { display: inline-flex; border: 1px solid var(--rule); }
 .seg button {
   background: transparent;
