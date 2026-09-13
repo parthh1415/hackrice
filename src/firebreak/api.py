@@ -29,7 +29,7 @@ def _dataset(params):
     # beside a comment promising it does not.
     out = dict(load_dataset())
     out["defaults"] = {name: default for name, (_, _, default) in _LIMITS.items()}
-    out["defaults"]["breaches"] = 2
+    out["defaults"]["breaches"] = 3
     return out
 
 
@@ -161,9 +161,9 @@ KNOBS = {
     "/api/health": {},
     "/api/dataset": {},
     "/api/break": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
-                   "band": (1.05, 0.5), "breaches": (2.0, 4.0)},
+                   "band": (1.05, 0.5), "breaches": (3.0, 4.0)},
     "/api/stabilise": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
-                       "band": (1.05, 0.5), "breaches": (2.0, 4.0)},
+                       "band": (1.05, 0.5), "breaches": (3.0, 4.0)},
     "/api/boundary": {"leverage": (5.0, 6.5), "gamma": (0.2, 1.0),
                       "band": (1.05, 0.5)},
 }
@@ -688,7 +688,7 @@ def _boundary(params):
         #
         # And `breaches` is dropped from it here, because this endpoint never
         # reads one. _guarded emits it for every caller, so the sweep was
-        # publishing "breaches": 2 — a default nothing applied — inside the
+        # publishing "breaches": 3 — a default nothing applied — inside the
         # block the interface contract calls authoritative. A phantom knob in
         # the authoritative block is worse than no knob at all.
         "params": {k: v for k, v in knobs.items() if k != "breaches"},
@@ -765,7 +765,7 @@ def _guarded(params, n_funds):
 
     raw = params.get("breaches")
     top = max(1, n_funds)
-    wanted = 2
+    wanted = 3
     if raw is not None:
         try:
             # int(float("inf")) raises OverflowError, which is NOT a subclass of
@@ -786,8 +786,8 @@ def _guarded(params, n_funds):
                 clamped.append({"name": "breaches", "given": value, "used": wanted,
                                 "reason": "whole funds only"})
         except (TypeError, ValueError, OverflowError):
-            wanted = 2
-            clamped.append({"name": "breaches", "given": raw, "used": 2,
+            wanted = 3
+            clamped.append({"name": "breaches", "given": raw, "used": 3,
                             "reason": "unreadable"})
     used = min(max(wanted, 1), top)
     out["breaches"] = used

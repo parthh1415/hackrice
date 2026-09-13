@@ -415,7 +415,7 @@ MUTATIONS = {
         'for="csvFile" id="csvLabel"'),
     "solver_card_hardcodes_its_scenario": (
         "web/assumptions.html",
-        "    breaches: P.breaches != null ? P.breaches : 2,",
+        "    breaches: P.breaches != null ? P.breaches : 3,",
         "    breaches: 3,"),
     "cta_points_at_the_wrong_page": (
         "web/cascade.html",

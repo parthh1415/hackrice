@@ -122,17 +122,16 @@ bindKeys("assumptions");
      The redesign dropped this strip along with the rest of the institutional
      screen, which left docs/devpost.md claiming it was on screen when it was
      not. It lives here now: this is the page about the model. */
-  /* Driven by the knobs THIS session ran with, not by four literals. Hardcoded
-     — and with `breaches` omitted entirely, so it defaulted to 2 — the card
-     answered a question nobody had asked: Renaissance selling $441,665 over
-     301 evaluations, where the pitch and the video script quote Citadel's
-     $1,731,560 over 124, which is the >=3-breach answer. Two different
-     scenarios, no label on either, four clicks apart. */
+  /* Driven by the knobs THIS session ran with, not by four literals. A
+     hardcoded card could answer a question nobody asked: Renaissance selling
+     $441,665 over 301 evaluations, where the pitch and the video script quote
+     Citadel's $1,731,560 over 2,392, which is the >=3-breach answer. Two
+     different scenarios, no label on either, four clicks apart. */
   const K = {
     leverage: P.leverage != null ? P.leverage : 5.0,
     gamma: P.gamma != null ? P.gamma : 0.2,
     band: P.band != null ? P.band : 1.05,
-    breaches: P.breaches != null ? P.breaches : 2,
+    breaches: P.breaches != null ? P.breaches : 3,
   };
   let st;
   try {
