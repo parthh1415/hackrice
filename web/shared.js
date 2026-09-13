@@ -37,7 +37,17 @@ const usd = (x) => {
   if (a >= 1e3) return `$${(x / 1e3).toFixed(1)}K`;
   return `$${x.toFixed(0)}`;
 };
-const usdExact = (x) => `$${Math.round(x).toLocaleString("en-US")}`;
+/* Whole dollars, except where whole dollars would throw the number away. A
+   six-cent fix on a tiny book rendered as "$0", so the defend page read "Sell
+   $0 of NVDA" — an instruction to do nothing, for a cut that is real. Below
+   $10 the cents are most of the number, so they are shown. The demo's $478 is
+   unaffected, which matters because the script says it out loud. */
+const usdExact = (x) => {
+  const n = Number(x) || 0;
+  return Math.abs(n) < 10 && n !== 0
+    ? `$${n.toFixed(2)}`
+    : `$${Math.round(n).toLocaleString("en-US")}`;
+};
 const pct = (x, dp = 2) => `${(x * 100).toFixed(dp)}%`;
 
 /* Any API field the server is allowed to send as null. `x.toFixed()` on one of

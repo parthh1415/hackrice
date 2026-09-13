@@ -445,6 +445,10 @@ MUTATIONS = {
         "web/index.html",
         "      if (body.can_exclude) { offerExclusion(body, rows, file.name); return; }",
         "      if (false) { offerExclusion(body, rows, file.name); return; }"),
+    "small_money_rounds_to_nothing": (
+        "web/shared.js",
+        "  return Math.abs(n) < 10 && n !== 0",
+        "  return false && n !== 0"),
     "next_skips_a_round": (
         "web/cascade.html",
         'document.getElementById("nextBtn").onclick = () => step(at + 1);',
@@ -495,7 +499,7 @@ UI_MUTATIONS = {"direct_loss_is_really_the_cascade", "weight_as_fraction", "nega
                 "cta_points_at_the_wrong_page", "boundary_contour_interpolated",
                 "boundary_marker_snaps_to_a_cell", "boundary_colour_ignores_the_value",
                 "fidelity_footer_eats_data", "exclusion_banner_only_on_analysis",
-                "import_refusal_is_a_dead_end"}
+                "import_refusal_is_a_dead_end", "small_money_rounds_to_nothing"}
 
 
 def build(name):

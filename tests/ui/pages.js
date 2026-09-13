@@ -805,6 +805,29 @@ function visibleText(d) {
     }
   }
 
+  /* ---- a book small enough that whole dollars lose the answer ---- */
+  {
+    /* usdExact rounded to whole dollars, so a six-cent fix rendered as "$0"
+       and the defend page read "Sell $0 of NVDA" — an instruction to do
+       nothing, for a cut that is real. */
+    const rows = [{ symbol: "NVDA", market_value: 0.60 },
+                  { symbol: "CASH", market_value: 0.40 }];
+    const tiny = await (await fetch(ORIGIN + "/api/portfolio/full?limit=0.01", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ holdings: rows, source: "csv" }) })).json();
+    check("a one-dollar book still gets an answer", tiny.found === true, tiny.reason || "");
+    if (tiny.found && tiny.fix) {
+      check("whose fix is smaller than a dollar", tiny.fix.dollars < 1, String(tiny.fix.dollars));
+      const v = await load("defend.html", { fb: JSON.stringify(
+        { portfolio: tiny.portfolio, rows, limit: 0.01, result: tiny }) });
+      await until(() => v.d.getElementById("root").textContent.trim().length > 40);
+      const body = v.d.getElementById("root").textContent;
+      check("and the page does not tell you to sell nothing",
+            !/Sell \$0 of/.test(body), body.replace(/\s+/g, " ").slice(0, 90));
+      has("it shows the cents instead", body, tiny.fix.dollars.toFixed(2));
+    }
+  }
+
   /* ---- a partly-modelled book, and the disclosure that must follow it ---- */
   {
     /* A real brokerage export is mostly funds outside the ten-name universe —
