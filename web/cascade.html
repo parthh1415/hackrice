@@ -4,48 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cascade · Firebreak</title>
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<nav class="nav">
-  <a class="logo" href="index.html">FIREBREAK</a>
-  <div class="nav-links">
-    <a href="index.html"    data-page="portfolio">Portfolio</a>
-    <a href="analysis.html" data-page="analysis">Analysis</a>
-    <a href="cascade.html"  data-page="cascade">Cascade</a>
-    <a href="defend.html"   data-page="defend">Defend</a>
-    <a href="verify.html"   data-page="verify">Verify</a>
-    <a href="boundary.html" data-page="boundary">Boundary</a>
-    <a href="assumptions.html" data-page="assumptions">Model</a>
-  </div>
-  <div class="nav-right">
-    <span class="status" id="navPf">BOOK <b>—</b></span>
-    <span class="status">LIMIT <b id="navLimit">—</b></span>
-    <span class="status" id="navShock">SHOCK <b>—</b></span>
-    <span class="status"><span id="navEngine" class="dim">●</span> <b id="navEngineText">…</b></span>
-    <span class="status num" id="navClock">--:--:--</span>
-  </div>
-</nav>
-<main>
-  <div class="wrap page stack gap-8">
-    <div class="stack gap-3">
-      <span class="eyebrow">Step 3 — Cascade</span>
+<body class="shell">
+<main class="col">
+    <header>
       <h1>Why the loss grows</h1>
       <p class="lede" id="lede">—</p>
-    </div>
+    </header>
 
     <div class="card">
       <div class="card-header">
-        <div class="stack gap-2">
-          <span class="card-title" id="roundTitle">Round 0</span>
-          <span class="card-desc">Every frame is a real trajectory step. Nothing is interpolated.</span>
-        </div>
-        <div class="row gap-2">
+        <span class="card-title" id="roundTitle">Round 0</span>
+        <span class="transport">
           <button class="btn btn-outline btn-sm" id="prevBtn">Prev</button>
           <button class="btn btn-primary btn-sm" id="playBtn">Play</button>
           <button class="btn btn-outline btn-sm" id="nextBtn">Next</button>
-        </div>
+        </span>
+        <span class="card-desc">Every frame is a real trajectory step. Nothing is interpolated.</span>
       </div>
       <div class="card-body tight">
         <svg class="viz" id="net" viewBox="0 0 1000 400" role="img"
@@ -63,18 +40,16 @@
         <a class="btn btn-primary" href="defend.html">Find the cheapest single-position fix</a>
       </div>
     </div>
-  </div>
 </main>
 <script src="shared.js"></script>
+<script src="shell.js"></script>
 <script>
-paintNav("cascade");
-paintStatusBar("cascade", [["← →", "step"], ["space", "play"]]);
+paintShell("cascade");
 bindKeys("cascade");
 (async () => { if (await seedDemoIfAsked()) location.replace(location.pathname); })();
 const r = requireResult("cascade");
 /* No trajectory, nothing to step: the status bar was still offering "← →
    step │ space play" over an empty state. */
-if (!r) paintStatusBar("cascade", []);
 if (r) (async () => {
   const limitX = (r.params.leverage * r.params.band).toFixed(2);
   document.getElementById("lede").textContent =
@@ -135,27 +110,33 @@ if (r) (async () => {
        one idea this page exists to land. */
     body.holdings.forEach((row, j) => row.forEach((v, i) => {
       if (v <= 0) return;
-      svg.appendChild(mk("line", { x1: LX, y1: ay(i), x2: RX, y2: fy(j),
-        stroke: "hsl(0 0% 15%)", "stroke-width": Math.max(.4, (v / maxPos) * 2.6) }));
+      svg.appendChild(mk("line", { class: "cx-hold", x1: LX, y1: ay(i), x2: RX, y2: fy(j),
+        "stroke-width": Math.max(.4, (v / maxPos) * 2.6) }));
     }));
     (f.sold || []).forEach((row, j) => row.forEach((usd, i) => {
       if (usd <= 0) return;
       const share = usd / maxSold;
-      svg.appendChild(mk("line", { x1: LX, y1: ay(i), x2: RX, y2: fy(j),
-        stroke: "hsl(359 100% 61%)", "stroke-opacity": (0.25 + 0.6 * share).toFixed(3),
+      /* Forced selling IS a limit being crossed — a book over its leverage
+         band, liquidating. That is the one thing §1 lets colour mean, and it
+         is the whole subject of this page. */
+      svg.appendChild(mk("line", { class: "cx-sell", x1: LX, y1: ay(i), x2: RX, y2: fy(j),
+        "stroke-opacity": (0.25 + 0.6 * share).toFixed(3),
         "stroke-width": Math.max(.6, share * 5.0), "stroke-linecap": "round" }));
     }));
     T.forEach((sym, i) => {
       const drop = 1 - f.prices[i];
       const hot = drop > 1e-9;
-      svg.appendChild(mk("circle", { cx: LX, cy: ay(i), r: 6,
-        fill: hot ? "hsl(359 100% 61%)" : "hsl(0 0% 30%)" }));
-      const lbl = mk("text", { x: LX - 16, y: ay(i) + 4, "text-anchor": "end",
-        "font-family": "var(--mono)", "font-size": 11, fill: "hsl(0 0% 75%)" });
+      /* A price that fell is not a limit being crossed. These were red, which
+         put the one colour on ten names that had merely lost value — on the
+         same frame as the four books that actually breached. Ink for a name
+         that moved, faint ink for one that has not. */
+      svg.appendChild(mk("circle", { class: `cx-asset${hot ? " hot" : ""}`,
+        cx: LX, cy: ay(i), r: 6 }));
+      const lbl = mk("text", { class: "cx-label num", x: LX - 16, y: ay(i) + 4,
+        "text-anchor": "end" });
       lbl.textContent = sym; svg.appendChild(lbl);
-      const val = mk("text", { x: LX - 16, y: ay(i) + 18, "text-anchor": "end",
-        "font-family": "var(--mono)", "font-size": 10,
-        fill: hot ? "hsl(359 100% 61%)" : "hsl(0 0% 38%)" });
+      const val = mk("text", { class: `cx-sub${hot ? " hot" : ""}`, x: LX - 16,
+        y: ay(i) + 18, "text-anchor": "end" });
       /* Nine of ten names read 0.00% on the shock frame, which is dead ink on
          the densest panel in the app — and worse, it makes the frame where
          contagion arrives look identical to the one before it. Leaving the
@@ -169,14 +150,13 @@ if (r) (async () => {
     });
     F.forEach((name, j) => {
       const breached = (f.breached || []).includes(j);
-      svg.appendChild(mk("rect", { x: RX - 7, y: fy(j) - 7, width: 14, height: 14, rx: 2,
-        fill: breached ? "hsl(359 100% 61%)" : "hsl(0 0% 30%)" }));
-      const lbl = mk("text", { x: RX + 20, y: fy(j) + 1,
-        "font-family": "var(--sans)", "font-size": 13, fill: "hsl(0 0% 88%)" });
+      /* §7: no radius, anywhere. */
+      svg.appendChild(mk("rect", { class: `cx-fund${breached ? " breached" : ""}`,
+        x: RX - 7, y: fy(j) - 7, width: 14, height: 14 }));
+      const lbl = mk("text", { class: "cx-name", x: RX + 20, y: fy(j) + 1 });
       lbl.textContent = name; svg.appendChild(lbl);
-      const lev = mk("text", { x: RX + 20, y: fy(j) + 17,
-        "font-family": "var(--mono)", "font-size": 10,
-        fill: breached ? "hsl(359 100% 61%)" : "hsl(0 0% 38%)" });
+      const lev = mk("text", { class: `cx-sub${breached ? " breached" : ""}`,
+        x: RX + 20, y: fy(j) + 17 });
       /* "L 6.00" gave no unit and no threshold, so red against grey had no
          visible rule — the number the boxes are compared against never
          appeared anywhere on the page. */

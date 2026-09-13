@@ -392,8 +392,13 @@ function visibleText(d) {
         for (let k = 0; k < t; k++)
           c.d.getElementById("nextBtn").dispatchEvent(new c.window.Event("click"));
       };
-      const flow = () => [...c.d.querySelectorAll("#net line")]
-        .filter((l) => (l.getAttribute("stroke") || "").includes("359"));
+      /* Selected by class, not by hue. This used to filter on the stroke
+         attribute containing "359" — the red's hue angle — which tied a
+         correctness check to a palette value and broke the moment the colours
+         moved into the stylesheet. .cx-sell says what the line IS, so it
+         cannot be fooled by a recolour and cannot accidentally match some
+         other red line that turns up on the diagram later. */
+      const flow = () => [...c.d.querySelectorAll("#net line.cx-sell")];
       const soldAt = (t) => (cas.trajectory[t].sold || []).flat().filter((v) => v > 0).length;
       eq("no forced selling is drawn on the shock frame", flow().length, soldAt(0));
       for (let t = 0; t < cas.trajectory.length; t++) {

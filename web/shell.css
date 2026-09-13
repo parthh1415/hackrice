@@ -389,6 +389,33 @@ table.pairs td:first-child { color: var(--ink-mid); }
   .wf-seg { transition: none !important; transform: none !important; }
 }
 
+/* ---------- the contagion network (cascade page) ---------- */
+
+.viz { width: 100%; height: auto; display: block; }
+
+/* Who holds what. Structure, not news — hairline weight, scaled by position. */
+.cx-hold { stroke: var(--rule); }
+
+/* Dollars sold this round. A book over its leverage band, liquidating: the one
+   thing in this product that is a limit being crossed. */
+.cx-sell { stroke: var(--loss); }
+
+.cx-asset { fill: var(--ink-faint); }
+.cx-asset.hot { fill: var(--ink); }
+
+.cx-fund { fill: var(--ink-faint); }
+.cx-fund.breached { fill: var(--loss); }
+
+.cx-label { fill: var(--ink-mid); font-family: var(--font-num); font-size: var(--t-micro); }
+.cx-name { fill: var(--ink); font-family: var(--font-ui); font-size: var(--t-label); }
+.cx-sub { fill: var(--ink-faint); font-family: var(--font-num); font-size: var(--t-micro); }
+.cx-sub.hot { fill: var(--ink-mid); }
+.cx-sub.breached { fill: var(--loss); }
+
+/* The transport sits on the title's line, at the far end. */
+.transport { display: inline-flex; gap: var(--s2); margin-left: auto; }
+.btn-sm { padding: var(--s1) var(--s3); font-size: var(--t-micro); }
+
 /* ---------- buttons ---------- */
 
 .btn {
